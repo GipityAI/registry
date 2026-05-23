@@ -1,0 +1,17 @@
+version: 1
+
+# Deploy manifest - `gipity deploy dev` runs these phases in order.
+#
+# This is a static, frontend-only app: the MediaPipe vision kit runs entirely
+# in the browser, so there is no backend, no database, and no realtime phase.
+# Everything under src/ (including src/packages/web-vision-mediapipe/) is
+# published to the CDN as-is.
+#
+# Full phase reference: https://docs.gipity.ai
+
+deploy:
+  phases:
+    # Static frontend - everything under src/ is published to the CDN.
+    - name: files
+      type: static
+      source: src

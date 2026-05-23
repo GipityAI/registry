@@ -1,0 +1,164 @@
+/* Design tokens - customize these instead of hardcoding values */
+:root {
+  --primary: #f26522;
+  --primary-hover: #d9541a;
+  --ink: #ffffff;
+  --bg: #0c0c10;
+  --chip-bg: rgba(12, 12, 16, 0.72);
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --radius: 999px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Fullscreen camera stage */
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* Video feed and canvas overlay share the stage 1:1. Both use object-fit:
+   cover so a non-matching screen aspect crops them identically - keeping the
+   overlay aligned with the video. */
+#cam,
+#overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#overlay { pointer-events: none; }
+
+/* Front ('user') camera reads naturally when mirrored. main.js adds/removes
+   this class based on facingMode. The overlay canvas is *not* flipped here -
+   if it were, every caption would read backwards. The kit mirrors the
+   detection geometry in code so boxes and skeletons line up while text stays
+   upright. */
+#stage.mirror #cam {
+  transform: scaleX(-1);
+}
+
+/* HUD chip - shared by the FPS readout */
+.hud-chip {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  padding: 0.35rem 0.7rem;
+  background: var(--chip-bg);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Flip-camera button, top-right. Hidden on devices with only one camera. */
+.flip-btn {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--chip-bg);
+  color: var(--ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.flip-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.flip-btn:disabled { opacity: 0.5; cursor: default; }
+.flip-btn svg { width: 1.4rem; height: 1.4rem; fill: currentColor; }
+
+/* Task switcher */
+.task-bar {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--chip-bg);
+  border-radius: var(--radius);
+}
+
+.task-bar button {
+  margin: 0;
+  padding: 0.55rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.task-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+.task-bar button.active { background: var(--primary); }
+.task-bar button:disabled { opacity: 0.5; cursor: default; }
+
+/* Centered gates - start prompt and error message */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  text-align: center;
+  background: rgba(12, 12, 16, 0.92);
+}
+
+.overlay[hidden] { display: none; }
+
+.overlay h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.overlay p {
+  margin: 0;
+  max-width: 32rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.overlay button {
+  margin-top: var(--space-sm);
+  padding: 0.75rem 1.8rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.overlay button:hover { background: var(--primary-hover); }

@@ -1,0 +1,28 @@
+{
+  "name": "@gipity/web-vision-mediapipe",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Browser vision kit for Gipity apps: MediaPipe Tasks (gesture, pose, object detection) wrapped in one camera + render-loop API. Web only - runs fully client-side, no server, no upload.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "permissions": {
+      "network": [
+        "https://esm.sh/@mediapipe/tasks-vision@0.10.35",
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm",
+        "https://storage.googleapis.com/mediapipe-models"
+      ],
+      "camera": true
+    },
+    "exposes": ["examples", "tests"],
+    "install": {
+      "importMap": {
+        "@gipity/web-vision-mediapipe": "./packages/web-vision-mediapipe/index.js",
+        "@gipity/web-vision-mediapipe/": "./packages/web-vision-mediapipe/",
+        "@mediapipe/tasks-vision": "https://esm.sh/@mediapipe/tasks-vision@0.10.35"
+      }
+    }
+  }
+}

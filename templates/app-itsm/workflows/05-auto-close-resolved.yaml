@@ -1,0 +1,57 @@
+name: Auto-Close Resolved Incidents
+description: Daily at 2am, close incidents that have been in resolved state longer than the configured auto-close period.
+trigger:
+  type: cron
+  schedule: "0 2 * * *"
+
+steps:
+  - name: get_auto_close_days
+    action: db.query
+    params:
+      sql: >
+        SELECT value FROM app_settings WHERE key = 'auto_close_days'
+    on_failure: stop
+
+  - name: close_stale_resolved
+    action: db.query
+    params:
+      sql: >
+        UPDATE incidents SET
+          state = 'closed',
+          closed_at = NOW(),
+          updated_at = NOW()
+        WHERE state = 'resolved'
+          AND resolved_at < NOW() - make_interval(days => $1::int)
+        RETURNING id, number
+      args:
+        - "{{get_auto_close_days.rows[0].value}}"
+
+  - name: add_close_notes
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        SELECT 'incidents', id, 'work_note',
+               'Automatically closed after ' || $1 || ' days in resolved state.',
+               'Workflow: Auto-Close', true
+        FROM unnest($2::int[]) AS id
+      args:
+        - "{{get_auto_close_days.rows[0].value}}"
+        - "{{close_stale_resolved.rows.map(r => r.id)}}"
+    condition: "{{close_stale_resolved.rowCount}} > 0"
+    on_failure: continue
+
+  - name: complete_sla_tasks
+    action: db.query
+    params:
+      sql: >
+        UPDATE sla_tasks SET
+          state = 'completed',
+          end_time = NOW(),
+          updated_at = NOW()
+        WHERE incident_id = ANY($1::int[])
+          AND state = 'in_progress'
+      args:
+        - "{{close_stale_resolved.rows.map(r => r.id)}}"
+    condition: "{{close_stale_resolved.rowCount}} > 0"
+    on_failure: continue

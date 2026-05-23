@@ -1,0 +1,65 @@
+name: Sentiment Escalation
+description: When a comment is added, analyze sentiment. Escalate if negative/frustrated.
+trigger:
+  type: record.after_insert
+  table: comments
+  condition: "record.comment_type == 'comment'"
+
+steps:
+  - name: check_settings
+    action: db.query
+    params:
+      sql: >
+        SELECT value FROM app_settings WHERE key = 'ai_sentiment_enabled'
+    on_failure: stop
+
+  - name: analyze
+    action: function.call
+    params:
+      name: analyze-sentiment
+      args:
+        comment_id: "{{trigger.record.id}}"
+    condition: "{{check_settings.rows[0].value}} == true"
+    on_failure: stop
+
+  - name: add_sentiment_note
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ($1, $2, 'work_note', $3, 'Workflow: Sentiment Analysis', true)
+      args:
+        - "{{analyze.target_table}}"
+        - "{{analyze.target_id}}"
+        - "Sentiment analysis: {{analyze.sentiment}} (confidence: {{analyze.confidence}}). Indicators: {{analyze.indicators.join(', ')}}."
+    condition: "{{analyze.sentiment}} == 'negative'"
+    on_failure: continue
+
+  - name: escalate_if_negative
+    action: db.query
+    params:
+      sql: >
+        UPDATE incidents SET
+          escalation_level = GREATEST(escalation_level, 1),
+          updated_at = NOW()
+        WHERE id = $1
+      args:
+        - "{{analyze.target_id}}"
+    condition: "{{analyze.escalation_recommended}} == true && {{analyze.target_table}} == 'incidents'"
+    on_failure: continue
+
+  - name: notify_assigned_agent
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        SELECT assigned_to,
+               'Negative sentiment on ' || number,
+               'A comment shows signs of frustration. Review and respond promptly.',
+               '/agent/incidents'
+        FROM incidents
+        WHERE id = $1 AND assigned_to IS NOT NULL
+      args:
+        - "{{analyze.target_id}}"
+    condition: "{{analyze.escalation_recommended}} == true && {{analyze.target_table}} == 'incidents'"
+    on_failure: continue

@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gipity.ai/schemas/realtime/sync-chunk.schema.json",
+  "title": "Host transform-sync chunk",
+  "description": "Sent on '<channel>:sync' by the host of an authority:'host' entities channel. `rows` are opaque adapter arrays (row[0] = entity id). Full sync is split into `init` chunks; `delta` carries only moved entities.",
+  "protocolVersion": 1,
+  "type": "object",
+  "required": ["kind", "rows"],
+  "properties": {
+    "kind": { "type": "string", "enum": ["init", "delta"] },
+    "rows": {
+      "type": "array",
+      "items": { "type": "array", "minItems": 1 },
+      "description": "Each row is an opaque array; row[0] is the entity id."
+    },
+    "chunk": { "type": "integer", "minimum": 0, "description": "init only: 0-based chunk index." },
+    "totalChunks": { "type": "integer", "minimum": 1, "description": "init only." },
+    "total": { "type": "integer", "minimum": 0, "description": "init only: total entity count." }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "init" } } },
+      "then": { "required": ["chunk", "totalChunks", "total"] } }
+  ]
+}

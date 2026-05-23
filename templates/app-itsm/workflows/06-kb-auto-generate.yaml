@@ -1,0 +1,40 @@
+name: KB Auto-Generate
+description: When an incident is resolved, generate a draft KB article from the resolution.
+trigger:
+  type: record.after_update
+  table: incidents
+  condition: "record.state == 'resolved' && old_record.state != 'resolved'"
+
+steps:
+  - name: check_settings
+    action: db.query
+    params:
+      sql: >
+        SELECT value FROM app_settings WHERE key = 'ai_kb_generation_enabled'
+    on_failure: stop
+
+  - name: check_resolution_notes
+    action: db.query
+    params:
+      sql: >
+        SELECT id, resolution_notes FROM incidents WHERE id = $1 AND resolution_notes IS NOT NULL
+      args:
+        - "{{trigger.record.id}}"
+    on_failure: stop
+
+  - name: check_existing_kb
+    action: db.query
+    params:
+      sql: >
+        SELECT id FROM knowledge_articles WHERE source_incident_id = $1
+      args:
+        - "{{trigger.record.id}}"
+
+  - name: generate_article
+    action: function.call
+    params:
+      name: generate-kb-article
+      args:
+        incident_id: "{{trigger.record.id}}"
+    condition: "{{check_settings.rows[0].value}} == true && {{check_resolution_notes.rowCount}} > 0 && {{check_existing_kb.rowCount}} == 0"
+    on_failure: continue

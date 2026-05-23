@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="./css/engine.css">
+  <link rel="stylesheet" href="./css/game.css">
+  {{JSON_LD_BLOCK}}
+</head>
+<body>
+  <!-- Loading screen -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="loading-title">Loading...</div>
+      <div class="loading-bar-track"><div class="loading-bar-fill" id="loading-bar"></div></div>
+      <div class="loading-status" id="loading-status">Initializing...</div>
+    </div>
+  </div>
+
+  <!-- Game canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- HUD overlay -->
+  <div id="hud" class="hud hidden">
+    <div id="hud-top-left" class="hud-slot"></div>
+    <div id="hud-top-right" class="hud-slot"></div>
+    <div id="hud-bottom-left" class="hud-slot"></div>
+    <div id="hud-bottom-right" class="hud-slot"></div>
+    <div id="hud-center" class="hud-slot"></div>
+  </div>
+
+  <!-- Mobile controls -->
+  <div id="mobile-controls" class="hidden">
+    <div id="joystick-zone" class="joystick-zone"></div>
+    <div class="mobile-buttons">
+      <button id="btn-jump" class="mobile-btn">Jump</button>
+      <button id="btn-action" class="mobile-btn">Action</button>
+    </div>
+  </div>
+
+
+  <!-- Three.js -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.183.2/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.183.2/examples/jsm/",
+      "@dimforge/rapier3d": "https://cdn.jsdelivr.net/npm/@dimforge/rapier3d-compat@0.19.3/rapier.mjs",
+      "@gipity/realtime": "./packages/realtime/index.js",
+      "@gipity/realtime/": "./packages/realtime/"
+    }
+  }
+  </script>
+
+  <script type="module" src="./js/core.js"></script>
+  <script type="module" src="./js/game.js"></script>
+</body>
+</html>

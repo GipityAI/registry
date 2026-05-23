@@ -1,0 +1,32 @@
+{
+  "name": "@gipity/realtime",
+  "version": "3.0.4",
+  "type": "module",
+  "main": "index.js",
+  "description": "Engine-agnostic realtime kit for Gipity apps: channels (messages/presence/entities), host election, server-persisted entity sync, observability.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "permissions": {
+      "network": [
+        "https://a.gipity.ai/api/token",
+        "wss://rt.gipity.ai",
+        "https://esm.sh/colyseus.js"
+      ],
+      "realtime": { "roomType": "state", "authLevel": "public" }
+    },
+    "exposes": ["contracts", "schemas", "examples", "adapters", "tests"],
+    "install": {
+      "importMap": {
+        "@gipity/realtime": "./packages/realtime/index.js",
+        "@gipity/realtime/": "./packages/realtime/"
+      },
+      "deployPhase": {
+        "name": "realtime",
+        "type": "realtime",
+        "rooms": [{ "room_type": "state", "auth_level": "public" }]
+      }
+    }
+  }
+}

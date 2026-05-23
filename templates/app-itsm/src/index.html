@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
+    <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+    <meta property="og:type" content="website">
+    <meta name="api-base" content="https://a.gipity.ai">
+    <meta name="app-guid" content="p_3j2vt45w">
+    <title>{{TITLE}}</title>
+    <link rel="stylesheet" href="css/tokens.css">
+    <link rel="stylesheet" href="css/layout.css">
+    <link rel="stylesheet" href="css/components.css">
+    {{JSON_LD_BLOCK}}
+</head>
+<body>
+    <div id="app">
+        <nav id="sidebar" class="sidebar hidden">
+            <div class="sidebar-header">
+                <span class="sidebar-brand">{{TITLE}}</span>
+            </div>
+            <div class="sidebar-nav">
+                <a href="/agent" class="nav-item" data-link>
+                    <span class="nav-icon">&#9632;</span> Dashboard
+                </a>
+                <a href="/agent/incidents" class="nav-item" data-link>
+                    <span class="nav-icon">&#9888;</span> Incidents
+                </a>
+                <a href="/agent/incidents/new" class="nav-item" data-link>
+                    <span class="nav-icon">&#43;</span> New Incident
+                </a>
+                <a href="/agent/knowledge" class="nav-item" data-link>
+                    <span class="nav-icon">&#128218;</span> Knowledge
+                </a>
+                <a href="/agent/sla" class="nav-item" data-link>
+                    <span class="nav-icon">&#9201;</span> SLA
+                </a>
+                <a href="/agent/approvals" class="nav-item" data-link>
+                    <span class="nav-icon">&#10003;</span> Approvals
+                </a>
+                <a href="/agent/reports" class="nav-item" data-link>
+                    <span class="nav-icon">&#128200;</span> Reports
+                </a>
+                <a href="/agent/settings" class="nav-item" data-link>
+                    <span class="nav-icon">&#9881;</span> Settings
+                </a>
+                <div class="nav-divider"></div>
+                <a href="/" class="nav-item" data-link>
+                    <span class="nav-icon">&#127968;</span> Portal
+                </a>
+            </div>
+        </nav>
+        <main id="main-content" class="main-content">
+            <!-- Pages render here -->
+        </main>
+    </div>
+
+    <!-- Command Palette -->
+    <div id="command-palette" class="command-palette hidden">
+        <div class="command-palette-backdrop"></div>
+        <div class="command-palette-modal">
+            <input type="text" id="command-input" class="command-input" placeholder="Type a command..." autocomplete="off">
+            <ul id="command-list" class="command-list"></ul>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

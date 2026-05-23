@@ -1,0 +1,70 @@
+/* Design tokens - customize these instead of hardcoding values */
+:root {
+  --primary: #f26522;
+  --primary-hover: #d9541a;
+
+  /* Surface colors (Water.css handles base - these are for custom components) */
+  --surface: #1a1a2e;
+  --surface-alt: #16213e;
+  --text-muted: #999;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --space-xl: 4rem;
+
+  /* Shape */
+  --radius: 6px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Language picker - inert unless config.features.i18n is true (see js/i18n.js).
+   Safe to keep even when i18n is off; nothing renders it in that case. */
+.lang-picker {
+  position: fixed;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  z-index: 10;
+}
+
+.lang-picker select {
+  margin: 0;
+  padding: 2px var(--space-sm);
+  background: #000;
+  color: #fff;
+  border: 1px solid #888;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  text-align-last: center;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: none;
+  transition: border-color 0.2s;
+}
+
+.lang-picker select option {
+  text-align: center;
+}
+
+.lang-picker select:hover,
+.lang-picker select:focus {
+  border-color: #fff;
+}
+
+/* Agent: add custom component styles below, using the tokens above
+   (never hardcode colors, spacing, or radii).
+
+   Example - delete once you add your own styles:
+
+   .card {
+     background: var(--surface);
+     padding: var(--space-md);
+     border-radius: var(--radius);
+     box-shadow: var(--shadow);
+   }
+*/

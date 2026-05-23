@@ -1,0 +1,31 @@
+name: Weekly Digest
+description: Every Monday at 8am, generate and send a weekly ITSM operations digest.
+trigger:
+  type: cron
+  schedule: "0 8 * * 1"
+
+steps:
+  - name: generate_digest
+    action: function.call
+    params:
+      name: generate-weekly-digest
+    on_failure: stop
+
+  - name: send_email
+    action: email.send
+    params:
+      to: "{{env.DIGEST_RECIPIENTS}}"
+      subject: "ITSM Weekly Digest: {{generate_digest.period.start}} - {{generate_digest.period.end}}"
+      html: "{{generate_digest.digest_html}}"
+    condition: "{{env.DIGEST_RECIPIENTS}} != null"
+    on_failure: continue
+
+  - name: store_digest
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ('app_settings', 0, 'work_note', $1, 'Workflow: Weekly Digest', true)
+      args:
+        - "Weekly digest generated for {{generate_digest.period.start}} to {{generate_digest.period.end}}. Volume: {{generate_digest.stats.total_created}} created, {{generate_digest.stats.total_resolved}} resolved. SLA breaches: {{generate_digest.sla_breaches}}. Open backlog: {{generate_digest.open_backlog}}."
+    on_failure: continue

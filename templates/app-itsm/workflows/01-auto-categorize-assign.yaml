@@ -1,0 +1,69 @@
+name: Auto-Categorize & Assign
+description: When a new incident is created, classify it with AI and assign to the best agent.
+trigger:
+  type: record.after_insert
+  table: incidents
+
+steps:
+  - name: check_settings
+    action: db.query
+    params:
+      sql: >
+        SELECT value FROM app_settings WHERE key = 'ai_auto_categorize_enabled'
+    on_failure: stop
+
+  - name: classify
+    action: function.call
+    params:
+      name: classify-incident
+      args:
+        incident_id: "{{trigger.record.id}}"
+    condition: "{{check_settings.rows[0].value}} == true"
+    on_failure: continue
+
+  - name: apply_classification
+    action: db.query
+    params:
+      sql: >
+        UPDATE incidents SET
+          category_id = COALESCE($1, category_id),
+          subcategory_id = COALESCE($2, subcategory_id),
+          team_id = COALESCE($3, team_id),
+          priority = COALESCE($4, priority),
+          updated_at = NOW()
+        WHERE id = $5
+      args:
+        - "{{classify.classification.category_id}}"
+        - "{{classify.classification.subcategory_id}}"
+        - "{{classify.classification.team_id}}"
+        - "{{classify.classification.priority}}"
+        - "{{trigger.record.id}}"
+    condition: "{{classify.classification.confidence}} >= 0.7"
+    on_failure: continue
+
+  - name: check_assign_settings
+    action: db.query
+    params:
+      sql: >
+        SELECT value FROM app_settings WHERE key = 'ai_auto_assign_enabled'
+    on_failure: stop
+
+  - name: smart_assign
+    action: function.call
+    params:
+      name: smart-assign
+      args:
+        incident_id: "{{trigger.record.id}}"
+        team_id: "{{classify.classification.team_id}}"
+    condition: "{{check_assign_settings.rows[0].value}} == true && {{classify.classification.team_id}} != null"
+    on_failure: continue
+
+  - name: log_result
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ('incidents', $1, 'work_note', $2, 'Workflow: Auto-Categorize', true)
+      args:
+        - "{{trigger.record.id}}"
+        - "AI classified with {{classify.classification.confidence}} confidence. Category: {{classify.classification.category_id}}, Team: {{classify.classification.team_id}}. {{smart_assign.assigned ? 'Assigned to ' + smart_assign.assigned_name : 'No auto-assignment.'}}"

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gipity.ai/schemas/realtime/entity-op.schema.json",
+  "title": "Entity operation",
+  "description": "CRUD relay message for a host-authority entities channel ('<channel>:entity-op'). For server/shared channels the equivalent op is a data-map set_data/delete_data instead. `payload` is opaque (adapter.entities.encode output).",
+  "protocolVersion": 1,
+  "type": "object",
+  "required": ["op", "id"],
+  "properties": {
+    "op": { "type": "string", "enum": ["upsert", "delete"] },
+    "id": { "type": "string", "description": "Entity id." },
+    "payload": { "description": "Entity record for upsert; absent for delete. Opaque to the kit." }
+  },
+  "allOf": [
+    { "if": { "properties": { "op": { "const": "upsert" } } }, "then": { "required": ["payload"] } }
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gipity.ai/schemas/realtime/adapter.schema.json",
+  "title": "@gipity/realtime adapter",
+  "description": "Capability-sectioned adapter. All sections and methods are optional; normalizeAdapter() fills gaps with no-ops. Method values must be functions (JSON Schema cannot express the function type, so methods are listed with x-type: function).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "presence": {
+      "type": "object",
+      "description": "Used by sync:'presence' channels.",
+      "additionalProperties": false,
+      "properties": {
+        "encode":  { "x-type": "function", "description": "() -> object|null  local state -> wire payload" },
+        "apply":   { "x-type": "function", "description": "(peerRecord, payload) -> void" },
+        "newPeer": { "x-type": "function", "description": "() -> object  blank peer record" }
+      }
+    },
+    "entities": {
+      "type": "object",
+      "description": "Used by sync:'entities' channels. server/shared use the first group; authority:'host' also needs the host group.",
+      "additionalProperties": false,
+      "properties": {
+        "id":      { "x-type": "function", "description": "(entity) -> string" },
+        "encode":  { "x-type": "function", "description": "(record) -> jsonable" },
+        "decode":  { "x-type": "function", "description": "(jsonable) -> record" },
+        "apply":   { "x-type": "function", "description": "(id, record, prev) -> void" },
+        "remove":  { "x-type": "function", "description": "(id) -> void" },
+        "list":    { "x-type": "function", "description": "() -> iterable<entity>  (host)" },
+        "get":     { "x-type": "function", "description": "(id) -> entity|null  (host)" },
+        "clearAll":{ "x-type": "function", "description": "() -> void  (host)" },
+        "serializeFullRow":  { "x-type": "function", "description": "(entity) -> array, row[0]=id  (host)" },
+        "applyFullRow":      { "x-type": "function", "description": "(row) -> void  (host)" },
+        "serializeDeltaRow": { "x-type": "function", "description": "(entity) -> array, row[0]=id  (host)" },
+        "applyDeltaRow":     { "x-type": "function", "description": "(row) -> number drift  (host)" },
+        "getDriftAnchor":    { "x-type": "function", "description": "(entity) -> {x,y,z}|null  (host)" }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "description": "Used by authority:'host' channels.",
+      "additionalProperties": false,
+      "properties": {
+        "hasData":       { "x-type": "function", "description": "() -> boolean" },
+        "onBecomeHost":  { "x-type": "function", "description": "() -> void" },
+        "onResign":      { "x-type": "function", "description": "() -> void" }
+      }
+    }
+  }
+}

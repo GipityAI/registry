@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gipity.ai/schemas/realtime/presence.schema.json",
+  "title": "Presence wire payload",
+  "description": "Sent on the '<channel>:presence' message type ~20 Hz. The kit adds `sid`; all other fields come from adapter.presence.encode() and are app-defined and opaque.",
+  "protocolVersion": 1,
+  "type": "object",
+  "required": ["sid"],
+  "properties": {
+    "sid": { "type": "string", "description": "Sender session id (added by the kit)." }
+  },
+  "additionalProperties": true,
+  "examples": [
+    { "sid": "abc123", "x": 4.1, "y": 0, "z": -2.3, "r": 1.57 },
+    { "sid": "abc123", "name": "Alice", "cursor": { "x": 220, "y": 90 }, "typing": true }
+  ]
+}

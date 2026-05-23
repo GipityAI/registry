@@ -1,0 +1,60 @@
+name: P1/P2 Escalation
+description: When a high-priority incident is created (P1 or P2), notify team lead and post to Slack.
+trigger:
+  type: record.after_insert
+  table: incidents
+  condition: "record.priority <= 2"
+
+steps:
+  - name: get_team_info
+    action: db.query
+    params:
+      sql: >
+        SELECT t.name as team_name, t.manager_user_id, t.email as team_email,
+               up.display_name as manager_name, up.email as manager_email
+        FROM teams t
+        LEFT JOIN user_profiles up ON t.manager_user_id = up.gipity_user_id
+        WHERE t.id = $1
+      args:
+        - "{{trigger.record.team_id}}"
+    on_failure: continue
+
+  - name: notify_manager
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        VALUES ($1, $2, $3, '/agent/incidents')
+      args:
+        - "{{get_team_info.rows[0].manager_user_id}}"
+        - "P{{trigger.record.priority}} Incident: {{trigger.record.number}}"
+        - "{{trigger.record.short_description}} - Requires immediate attention."
+    condition: "{{get_team_info.rows[0].manager_user_id}} != null"
+    on_failure: continue
+
+  - name: add_escalation_note
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ('incidents', $1, 'work_note', $2, 'Workflow: P1 Escalation', true)
+      args:
+        - "{{trigger.record.id}}"
+        - "HIGH PRIORITY ESCALATION: P{{trigger.record.priority}} incident automatically escalated. Team lead notified. Assigned team: {{get_team_info.rows[0].team_name}}."
+
+  - name: update_escalation_level
+    action: db.query
+    params:
+      sql: >
+        UPDATE incidents SET escalation_level = 1, updated_at = NOW() WHERE id = $1
+      args:
+        - "{{trigger.record.id}}"
+
+  - name: slack_webhook
+    action: http.post
+    params:
+      url: "{{env.SLACK_WEBHOOK_URL}}"
+      body:
+        text: ":rotating_light: *P{{trigger.record.priority}} Incident Created*\n*{{trigger.record.number}}*: {{trigger.record.short_description}}\nTeam: {{get_team_info.rows[0].team_name}}\nLink: {{env.APP_URL}}/agent/incidents"
+    condition: "{{env.SLACK_WEBHOOK_URL}} != null"
+    on_failure: continue

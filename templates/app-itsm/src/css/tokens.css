@@ -1,0 +1,149 @@
+/* tokens.css - Design tokens for GipITSM */
+
+:root {
+    /* Brand */
+    --primary: #f26522;
+    --primary-hover: #e0551a;
+    --primary-muted: rgba(242, 101, 34, 0.15);
+
+    /* Dark backgrounds */
+    --bg-root: #0d0d0d;
+    --bg-surface: #151515;
+    --bg-raised: #1a1a1a;
+    --bg-overlay: #1e1e1e;
+    --bg-input: #222222;
+    --bg-hover: #2a2a2a;
+
+    /* Text */
+    --text-primary: #eeeeee;
+    --text-secondary: #cccccc;
+    --text-muted: #999999;
+    --text-faint: #666666;
+
+    /* Borders */
+    --border: #333333;
+    --border-light: #444444;
+
+    /* Semantic */
+    --success: #22c55e;
+    --success-muted: rgba(34, 197, 94, 0.15);
+    --warning: #f59e0b;
+    --warning-muted: rgba(245, 158, 11, 0.15);
+    --danger: #ef4444;
+    --danger-muted: rgba(239, 68, 68, 0.15);
+    --info: #3b82f6;
+    --info-muted: rgba(59, 130, 246, 0.15);
+
+    /* Typography */
+    --font-mono: 'SF Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --text-xs: 11px;
+    --text-sm: 13px;
+    --text-base: 15px;
+    --text-md: 17px;
+    --text-lg: 20px;
+    --text-xl: 28px;
+
+    /* Spacing */
+    --sp-1: 4px;
+    --sp-2: 8px;
+    --sp-3: 12px;
+    --sp-4: 16px;
+    --sp-5: 20px;
+    --sp-6: 24px;
+    --sp-8: 32px;
+    --sp-10: 40px;
+
+    /* Radii */
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 10px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+/* ---- Priority classes ---- */
+.priority-1 { color: var(--danger); }
+.priority-2 { color: var(--warning); }
+.priority-3 { color: var(--info); }
+.priority-4 { color: var(--text-muted); }
+.priority-5 { color: var(--text-faint); }
+
+.priority-badge-1 { background: var(--danger-muted); color: var(--danger); }
+.priority-badge-2 { background: var(--warning-muted); color: var(--warning); }
+.priority-badge-3 { background: var(--info-muted); color: var(--info); }
+.priority-badge-4 { background: var(--bg-hover); color: var(--text-muted); }
+.priority-badge-5 { background: var(--bg-hover); color: var(--text-faint); }
+
+/* ---- State badges ---- */
+.state-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: var(--radius-sm);
+    font-size: var(--text-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.state-new        { background: var(--info-muted); color: var(--info); }
+.state-in_progress { background: var(--primary-muted); color: var(--primary); }
+.state-on_hold    { background: var(--warning-muted); color: var(--warning); }
+.state-resolved   { background: var(--success-muted); color: var(--success); }
+.state-closed     { background: var(--bg-hover); color: var(--text-faint); }
+.state-cancelled  { background: var(--bg-hover); color: var(--text-faint); }
+.state-pending    { background: var(--warning-muted); color: var(--warning); }
+.state-approved   { background: var(--success-muted); color: var(--success); }
+.state-rejected   { background: var(--danger-muted); color: var(--danger); }
+.state-fulfilled  { background: var(--success-muted); color: var(--success); }
+.state-draft      { background: var(--bg-hover); color: var(--text-muted); }
+.state-published  { background: var(--success-muted); color: var(--success); }
+.state-review     { background: var(--warning-muted); color: var(--warning); }
+.state-retired    { background: var(--bg-hover); color: var(--text-faint); }
+
+/* Global reset */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    background: var(--bg-root);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--text-base);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+}
+a:hover {
+    color: var(--primary-hover);
+}
+
+::selection {
+    background: var(--primary);
+    color: #fff;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: var(--bg-root);
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light);
+}

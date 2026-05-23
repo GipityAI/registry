@@ -1,0 +1,22 @@
+name: KPI Collection
+description: Daily at 00:30, collect yesterday's ITSM metrics into kpi_scores.
+trigger:
+  type: cron
+  schedule: "30 0 * * *"
+
+steps:
+  - name: collect
+    action: function.call
+    params:
+      name: collect-kpis
+    on_failure: stop
+
+  - name: log_result
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ('app_settings', 0, 'work_note', $1, 'Workflow: KPI Collection', true)
+      args:
+        - "KPIs collected for {{collect.period_date}}: {{collect.kpis_collected}} metrics. Volume: {{collect.summary.incident_volume}}, Resolved: {{collect.summary.incidents_resolved}}, MTTR: {{collect.summary.mttr_minutes}}m, SLA Response: {{collect.summary.sla_response_compliance}}%, SLA Resolution: {{collect.summary.sla_resolution_compliance}}%"
+    on_failure: continue

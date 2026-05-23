@@ -1,0 +1,19 @@
+version: 1
+
+# Deploy manifest. `gipity deploy` runs these phases in order.
+#   files    - the game frontend (src/) -> CDN
+#   realtime - multiplayer room, reconciled every deploy (created if missing,
+#              left alone if it already exists). No out-of-band step needed.
+
+deploy:
+  phases:
+    - name: files
+      type: static
+      source: src
+
+    - name: realtime
+      type: realtime
+      rooms:
+        - name: {{ROOM_SLUG}}
+          room_type: state
+          auth_level: public

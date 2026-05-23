@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script type="importmap">
+  { "imports": {} }
+  </script>
+  {{JSON_LD_BLOCK}}
+</head>
+<body>
+  <main>
+    <h1>{{TITLE}}</h1>
+    <p>Enter a US zip code to look up current weather. Lookups are saved to the database.</p>
+
+    <form id="weather-form">
+      <label for="zip">ZIP Code</label>
+      <input type="text" id="zip" name="zip" placeholder="90210" maxlength="5" pattern="\d{5}" required>
+      <button type="submit">Get Weather</button>
+    </form>
+
+    <div id="result" hidden>
+      <h2 id="location"></h2>
+      <table>
+        <tr><td>Temperature</td><td id="temp"></td></tr>
+        <tr><td>Condition</td><td id="condition"></td></tr>
+        <tr><td>Humidity</td><td id="humidity"></td></tr>
+        <tr><td>Wind</td><td id="wind"></td></tr>
+      </table>
+      <p id="commentary"></p>
+    </div>
+
+    <div id="error" hidden>
+      <p id="error-msg"></p>
+    </div>
+
+    <section>
+      <h2>Recent Lookups</h2>
+      <ul id="recent-list"><li>Loading...</li></ul>
+    </section>
+  </main>
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

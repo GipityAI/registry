@@ -1,0 +1,68 @@
+name: Request Approval
+description: When a service request requiring approval is created, route it through the approval gate.
+trigger:
+  type: record.after_insert
+  table: service_requests
+  condition: "record.approval_state == 'pending'"
+
+steps:
+  - name: get_request_details
+    action: db.query
+    params:
+      sql: >
+        SELECT sr.id, sr.number, sr.requested_by_name, sr.notes, sr.quantity,
+               ci.name as item_name, ci.price, ci.fulfillment_team_id,
+               t.manager_user_id
+        FROM service_requests sr
+        JOIN catalog_items ci ON sr.catalog_item_id = ci.id
+        LEFT JOIN teams t ON ci.fulfillment_team_id = t.id
+        WHERE sr.id = $1
+      args:
+        - "{{trigger.record.id}}"
+
+  - name: notify_approver
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        VALUES ($1, $2, $3, '/agent/incidents')
+      args:
+        - "{{get_request_details.rows[0].manager_user_id}}"
+        - "Approval Required: {{get_request_details.rows[0].number}}"
+        - "{{get_request_details.rows[0].requested_by_name}} requested {{get_request_details.rows[0].item_name}} (qty: {{trigger.record.quantity}}). Please review and approve or reject."
+    condition: "{{get_request_details.rows[0].manager_user_id}} != null"
+    on_failure: continue
+
+  - name: wait_for_approval
+    action: wait_for_input
+    params:
+      prompt: "Approve or reject service request {{get_request_details.rows[0].number}} for {{get_request_details.rows[0].item_name}}?"
+      options:
+        - approve
+        - reject
+      timeout_hours: 72
+
+  - name: apply_decision
+    action: db.query
+    params:
+      sql: >
+        UPDATE service_requests SET
+          approval_state = $1,
+          state = CASE WHEN $1 = 'approved' THEN 'approved' ELSE 'rejected' END,
+          updated_at = NOW()
+        WHERE id = $2
+      args:
+        - "{{wait_for_approval.decision}}"
+        - "{{trigger.record.id}}"
+
+  - name: notify_requester
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        VALUES ($1, $2, $3, '/my-requests')
+      args:
+        - "{{trigger.record.requested_by}}"
+        - "Request {{get_request_details.rows[0].number}} {{wait_for_approval.decision}}"
+        - "Your request for {{get_request_details.rows[0].item_name}} has been {{wait_for_approval.decision}}."
+    on_failure: continue

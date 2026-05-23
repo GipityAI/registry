@@ -1,0 +1,25 @@
+name: SLA Assignment
+description: When a new incident is created, calculate and assign SLA targets based on priority.
+trigger:
+  type: record.after_insert
+  table: incidents
+
+steps:
+  - name: calculate_sla
+    action: function.call
+    params:
+      name: calculate-sla
+      args:
+        incident_id: "{{trigger.record.id}}"
+    on_failure: continue
+
+  - name: log_sla
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+        VALUES ('incidents', $1, 'work_note', $2, 'Workflow: SLA Assignment', true)
+      args:
+        - "{{trigger.record.id}}"
+        - "SLA targets assigned: {{calculate_sla.sla_tasks_created}} SLA task(s) created for priority {{calculate_sla.priority}}."
+    condition: "{{calculate_sla.sla_tasks_created}} > 0"

@@ -1,0 +1,37 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# Frontend (src/) → CDN
+# Migrations (migrations/) → user database
+# Functions (functions/) → serverless endpoints
+#
+# Call your endpoints with:
+#   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
+#     -H 'Content-Type: application/json' -d '{}'
+
+deploy:
+  phases:
+    # Static files - frontend HTML/CSS/JS
+    - name: files
+      type: static
+      source: src
+
+    # Database migrations - runs in idempotent order
+    - name: database
+      type: sql
+      source: migrations
+      database: {{DATABASE}}
+
+    # Serverless functions
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: get-weather
+          auth: public
+          fetch_domains: [geocoding-api.open-meteo.com, api.open-meteo.com]
+          tables: [weather_lookups]
+        - name: get-recent
+          auth: public
+          tables: [weather_lookups]

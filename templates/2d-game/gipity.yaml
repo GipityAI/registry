@@ -1,0 +1,37 @@
+version: 1
+
+# Deploy manifest - `gipity deploy dev` runs these phases in order.
+#
+# This is a static Phaser 3 game, so it ships with only the `files` phase.
+# As the game grows, add more phases here - or let `gipity add <kit>` wire
+# them in for you. The phases you can add:
+#
+#   functions - serverless JS endpoints (leaderboards, save files, etc.).
+#               Drop *.js files in functions/ and declare per-function auth
+#               (public|user|member) and permissions (tables, fetch_domains,
+#               services):
+#                 - name: functions
+#                   type: functions
+#                   source: functions
+#                   function_definitions:
+#                     - { name: submit-score, auth: user }
+#
+#   database  - a Postgres database (scores, profiles). Put schema in
+#               migrations/ and seed data in seeds/; the phase creates the DB
+#               and runs them (idempotent):
+#                 - name: database
+#                   type: database
+#
+#   realtime  - multiplayer rooms (presence / shared state). Don't hand-write
+#               this: run `gipity add realtime`. The kit copies its client
+#               code into src/packages/realtime/ and appends a realtime phase
+#               here, so rooms are provisioned automatically on every deploy.
+#
+# Full phase reference: https://docs.gipity.ai
+
+deploy:
+  phases:
+    # Static frontend - everything under src/ is published to the CDN.
+    - name: files
+      type: static
+      source: src

@@ -1,0 +1,21 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# Call your endpoints with:
+#   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
+#     -H 'Content-Type: application/json' -d '{}'
+
+deploy:
+  phases:
+    # Functions - serverless JavaScript endpoints
+    # Each .js file in functions/ auto-deploys as a public endpoint on deploy.
+    # New functions are auto-added here. Edit entries to customize permissions.
+    # Fields: name, auth (public|user|member), tables, fetch_domains, services
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: get-weather
+          auth: public
+          fetch_domains: [geocoding-api.open-meteo.com, api.open-meteo.com]

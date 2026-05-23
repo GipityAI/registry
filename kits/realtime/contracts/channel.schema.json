@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://gipity.ai/schemas/realtime/channel.schema.json",
+  "title": "rt.channel() options",
+  "description": "Second argument to rt.channel(name, opts).",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "sync": {
+      "type": "string",
+      "enum": ["messages", "presence", "entities"],
+      "default": "messages",
+      "description": "messages = pub/sub; presence = ephemeral peer state; entities = shared CRUD records."
+    },
+    "authority": {
+      "type": "string",
+      "enum": ["server", "shared", "host", "none"],
+      "default": "shared",
+      "description": "Only meaningful for sync:'entities'. server/shared = data-map backed; host = election + transform sync; none = reserved."
+    },
+    "adapter": {
+      "$ref": "adapter.schema.json",
+      "description": "Capability-sectioned adapter. Optional for sync:'messages'."
+    }
+  }
+}

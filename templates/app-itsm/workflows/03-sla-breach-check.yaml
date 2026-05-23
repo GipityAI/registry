@@ -1,0 +1,49 @@
+name: SLA Breach Check
+description: Every 5 minutes, check for SLA breaches and approaching deadlines.
+trigger:
+  type: cron
+  schedule: "*/5 * * * *"
+
+steps:
+  - name: check_breaches
+    action: function.call
+    params:
+      name: check-sla-breaches
+    on_failure: stop
+
+  - name: notify_breaches
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        SELECT DISTINCT i.assigned_to,
+               'SLA Breached: ' || i.number,
+               i.short_description || ' - SLA target has been exceeded.',
+               '/agent/incidents'
+        FROM incidents i
+        JOIN sla_tasks st ON st.incident_id = i.id
+        WHERE st.is_breached = true
+          AND st.updated_at >= NOW() - interval '6 minutes'
+          AND i.assigned_to IS NOT NULL
+      args: []
+    condition: "{{check_breaches.breached.length}} > 0"
+    on_failure: continue
+
+  - name: notify_warnings
+    action: db.query
+    params:
+      sql: >
+        INSERT INTO notifications (user_id, title, body, link)
+        SELECT DISTINCT i.assigned_to,
+               'SLA Warning: ' || i.number,
+               i.short_description || ' - SLA approaching deadline.',
+               '/agent/incidents'
+        FROM incidents i
+        JOIN sla_tasks st ON st.incident_id = i.id
+        WHERE st.percentage >= 75 AND st.percentage < 100
+          AND st.is_breached = false
+          AND st.updated_at >= NOW() - interval '6 minutes'
+          AND i.assigned_to IS NOT NULL
+      args: []
+    condition: "{{check_breaches.warnings.length}} > 0"
+    on_failure: continue
