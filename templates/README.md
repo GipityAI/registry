@@ -83,7 +83,7 @@ These templates are designed for the Gipity platform, but the engine code is sta
 
 The agent-tuned platform where AI-built apps live.
 
-[Gipity](https://gipity.ai) is the platform: hosting, databases, file storage, deployment, scheduled workflows, code execution, and monitoring. Agent-tuned from scaffold to deploy. One place - not seven SaaS products stitched together. No setup. No API keys. No config files.
+[Gipity](https://gipity.ai) is the platform: hosting, databases, file storage, deployment, scheduled workflows, code execution, and monitoring. Agent-tuned from idea to deploy. One place - not seven SaaS products stitched together. No setup. No API keys. No config files.
 
 Describe what you want. Your agent writes the code, builds the app, sets up the database, deploys it to a live URL, and keeps it running. From idea to production in one conversation. Any model, any infra, always your code.
 
