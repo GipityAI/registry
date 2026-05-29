@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  {{JSON_LD_BLOCK}}
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <div id="app">
+    <!-- ─── Full-width app header ───────────────────────────────────────── -->
+    <header id="app-header">
+      <div class="brand">
+        <span class="brand-name">Gipity Captions</span>
+        <span class="brand-tag muted small">Audio in, captioned MP4 out.</span>
+      </div>
+    </header>
+
+    <div id="app-body">
+      <!-- ─── Sidebar: project list ─────────────────────────────────────── -->
+      <aside id="sidebar">
+        <div class="sidebar-head">
+          <h2>Projects</h2>
+          <button type="button" id="btn-new-song" title="Start a new project">+ New</button>
+        </div>
+        <ul id="song-list" class="song-list" aria-live="polite">
+          <li class="song-list-empty muted small">No projects yet — start one →</li>
+        </ul>
+        <div class="sidebar-foot">
+          <a href="./packages/audio-align/README.md" class="muted small">Built on @gipity/audio-align</a>
+        </div>
+      </aside>
+
+      <!-- ─── Main area: stepper + active tab content ───────────────────── -->
+      <main id="main">
+        <header class="main-head">
+          <h1 id="song-title">{{TITLE}}</h1>
+        </header>
+
+      <!-- Stepper bar: 1 Upload · 2 Edit · 3 Style · 4 Export -->
+      <nav class="stepper" id="stepper" aria-label="Workflow steps">
+        <button type="button" class="step" data-step="upload" data-state="active">
+          <span class="step-num">1</span><span class="step-label">Upload</span>
+        </button>
+        <span class="step-sep" aria-hidden="true"></span>
+        <button type="button" class="step" data-step="edit" data-state="locked" disabled>
+          <span class="step-num">2</span><span class="step-label">Edit Captions</span>
+        </button>
+        <span class="step-sep" aria-hidden="true"></span>
+        <button type="button" class="step" data-step="style" data-state="locked" disabled>
+          <span class="step-num">3</span><span class="step-label">Edit Style</span>
+        </button>
+        <span class="step-sep" aria-hidden="true"></span>
+        <button type="button" class="step" data-step="export" data-state="locked" disabled>
+          <span class="step-num">4</span><span class="step-label">Render</span>
+        </button>
+      </nav>
+
+      <!-- Each tab is one <section>. Only the active one isn't hidden. -->
+
+      <!-- ═══ TAB 1 · UPLOAD ════════════════════════════════════════════════ -->
+      <section class="tab-panel" data-tab="upload">
+        <div class="card">
+          <h3>Audio</h3>
+          <input type="file" id="audio-file" accept="audio/*">
+          <div class="sample-row">
+            <button type="button" id="btn-use-demo">Use demo MP3</button>
+            <audio id="demo-preview" controls preload="none" src="./assets/sample.mp3" class="demo-preview"></audio>
+            <span class="muted small">23&thinsp;s Gipity rap</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Script <span class="muted small">— optional</span></h3>
+          <p class="muted small">If you have a script for your audio, paste it here so we get the spelling right. The app is mostly doing the <em>timing</em>: making sure the right phrase shows up and the right word is highlighted at the right moment. If you don't have a script, leave this blank and we'll do our best to transcribe.</p>
+          <textarea id="lyrics" rows="9">AI works better here &mdash; the name's Gipity.
+Full-stack for the agents, ain't nobody slick as me.
+Brand-new species built for the AI age,
+every layer agent-tuned from the chips to the stage.
+
+No glue-code circus, no dashboard maze,
+no fifteen tabs open just to make your app behave.
+Hosting, compute, AI kits &mdash; whole cloud in the stack,
+twenty bucks a month, get your whole damn stack back.</textarea>
+        </div>
+
+        <div class="tab-cta">
+          <button type="button" id="btn-generate" class="primary">Generate captions →</button>
+        </div>
+      </section>
+
+      <!-- ═══ TAB 2 · EDIT CAPTIONS ════════════════════════════════════════ -->
+      <section class="tab-panel" data-tab="edit" hidden>
+        <!-- Top action bar: Save + Continue. Audio playback is per-word via
+             the ▶ button on each row, so we don't surface a top-of-page audio
+             scrubber. The <audio> element stays in the DOM (hidden) so JS
+             can drive it. -->
+        <div class="edit-toolbar">
+          <button type="button" id="btn-save" class="secondary">Save</button>
+          <span id="save-status" class="muted small"></span>
+          <span class="spacer"></span>
+          <button type="button" id="btn-to-style-top" class="primary">Continue to style →</button>
+        </div>
+        <audio id="audio" hidden></audio>
+        <span id="audio-time" class="visually-hidden" aria-hidden="true">0.000 / 0.000</span>
+
+        <!-- Column header — one row that aligns to the .word-row grid below,
+             so users can see what each column does at a glance. -->
+        <div class="word-row word-row-header" role="row" aria-label="Word columns">
+          <span aria-hidden="true"></span>
+          <span>Source</span>
+          <span>Display</span>
+          <span>,</span>
+          <span>Start</span>
+          <span>End</span>
+          <span>Type</span>
+          <span>Icon</span>
+          <span>Time</span>
+        </div>
+
+        <!-- Clause cards land here at render-time -->
+        <div id="clauses"></div>
+
+        <div class="tab-cta">
+          <button type="button" id="btn-to-style" class="primary">Continue to style →</button>
+        </div>
+      </section>
+
+      <!-- ═══ TAB 3 · STYLE ═════════════════════════════════════════════════ -->
+      <section class="tab-panel" data-tab="style" hidden>
+        <div class="style-layout">
+          <!-- Left column: all the controls -->
+          <div class="style-controls">
+            <div class="card">
+              <h3>Colors</h3>
+              <div class="style-grid">
+                <label class="style-control">
+                  <span>Background</span>
+                  <input type="color" id="opt-bg" value="#0e0e10">
+                  <code id="opt-bg-code" class="muted small">#0e0e10</code>
+                </label>
+                <label class="style-control">
+                  <span>Active word</span>
+                  <input type="color" id="opt-active" value="#ff7a00">
+                  <code id="opt-active-code" class="muted small">#ff7a00</code>
+                </label>
+                <label class="style-control">
+                  <span>Past word</span>
+                  <input type="color" id="opt-past" value="#ffffff">
+                  <code id="opt-past-code" class="muted small">#ffffff</code>
+                </label>
+                <label class="style-control">
+                  <span>Future word</span>
+                  <input type="color" id="opt-future" value="#888896">
+                  <code id="opt-future-code" class="muted small">#888896</code>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Size, shape &amp; resolution</h3>
+              <div class="style-grid">
+                <label class="style-control">
+                  <span>Font sizing</span>
+                  <select id="opt-font-mode">
+                    <option value="pct" selected>Fixed (% of frame)</option>
+                    <option value="max">Max (fill the frame)</option>
+                  </select>
+                </label>
+                <label class="style-control" id="font-pct-control">
+                  <span>Font size: <code id="opt-font-pct-code" class="muted small">8%</code></span>
+                  <input type="range" id="opt-font-pct" min="2" max="50" step="0.5" value="8">
+                  <span class="muted small">% of short side · resolution &amp; aspect independent</span>
+                </label>
+                <label class="style-control">
+                  <span>Edge padding: <code id="opt-pad-px-code" class="muted small">25px</code></span>
+                  <input type="range" id="opt-pad-px" min="0" max="200" step="1" value="25">
+                  <span class="muted small">safe margin / crop boundary</span>
+                </label>
+                <label class="style-control">
+                  <span>Resolution</span>
+                  <select id="opt-mode">
+                    <option value="preview" selected>Preview (720p, fast)</option>
+                    <option value="hd">HD 1080p</option>
+                    <option value="4k">4K (slow)</option>
+                  </select>
+                </label>
+                <fieldset class="style-control style-control-radio">
+                  <legend>Aspect ratio</legend>
+                  <label><input type="radio" name="opt-aspect" value="16:9" checked> 16:9 <span class="muted small">landscape</span></label>
+                  <label><input type="radio" name="opt-aspect" value="9:16"> 9:16 <span class="muted small">portrait</span></label>
+                  <label><input type="radio" name="opt-aspect" value="1:1"> 1:1 <span class="muted small">square</span></label>
+                </fieldset>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Split <span class="muted small">— how words are grouped on screen</span></h3>
+              <div class="style-grid">
+                <label class="style-control">
+                  <span>Mode</span>
+                  <select id="opt-phrase-mode">
+                    <option value="natural" selected>Natural (split on punctuation &amp; line breaks)</option>
+                    <option value="length">Fixed length (target words per line)</option>
+                  </select>
+                </label>
+                <label class="style-control" id="phrase-target-control" hidden>
+                  <span>Target words: <code id="opt-phrase-target-code" class="muted small">8</code></span>
+                  <input type="range" id="opt-phrase-target" min="1" max="20" step="1" value="8">
+                  <span class="muted small">1 = one word at a time · 20 = long lines</span>
+                </label>
+                <label class="style-control style-control-checkbox">
+                  <input type="checkbox" id="opt-show-next" checked>
+                  <span>Show upcoming line (small preview at the bottom)</span>
+                </label>
+                <label class="style-control style-control-checkbox">
+                  <input type="checkbox" id="opt-show-watermark" checked>
+                  <span>Show “Built on Gipity” footer</span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column: live preview (sticky so it stays in view while scrolling controls) -->
+          <div class="style-preview-col">
+            <div class="card">
+              <h3>Preview</h3>
+              <div id="style-preview" class="style-preview">
+                <span class="style-preview-past">Past</span>
+                <span class="style-preview-active">word</span>
+                <span class="style-preview-future">future</span>
+              </div>
+              <p class="muted small">Colors, size &amp; shape update live — the render matches this.</p>
+              <div class="tab-cta">
+                <button type="button" id="btn-render" class="primary">Render video →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ TAB 4 · RENDER ════════════════════════════════════════════════ -->
+      <section class="tab-panel" data-tab="export" hidden>
+        <div class="card">
+          <h3>Renders <span class="muted small">— newest first · every version kept</span></h3>
+          <ul id="renders-list" class="renders-list">
+            <li class="muted small">Nothing rendered yet.</li>
+          </ul>
+        </div>
+
+        <div class="tab-cta">
+          <button type="button" id="btn-render-again" class="primary">Render again with current style</button>
+          <button type="button" id="btn-back-to-style" class="secondary">← Back to style</button>
+        </div>
+      </section>
+
+      <!-- ═══ ALIGNING (overlay during 1 → 2) ══════════════════════════════ -->
+      <section class="tab-panel" data-tab="aligning" hidden>
+        <div class="card">
+          <h3>Generating timed captions…</h3>
+          <p id="align-status-msg" class="muted">Starting…</p>
+          <progress id="align-progress" value="0" max="100" style="width:100%"></progress>
+          <p class="muted small">First run takes ~10–30 s to warm up, then ~30–60 s per 3 minutes of audio.</p>
+          <p class="muted small">Song GUID: <code id="aligning-song-guid"></code></p>
+        </div>
+      </section>
+
+      <!-- ═══ ERROR ════════════════════════════════════════════════════════ -->
+      <section class="tab-panel" data-tab="error" hidden>
+        <div class="card error">
+          <h3>Something went wrong</h3>
+          <p id="error-message"></p>
+          <button type="button" id="btn-restart-from-error">Start over</button>
+        </div>
+      </section>
+      </main>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

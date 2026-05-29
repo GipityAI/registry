@@ -1,0 +1,602 @@
+/* karaoke-captions — sidebar + stepper SPA shell on top of Water.css.
+ *
+ * Layout: full-viewport grid — fixed-width sidebar left, scrolling main right.
+ * Tabs inside main swap via [hidden] (one tab visible at a time, no big-page
+ * scroll). Stepper bar at the top is the primary nav inside main.
+ *
+ * Water.css gives us readable defaults; tokens here are the brand overlay.
+ */
+
+:root {
+  --primary: #ff7a00;            /* matches WORD_ACTIVE in renderer */
+  --primary-hover: #e26d00;
+  --secondary: #2a2a2e;
+  --bg: #0e0e10;                 /* matches BG_COLOR in renderer */
+  --surface: #18181b;
+  --surface-2: #1f1f23;
+  --border: #2a2a2e;
+  --text: #e8e4db;
+  --text-muted: #a8a29e;
+  --text-faint: #6f6f78;
+  --error: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --sidebar-w: 240px;
+  --stepper-h: 64px;
+  --code-bg: rgba(57, 255, 102, 0.08);
+  --code-border: rgba(57, 255, 102, 0.4);
+}
+
+/* Global border-box reset. Water.css leaves the default content-box, under
+   which `width: 100%` + padding (e.g. #main) computes WIDER than its container
+   and overflows — that was the horizontal scrollbar / workspace-wider-than-
+   header bug. With border-box, padding is included in the declared width. */
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  /* Override Water.css's `body { max-width: 70rem }` so the app header + the
+     #app-body grid stretch edge-to-edge. The 70rem cap was clipping the
+     header and squeezing the editor's word-row grid into overflow. */
+  max-width: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", system-ui, sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+#app-body {
+  display: grid;
+  /* minmax(0, 1fr) — NOT plain 1fr — so the main column can shrink below its
+     content's min-content width instead of blowing the grid past the viewport
+     (that overflow pushed #main wider than the full-width header + added a
+     horizontal scrollbar). Inner content scrolls/wraps/ellipsizes within it. */
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── App header ───────────────────────────────────────────── */
+#app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  gap: 1rem;
+}
+#app-header .brand { display: flex; align-items: baseline; gap: 0.85rem; }
+#app-header .brand-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+#app-header .brand-name::before {
+  content: '';
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 2px;
+  background: var(--primary);
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+#app-header .brand-tag { font-style: italic; }
+
+.muted { color: var(--text-muted); }
+.small { font-size: 0.85em; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ── Sidebar ──────────────────────────────────────────────── */
+#sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 0.75rem;
+}
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.5rem;
+  margin-bottom: 1rem;
+}
+.sidebar-head h2 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.sidebar-head button {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.sidebar-head button:hover { background: var(--surface-2); border-color: var(--primary); }
+.song-list { list-style: none; padding: 0; margin: 0; flex: 1; overflow-y: auto; }
+.song-list li.song-item {
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  margin-bottom: 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.song-list li.song-item:hover { background: var(--surface-2); color: var(--text); }
+.song-list li.song-item.active { background: var(--surface-2); color: var(--text); border-left: 2px solid var(--primary); padding-left: calc(0.6rem - 2px); }
+.song-list .song-list-empty { padding: 0.5rem 0.6rem; }
+.sidebar-foot { padding: 0.5rem; border-top: 1px solid var(--border); margin-top: 0.5rem; }
+
+/* ── Main pane ────────────────────────────────────────────── */
+#main {
+  padding: 1.5rem 2rem;
+  /* Width = however much the content actually needs, capped at 1500px and
+     never below 100% of the grid cell. So:
+       - narrow viewport (cell < 1500px): main fills the cell, Display column
+         shrinks toward its 120px min as needed
+       - wide viewport (cell > 1500px): main caps at 1500px, sits left-aligned
+         next to the sidebar; the rest is dead space on the right
+       - content-light tabs (Upload/Style/Export): cards fill main, no harm */
+  width: 100%;
+  max-width: 1500px;
+  margin: 0;
+  min-width: 0;
+}
+.main-head { margin-bottom: 1rem; }
+.main-head h1 { margin: 0; font-size: 1.5rem; font-weight: 600; }
+
+/* ── Stepper bar ──────────────────────────────────────────── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 1.5rem;
+}
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.85rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+.step:hover:not(:disabled):not([data-state="active"]) { background: var(--surface-2); color: var(--text); }
+.step[data-state="active"] {
+  background: var(--bg);
+  border-color: var(--primary);
+  color: var(--text);
+}
+.step[data-state="complete"] { color: var(--text); }
+.step[data-state="complete"] .step-num { background: var(--success); color: var(--bg); border-color: var(--success); }
+.step[data-state="active"]   .step-num { background: var(--primary); color: white; border-color: var(--primary); }
+.step[data-state="locked"]   { opacity: 0.45; cursor: not-allowed; }
+.step:disabled { cursor: not-allowed; }
+.step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+.step[data-state="complete"] .step-num::before { content: '✓'; }
+.step[data-state="complete"] .step-num > * { display: none; }
+.step-sep { flex: 0 0 1.5rem; height: 1px; background: var(--border); }
+
+/* ── Tab panels ───────────────────────────────────────────── */
+.tab-panel { display: none; flex-direction: column; gap: 1rem; }
+.tab-panel:not([hidden]) { display: flex; }
+.tab-cta { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0.5rem 0 2rem; }
+.tab-cta button { padding: 0.6rem 1.2rem; font-size: 0.95rem; }
+
+/* ── Card / panel ─────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+}
+.card h3 {
+  margin: 0 0 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+.card.error { border-color: var(--error); }
+
+/* ── Form atoms ───────────────────────────────────────────── */
+input[type="file"], textarea, input[type="text"], select, input[type="number"] {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.6rem;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+textarea { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; }
+button {
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+button:hover:not(:disabled) { background: var(--surface-2); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+button.primary { background: var(--primary); border-color: var(--primary); color: white; font-weight: 500; }
+button.primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); }
+button.secondary { background: transparent; border-color: var(--border); }
+
+kbd {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.85em;
+}
+
+/* ── Upload tab ───────────────────────────────────────────── */
+.sample-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+.demo-preview { height: 32px; max-width: 260px; }
+
+/* ── Edit tab: top action bar + column header + clauses + word rows ─── */
+.edit-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.85rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.edit-toolbar .spacer { flex: 1; }
+#save-status.ok  { color: var(--success); }
+#save-status.err { color: var(--error); }
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The header row labels the columns of every word row below. Same grid
+   template AND same horizontal padding offset as the word rows inside a
+   .clause card — the header's `padding: 0.4rem 1rem` matches the clause's
+   `padding: ... 1rem`, so column x-positions line up to the pixel. */
+.word-row-header {
+  padding: 0.4rem 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.word-row-header > span { padding: 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Each clause = one phrase = a card with a header + N word rows stacked. */
+#clauses { display: flex; flex-direction: column; gap: 0.85rem; }
+.clause {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1rem 0.5rem;
+  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.clause.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 1px var(--primary);
+}
+.clause-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  margin-bottom: 0.5rem;
+  font-size: 0.9em;
+}
+.clause-header .idx {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-family: ui-monospace, monospace;
+}
+.clause-header .range {
+  font-family: ui-monospace, monospace;
+  color: var(--text-faint);
+  font-size: 0.85em;
+}
+.clause-header .preview {
+  color: var(--text-muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* One word per row. Grid columns: play / src / display / punct / start / end /
+   type / icon / time-buttons. Display is the ONLY column that flexes — every
+   other column stays at its natural width so they don't drift around the page.
+   Column widths are shared with .word-row-header so labels line up exactly. */
+.word-row {
+  display: grid;
+  grid-template-columns:
+    32px              /* ▶ play */
+    minmax(80px, 11ch) /* src */
+    minmax(180px, 480px) /* display — flexes within a bounded range, not to infinity */
+    50px              /* punct */
+    90px              /* start (wider so number-input arrows don't clip 4–5 digit values) */
+    90px              /* end */
+    100px             /* type */
+    minmax(56px, 100px) /* icon */
+    auto;             /* time-set buttons */
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  border-radius: var(--radius-sm);
+  border-bottom: 1px dashed transparent;
+  transition: background 100ms ease-out;
+}
+.word-row + .word-row { border-top: 1px dashed var(--border); }
+.word-row.active { background: rgba(255, 122, 0, 0.07); }
+.word-row.past   { opacity: 0.65; }
+.word-row.unaligned { background: rgba(239, 68, 68, 0.05); }
+.word-row.low-confidence { background: rgba(245, 158, 11, 0.06); }
+.word-row .src {
+  font-family: ui-monospace, monospace;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.word-row input,
+.word-row select {
+  padding: 0.25rem 0.4rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  font-size: 0.85em;
+  font-family: inherit;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.word-row input[type="number"] {
+  font-family: ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+.word-row input.display { font-weight: 500; }
+.word-row input.punct { text-align: center; }
+.word-row .controls {
+  display: inline-flex;
+  gap: 0.25rem;
+  justify-content: flex-end;
+}
+.word-row button.tiny {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.75em;
+  font-family: ui-monospace, monospace;
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.word-row button.tiny:hover:not(:disabled) { background: var(--bg); border-color: var(--primary); }
+
+/* Narrower viewports — fold the icon + type into a second row to keep
+   each word card readable on a laptop screen. */
+@media (max-width: 1100px) {
+  .word-row {
+    grid-template-columns:
+      32px
+      minmax(80px, 11ch)
+      minmax(120px, 1fr)
+      50px
+      72px
+      72px
+      auto;
+  }
+  .word-row select,
+  .word-row input.icon { grid-column: 1 / -1; }
+  /* The header's 9 spans don't fit the 7-column folded layout cleanly —
+     hide it; the per-row `title` attrs cover the same affordance on hover. */
+  .word-row-header { display: none; }
+}
+
+/* ── Style tab ────────────────────────────────────────────── */
+/* Two columns: controls on the left, sticky preview on the right. Collapses to
+   a single column on narrow screens. */
+.style-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  gap: 1rem;
+  align-items: start;
+}
+.style-controls { display: flex; flex-direction: column; gap: 1rem; }
+.style-preview-col { position: sticky; top: 1rem; }
+@media (max-width: 860px) {
+  .style-layout { grid-template-columns: 1fr; }
+  .style-preview-col { position: static; }
+}
+.style-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+}
+.style-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.85em;
+  color: var(--text-muted);
+}
+.style-control input[type="color"] {
+  width: 100%;
+  height: 38px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  cursor: pointer;
+  padding: 2px;
+}
+.style-control code { font-family: ui-monospace, monospace; font-size: 0.8em; }
+/* A true-shaped preview frame: JS sets aspect-ratio (16:9 / 9:16 / 1:1), the
+   padding, and the font-size (off the box SHORT side + crop-fit, matching the
+   renderer), so what you see is what you get. overflow:hidden crops oversize
+   text exactly like the render. */
+.style-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: 800;
+  line-height: 1.3;
+  overflow: hidden;
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.36em;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+  aspect-ratio: 16 / 9;   /* default; JS overrides per chosen aspect */
+}
+.style-preview-past   { color: #fff; }
+.style-preview-active { color: var(--primary); font-weight: 800; }
+.style-preview-future { color: #888896; }
+
+/* Checkbox-style control (e.g. "show upcoming line") — horizontal, not stacked */
+.style-control-checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.5rem;
+  grid-column: 1 / -1;
+}
+.style-control-checkbox input { width: auto; }
+
+/* Aspect-ratio radio group */
+.style-control-radio {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.style-control-radio legend { font-size: 0.85em; color: var(--text-muted); padding: 0 0.3rem; }
+.style-control-radio label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9em; }
+.style-control-radio input { width: auto; }
+
+/* ── Export tab ───────────────────────────────────────────── */
+.renders-list { list-style: none; padding: 0; margin: 0; }
+/* Each render is a column: a head row of metadata/actions, plus an optional
+   expanded <video> below it. */
+.renders-list li.render-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  margin-bottom: 0.4rem;
+  font-size: 0.9em;
+}
+.renders-list .render-row-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+.renders-list .render-row-head .spacer { flex: 1; }
+.renders-list .render-player {
+  width: 100%;
+  max-width: 720px;
+  display: block;
+  background: black;
+  border-radius: var(--radius-sm);
+}
+.renders-list .mode-tag {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  background: var(--primary);
+  color: white;
+  border-radius: 3px;
+  font-size: 0.75em;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.renders-list .style-chips { display: inline-flex; gap: 0.2rem; }
+.renders-list .style-chip { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border); }
+.renders-list .status-queued, .renders-list .status-rendering { color: var(--text-muted); font-style: italic; }
+.renders-list .status-failed { color: var(--error); }
+.renders-list .render-link { color: var(--primary); text-decoration: none; font-weight: 500; }
+.renders-list .render-link:hover { text-decoration: underline; }
+
+/* ── Mobile ───────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  /* The grid is on #app-body (#app is a flex column) — collapse the sidebar +
+     main into a single column here. */
+  #app-body { grid-template-columns: 1fr; }
+  #sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    max-height: 30vh;
+  }
+  #main { padding: 1rem; }
+  .stepper { flex-wrap: wrap; }
+  .step-sep { display: none; }
+  .step { padding: 0.4rem 0.6rem; font-size: 0.85rem; }
+  .style-preview { font-size: 1.4rem; }
+}

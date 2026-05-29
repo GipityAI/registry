@@ -1,0 +1,39 @@
+{
+  "name": "@gipity/audio-align",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Forced alignment kit for Gipity apps: audio + lyrics -> word-level timing JSON. Demucs vocal isolation + MMS_FA alignment, runs as a Modal L4 GPU job. Useful for karaoke, subtitling, language learning, dubbing, lyric videos.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "permissions": {
+      "network": [
+        "https://huggingface.co",
+        "https://a.gipity.ai/api"
+      ]
+    },
+    "exposes": ["jobs", "examples"],
+    "install": {
+      "importMap": {
+        "@gipity/audio-align": "./packages/audio-align/index.js",
+        "@gipity/audio-align/": "./packages/audio-align/"
+      },
+      "deployPhase": {
+        "name": "audio-align-jobs",
+        "type": "jobs",
+        "job_definitions": [
+          {
+            "name": "audio-align",
+            "handler": "src/packages/audio-align/jobs/align/main.py",
+            "runtime": "python-3.11",
+            "compute": "gpu-small",
+            "timeout_ms": 600000,
+            "description": "Forced alignment: audio URL + lyrics -> word-level timing JSON. ~30-60s on L4 for a 3-min song."
+          }
+        ]
+      }
+    }
+  }
+}

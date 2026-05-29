@@ -1,0 +1,20 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# Monitor - pre-installed observability dashboard for every Gipity account.
+# Reads from /account/logs/* with the signed-in user's session cookie.
+#
+# Frontend (src/) → CDN
+# Functions (functions/) → empty by default; add your own derived queries here.
+
+deploy:
+  phases:
+    - name: files
+      type: static
+      source: src
+
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions: []

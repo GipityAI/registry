@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script type="importmap">
+  { "imports": {} }
+  </script>
+  {{JSON_LD_BLOCK}}
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <header class="monitor-header">
+    <div class="brand">
+      <img class="brand-logo" src="./images/egg-192.png" alt="" width="36" height="36" />
+      <div>
+        <h1>{{TITLE}}</h1>
+        <div class="live-pulse" id="live-pulse" hidden>
+          <span class="dot"></span>
+          <span id="live-count">0</span> live now
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <label>
+        <span class="control-label">Range</span>
+        <select id="range">
+          <option value="1h">1 hour</option>
+          <option value="24h" selected>24 hours</option>
+          <option value="7d">7 days</option>
+          <option value="30d">30 days</option>
+          <option value="1y">1 year</option>
+        </select>
+      </label>
+      <label>
+        <span class="control-label">Project</span>
+        <select id="project-filter">
+          <option value="">All projects</option>
+        </select>
+      </label>
+      <button id="refresh" aria-label="Refresh">Refresh</button>
+    </div>
+  </header>
+
+  <div id="auth-gate" hidden>
+    <p>Sign in with Gipity to view your account's logs.</p>
+    <button id="signin">Sign in</button>
+  </div>
+
+  <main id="dashboard" hidden>
+    <nav class="sidebar" id="tabs" role="tablist">
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Activity</h4>
+        <button data-tab="traffic" class="active" role="tab">Traffic</button>
+        <button data-tab="activity" role="tab">Activity</button>
+        <button data-tab="errors" role="tab">Errors</button>
+        <button data-tab="chats" role="tab">Chats</button>
+        <button data-tab="audit" role="tab">Audit</button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Project</h4>
+        <button data-tab="compute" role="tab">Compute</button>
+        <button data-tab="data" role="tab">Data</button>
+        <button data-tab="services" role="tab">Services</button>
+        <button data-tab="hosting" role="tab">Hosting</button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Account</h4>
+        <button data-tab="plan" role="tab">Plan</button>
+        <button data-tab="spend" role="tab">Usage</button>
+        <button data-tab="devices" role="tab">Devices</button>
+        <button data-tab="alerts" role="tab">Alerts</button>
+      </div>
+    </nav>
+    <div class="v-splitter" id="sidebar-splitter" aria-hidden="true"></div>
+
+    <div class="main-content">
+
+    <!-- ── Traffic tab ─────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="traffic">
+      <p class="tab-desc">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. <span class="try-it">Try it on any external page: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code></span></p>
+      <div class="cards">
+        <div class="card" title="Total page views your deployed apps recorded in this window."><span class="card-label">Page views</span><span class="card-value" id="traffic-pageviews">—</span></div>
+        <div class="card" title="Distinct browsing sessions. A session ends after ~30 min of inactivity."><span class="card-label">Sessions</span><span class="card-value" id="traffic-sessions">—</span></div>
+        <div class="card" title="Distinct sessions active in the last 5 minutes."><span class="card-label">Live now</span><span class="card-value" id="traffic-live">—</span></div>
+        <div class="card" title="Pages that were the only page in their session — likely landing-and-leave traffic."><span class="card-label">Bounce-y paths</span><span class="card-value" id="traffic-distinct-paths">—</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Page views over time</h3>
+        <canvas id="chart-traffic" height="80"></canvas>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Top pages</h3>
+          <table class="data-table" id="table-paths"><thead><tr><th>Path</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Top referrers</h3>
+          <table class="data-table" id="table-referrers"><thead><tr><th>Referrer</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Browsers</h3>
+          <table class="data-table compact" id="table-browsers"><thead><tr><th>Browser</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Devices</h3>
+          <table class="data-table compact" id="table-devices"><thead><tr><th>Device</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Languages</h3>
+          <table class="data-table compact" id="table-languages"><thead><tr><th>Language</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="traffic">Download CSV</button></div>
+    </section>
+
+    <!-- ── Activity tab ──────────────────────────────────────────── -->
+    <!-- Unified per-app timeline: JS errors, failed function calls, failed
+         services, optional page views. Same data as `gipity logs app`, visual
+         instead of CLI. Each entry shows breadcrumbs + network context +
+         server-side function row (when correlated) inline. -->
+    <section class="tab-panel" data-tab="activity" hidden>
+      <p class="tab-desc">Everything happening in your deployed apps right now — JS errors, failed function calls, failed service calls, and (optionally) page views — merged into one chronological timeline. Equivalent to <code>gipity logs app</code> in the CLI. Auto-captured fetch failures show response body + breadcrumbs + the server function row that broke. <span class="try-it">Hard-refresh your app, click around, then refresh this tab.</span></p>
+      <div class="activity-toolbar">
+        <label class="inline">Severity
+          <select id="activity-severity">
+            <option value="all" selected>All</option>
+            <option value="error">Errors only</option>
+            <option value="network">Network failures</option>
+            <option value="warn">Warnings</option>
+          </select>
+        </label>
+        <label class="inline">Show
+          <select id="activity-types">
+            <option value="errors,functions,services" selected>Errors + failed fn + failed services</option>
+            <option value="errors,functions,services,traffic">+ page views</option>
+            <option value="errors">JS errors only</option>
+            <option value="functions">Function failures only</option>
+            <option value="services">Service failures only</option>
+          </select>
+        </label>
+        <input type="search" id="activity-search" placeholder="Filter (message / fn name / path)…" />
+        <span class="muted small" id="activity-status"></span>
+      </div>
+      <div class="panel">
+        <ol id="activity-timeline" class="activity-timeline"><li class="muted small">Loading…</li></ol>
+      </div>
+    </section>
+
+    <!-- ── Errors tab ──────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="errors" hidden>
+      <p class="tab-desc">JavaScript errors thrown by your deployed apps — captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <span class="try-it">Try it: in your app, <code>throw new Error('test from monitor')</code> and refresh this tab.</span></p>
+      <div class="cards">
+        <div class="card" title="Sum of every error occurrence in this window — includes repeats of the same bug."><span class="card-label">Total errors</span><span class="card-value" id="errors-total">—</span></div>
+        <div class="card" title="Distinct errors after deduping by message + stack trace."><span class="card-label">Unique issues</span><span class="card-value" id="errors-unique">—</span></div>
+        <div class="card" title="How many of your deployed apps threw at least one error in this window."><span class="card-label">Affected apps</span><span class="card-value" id="errors-apps">—</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Errors over time</h3>
+        <canvas id="chart-errors" height="80"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Issues (most frequent first)</h3>
+        <input type="search" id="errors-search" placeholder="Filter by message…" />
+        <table class="data-table issues" id="table-issues">
+          <thead><tr><th>Message</th><th>Project</th><th class="num">Count</th><th>Last seen</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="errors">Download CSV</button></div>
+    </section>
+
+    <!-- ── Services tab (LLM/Speech/Media/Realtime) ───────────────── -->
+    <section class="tab-panel" data-tab="services" hidden>
+      <div class="sub-tabs">
+        <button data-svc-tab="llm" class="active">LLMs</button>
+        <button data-svc-tab="tts">Speech</button>
+        <button data-svc-tab="media">Media</button>
+        <button data-svc-tab="realtime">Realtime</button>
+        <button data-svc-tab="browser">Browser</button>
+        <button data-svc-tab="search">Search</button>
+      </div>
+
+      <!-- LLMs sub-tab -->
+      <div class="svc-panel" data-svc-panel="llm">
+        <p class="tab-desc small">Chat completions, streaming, image input. <span class="try-it">Try it: <code>$ gipity chat "What's a Porsche 914?"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-llm-cost">—</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-llm-calls">—</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-llm-p95">—</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-llm-err">—</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-llm-cost" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-llm-calls" height="100"></canvas></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top models</h3>
+            <table class="data-table" id="table-svc-llm-models"><thead><tr><th>Model</th><th>Provider</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top end-users by credits used</h3>
+            <table class="data-table" id="table-svc-llm-callers"><thead><tr><th>User</th><th>ID</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent LLM calls</h3>
+          <table class="data-table" id="table-svc-llm-recent"><thead><tr><th>Time</th><th>Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Speech sub-tab -->
+      <div class="svc-panel" data-svc-panel="tts" hidden>
+        <p class="tab-desc small">Gipity Speech — text-to-speech that streams audio in real time. <span class="try-it">Try it: <code>$ gipity generate speech "Hello world"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-tts-cost">—</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-tts-calls">—</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-tts-p95">—</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-tts-err">—</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-tts-cost" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-tts-calls" height="100"></canvas></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top voices / models</h3>
+            <table class="data-table" id="table-svc-tts-models"><thead><tr><th>Voice / Model</th><th>Provider</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top end-users by credits used</h3>
+            <table class="data-table" id="table-svc-tts-callers"><thead><tr><th>User</th><th>ID</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent speech calls</h3>
+          <table class="data-table" id="table-svc-tts-recent"><thead><tr><th>Time</th><th>Voice / Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Media sub-tab -->
+      <div class="svc-panel" data-svc-panel="media" hidden>
+        <p class="tab-desc small">Image, sound, music, and video generation + transcription. <span class="try-it">Try it: <code>$ gipity generate image "Porsche 914 in Monaco at sunset"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-media-cost">—</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-media-calls">—</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-media-p95">—</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-media-err">—</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-media-cost" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-media-calls" height="100"></canvas></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>By kind</h3>
+            <table class="data-table" id="table-svc-media-kinds"><thead><tr><th>Service</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top models</h3>
+            <table class="data-table" id="table-svc-media-models"><thead><tr><th>Model</th><th>Service</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent media calls</h3>
+          <table class="data-table" id="table-svc-media-recent"><thead><tr><th>Time</th><th>Service</th><th>Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Browser sub-tab (credit_ledger operation='browser') -->
+      <div class="svc-panel" data-svc-panel="browser" hidden>
+        <p class="tab-desc small">Headless browser sessions — page-inspect, browser_open, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page-inspect https://gipity.ai</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-browser-cost">—</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-browser-calls">—</span></div>
+          <div class="card" title="Average credits charged per headless browser session."><span class="card-label">Avg credits / call</span><span class="card-value" id="svc-browser-avg">—</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Browser calls over time</h3>
+          <canvas id="chart-svc-browser" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Recent browser calls</h3>
+          <table class="data-table" id="table-svc-browser-recent"><thead><tr><th>Time</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Search sub-tab (credit_ledger group=search → web_search + twitter_search + web_fetch + embedding) -->
+      <div class="svc-panel" data-svc-panel="search" hidden>
+        <p class="tab-desc small">Gipity Search — web, Twitter/X, raw web fetch, and embeddings. Agent tools that read live data from outside Gipity. <span class="try-it">Try it: <code>$ gipity chat "find recent news about porsche 914"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-search-cost">—</span></div>
+          <div class="card" title="Sum of web searches + Twitter/X + raw web fetches + embeddings in this window."><span class="card-label">All calls</span><span class="card-value" id="svc-search-calls">—</span></div>
+          <div class="card" title="Subset of Search calls that aren't web search — Twitter/X queries, raw URL fetches, and embedding requests."><span class="card-label">Twitter / fetches</span><span class="card-value" id="svc-search-fetches">—</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Calls over time</h3>
+          <canvas id="chart-svc-search" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Recent search / fetch calls</h3>
+          <table class="data-table" id="table-svc-search-recent"><thead><tr><th>Time</th><th>Kind</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Realtime sub-tab -->
+      <div class="svc-panel" data-svc-panel="realtime" hidden>
+        <p class="tab-desc small">Gipity Realtime — live multiplayer connections, presence, and shared state. CCU = currently-connected users; CCU-min = sum of session minutes. <span class="muted">Free in v1 — billed later.</span> <span class="try-it">Try it: <code>$ gipity add realtime</code></span></p>
+        <div class="cards">
+          <div class="card" title="Concurrently-connected users (CCU) right now across all your Gipity Realtime rooms."><span class="card-label">Live now (CCU)</span><span class="card-value" id="rt-live">—</span></div>
+          <div class="card" title="Total realtime sessions that ended (disconnected) in this window."><span class="card-label">Sessions</span><span class="card-value" id="rt-sessions">—</span></div>
+          <div class="card" title="Average session length (connect → disconnect) in this window."><span class="card-label">Avg duration</span><span class="card-value" id="rt-avg-duration">—</span></div>
+          <div class="card" title="Sum of all session minutes. 10 users × 60 min = 600 CCU-min."><span class="card-label">CCU-minutes</span><span class="card-value" id="rt-ccu-min">—</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>CCU-minutes over time</h3><canvas id="chart-realtime-ccu" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Sessions over time</h3><canvas id="chart-realtime-sessions" height="100"></canvas></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top apps by CCU-min</h3>
+            <table class="data-table" id="table-rt-apps"><thead><tr><th>Project</th><th class="num">Sessions</th><th class="num">CCU-min</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Active rooms now</h3>
+            <table class="data-table" id="table-rt-rooms"><thead><tr><th>Project</th><th class="num">Rooms</th><th class="num">Clients</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent sessions</h3>
+          <table class="data-table" id="table-rt-recent"><thead><tr><th>Ended</th><th>Project</th><th>Caller</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="services">Download CSV</button></div>
+    </section>
+
+    <!-- ── Compute tab (Functions / Jobs / Sandbox / Workflows) ───── -->
+    <section class="tab-panel" data-tab="compute" hidden>
+      <div class="sub-tabs">
+        <button data-cmp-tab="functions" class="active">Functions</button>
+        <button data-cmp-tab="jobs">Jobs</button>
+        <button data-cmp-tab="sandbox">Sandbox</button>
+        <button data-cmp-tab="workflows">Workflows</button>
+      </div>
+
+      <!-- Functions sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="functions">
+        <p class="tab-desc small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. Fast (millisecond) execution. <span class="try-it">Try it: <code>$ gipity fn call &lt;function-name&gt;</code></span></p>
+        <div class="cards">
+          <div class="card" title="Total times your serverless functions ran in this window."><span class="card-label">Invocations</span><span class="card-value" id="fn-invocations">—</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="fn-p95">—</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="fn-err-rate">—</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Invocations over time</h3>
+          <canvas id="chart-functions" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Functions</h3>
+          <table class="data-table" id="table-functions"><thead><tr><th>Function</th><th>Project</th><th class="num">Calls</th><th class="num">Avg duration</th><th class="num">Errors</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent invocations</h3>
+          <table class="data-table" id="table-fn-recent"><thead><tr><th>Time</th><th>Function</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Jobs sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="jobs" hidden>
+        <p class="tab-desc small">Gipity Jobs — long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job run &lt;name&gt;</code></span></p>
+        <div class="cards">
+          <div class="card" title="Job runs in this window (all tiers)."><span class="card-label">Runs</span><span class="card-value" id="job-runs">—</span></div>
+          <div class="card" title="Runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="job-failures">—</span></div>
+          <div class="card" title="Mean wall-clock duration across all runs in this window."><span class="card-label">Avg duration</span><span class="card-value" id="job-avg">—</span></div>
+          <div class="card" title="95th-percentile job duration. 95% of runs finish at or below this."><span class="card-label">p95 duration</span><span class="card-value" id="job-p95">—</span></div>
+        </div>
+        <div class="panel">
+          <h3>Top jobs</h3>
+          <table class="data-table" id="table-jobs-top"><thead><tr><th>Job</th><th>Tier</th><th class="num">Runs</th><th class="num">Failures</th><th class="num">Avg ms</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent runs</h3>
+          <table class="data-table" id="table-jobs-recent"><thead><tr><th>Time</th><th>Job</th><th>Tier</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Sandbox sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="sandbox" hidden>
+        <p class="tab-desc small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. Used when an agent runs ad-hoc code on your behalf. <span class="try-it">Try it: <code>$ gipity sandbox run "echo hello"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="sbx-cost">—</span></div>
+          <div class="card" title="Number of sandbox script executions in this window."><span class="card-label">Executions</span><span class="card-value" id="sbx-calls">—</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Sandbox executions over time</h3>
+          <canvas id="chart-sandbox" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Recent sandbox calls</h3>
+          <table class="data-table" id="table-sandbox-recent"><thead><tr><th>Time</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Workflows sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="workflows" hidden>
+        <p class="tab-desc small">Multi-step LLM pipelines triggered by schedule, webhook, or manual run. Each step is an LLM call with template variables, tool filters, and optional human approval. <span class="try-it">Try it: <code>$ gipity chat "create a workflow that…"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Workflows currently enabled (schedule / webhook / manual triggers)."><span class="card-label">Active workflows</span><span class="card-value" id="wf-active">—</span></div>
+          <div class="card" title="Workflow runs that started in this window."><span class="card-label">Runs</span><span class="card-value" id="wf-runs">—</span></div>
+          <div class="card" title="Workflow runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="wf-failures">—</span></div>
+          <div class="card" title="Mean wall-clock duration across all workflow runs in this window."><span class="card-label">Avg duration</span><span class="card-value" id="wf-avg">—</span></div>
+        </div>
+        <div class="panel">
+          <h3>Workflows</h3>
+          <table class="data-table" id="table-workflows-top"><thead><tr><th>Workflow</th><th>Trigger</th><th>Active</th><th class="num">Runs</th><th class="num">Failures</th><th>Last run</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent runs</h3>
+          <table class="data-table" id="table-workflows-recent"><thead><tr><th>Started</th><th>Workflow</th><th>Trigger</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Data tab (Files + DB sub-tabs) ──────────────────────── -->
+    <section class="tab-panel" data-tab="data" hidden>
+      <div class="sub-tabs">
+        <button data-data-tab="files" class="active">Files</button>
+        <button data-data-tab="db">DB</button>
+      </div>
+
+      <!-- Files sub-tab -->
+      <div class="data-panel" data-data-panel="files">
+        <p class="tab-desc small">Gipity Storage — your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Total bytes of your files in Gipity Storage."><span class="card-label">Total size</span><span class="card-value" id="files-size">—</span></div>
+          <div class="card" title="Total file count across all your projects."><span class="card-label">Files</span><span class="card-value" id="files-count">—</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="files-cost-30d">—</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Credits used over time</h3>
+          <canvas id="chart-storage-cost" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Top projects by file storage</h3>
+          <table class="data-table" id="table-storage-projects"><thead><tr><th>Project</th><th class="num">Files</th><th class="num">Size</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent storage charges</h3>
+          <table class="data-table" id="table-storage-charges"><thead><tr><th>Day</th><th>Kind</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- DB sub-tab -->
+      <div class="data-panel" data-data-panel="db" hidden>
+        <p class="tab-desc small">Gipity DB — one Postgres database per project. Includes tables, indexes, and materialized views. <span class="try-it">Try it: <code>$ gipity db query "SELECT version()"</code></span></p>
+        <div class="cards">
+          <div class="card" title="Total bytes of your Postgres databases (tables + indexes + materialized views)."><span class="card-label">Total size</span><span class="card-value" id="db-size">—</span></div>
+          <div class="card" title="Number of distinct Postgres databases across your projects."><span class="card-label">Databases</span><span class="card-value" id="db-schemas">—</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="db-cost-30d">—</span></div>
+        </div>
+        <div class="panel">
+          <h3>By project / database</h3>
+          <table class="data-table" id="table-db-schemas">
+            <thead><tr><th>Project</th><th>Database</th><th class="num">Tables</th><th class="num">Size</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>Recent DB storage charges</h3>
+          <table class="data-table" id="table-db-charges"><thead><tr><th>Day</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Hosting tab (Deploys / Domains / CDN) ─────────────────── -->
+    <section class="tab-panel" data-tab="hosting" hidden>
+      <div class="sub-tabs">
+        <button data-hosting-tab="deploys" class="active">Deploys</button>
+        <button data-hosting-tab="domains">Domains</button>
+        <button data-hosting-tab="cdn">CDN</button>
+      </div>
+
+      <!-- Deploys sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="deploys">
+        <p class="tab-desc small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps — phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p>
+        <div class="panel chart-panel">
+          <h3>Deploys over time</h3>
+          <canvas id="chart-hosting-deploys" height="80"></canvas>
+        </div>
+        <div class="panel">
+          <h3>Recent deploys</h3>
+          <table class="data-table" id="table-hosting-deploys">
+            <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>IP</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Domains sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="domains" hidden>
+        <p class="tab-desc small">Custom domains pointing at your deployed apps. Free with any paid plan — Gipity auto-issues Let's Encrypt certs. <span class="try-it">Try it: <code>$ gipity domain add myapp.com</code></span></p>
+        <div class="cards">
+          <div class="card" title="Custom domains attached to any of your projects."><span class="card-label">Total</span><span class="card-value" id="dom-total">—</span></div>
+          <div class="card" title="Domains successfully verified and serving traffic."><span class="card-label">Active</span><span class="card-value" id="dom-active">—</span></div>
+          <div class="card" title="Domains waiting for DNS verification."><span class="card-label">Pending</span><span class="card-value" id="dom-pending">—</span></div>
+          <div class="card" title="Domains stuck in verification — usually a DNS misconfiguration."><span class="card-label">Failed</span><span class="card-value" id="dom-failed">—</span></div>
+        </div>
+        <div class="panel">
+          <h3>Custom domains</h3>
+          <table class="data-table" id="table-domains">
+            <thead><tr><th>Domain</th><th>Project</th><th>Status</th><th>Verified</th><th>Added</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CDN sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="cdn" hidden>
+        <p class="tab-desc small">Gipity CDN — your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. Live size refreshed every 5 min. <strong>Not currently metered</strong> — we absorb the storage + egress cost for v1.</p>
+        <div class="cards">
+          <div class="card" title="Total bytes of your deployed app bundles served by Gipity CDN."><span class="card-label">Total size</span><span class="card-value" id="cdn-size">—</span></div>
+          <div class="card" title="Total file count served by Gipity CDN across all your deployed apps."><span class="card-label">Objects</span><span class="card-value" id="cdn-objects">—</span></div>
+          <div class="card" title="Distinct projects with at least one active CDN deploy (dev or prod)."><span class="card-label">Deployed projects</span><span class="card-value" id="cdn-projects">—</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="cdn-cost-30d">0 (not metered)</span></div>
+        </div>
+        <div class="panel">
+          <h3>By project (prod + dev)</h3>
+          <table class="data-table" id="table-cdn-projects">
+            <thead><tr><th>Project</th><th class="num">Prod size</th><th class="num">Prod objects</th><th class="num">Dev size</th><th class="num">Dev objects</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Usage tab (credit ledger) ───────────────────────────── -->
+    <section class="tab-panel" data-tab="spend" hidden>
+      <p class="tab-desc">The full credit ledger — every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p>
+      <div class="cards">
+        <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="spend-credits">—</span></div>
+        <div class="card" title="Distinct credit-ledger rows in this window — one row per billed event."><span class="card-label">Charges</span><span class="card-value" id="spend-charges">—</span></div>
+        <div class="card" title="Operation with the most credits used in this window."><span class="card-label">Top category</span><span class="card-value" id="spend-top-cat">—</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Credits used over time</h3>
+        <canvas id="chart-spend" height="80"></canvas>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>By operation</h3>
+          <table class="data-table" id="table-spend-ops"><thead><tr><th>Operation</th><th class="num">Charges</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>By project</h3>
+          <table class="data-table" id="table-spend-projects"><thead><tr><th>Project</th><th class="num">Charges</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recent charges</h3>
+        <table class="data-table" id="table-spend-recent"><thead><tr><th>Time</th><th>Operation</th><th>Model</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- ── Plan tab (subscription + balance) ─────────────────────── -->
+    <section class="tab-panel" data-tab="plan" hidden>
+      <p class="tab-desc">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <span class="try-it">Try it: <code>$ gipity plan</code></span></p>
+      <div class="cards">
+        <div class="card" title="Your current subscription tier, monthly price, and included credits per cycle."><span class="card-label">Plan</span><span class="card-value" id="plan-name">—</span></div>
+        <div class="card" title="Live balance across all active grants (subscription cycle, top-ups, and bonus credits)."><span class="card-label">Credits remaining</span><span class="card-value" id="plan-remaining">—</span></div>
+        <div class="card" title="Mean daily credit usage over the last 30 days."><span class="card-label">Avg used per day</span><span class="card-value" id="plan-burn">—</span></div>
+        <div class="card" title="Estimated days until your balance hits 0 at the current daily rate."><span class="card-label">Days to empty</span><span class="card-value" id="plan-days">—</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Plan limits</h3>
+          <table class="data-table compact" id="table-plan-limits"><thead><tr><th>Limit</th><th class="num">Value</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Balance detail</h3>
+          <table class="data-table compact" id="table-plan-balance"><thead><tr><th>Metric</th><th class="num">Value</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recent grants &amp; top-ups</h3>
+        <table class="data-table" id="table-plan-grants">
+          <thead><tr><th>Granted</th><th>Source</th><th class="num">Granted</th><th class="num">Used</th><th class="num">Remaining</th><th>Expires</th><th class="num">$</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Chats tab ────────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="chats" hidden>
+      <p class="tab-desc">Your conversations with Gipity agents on this account — titles, project, last activity. Click a row to see the messages. <span class="try-it">Try it: <code>$ gipity chat "build me a..."</code></span></p>
+      <div class="cards">
+        <div class="card" title="Distinct conversations on this account that this window touches."><span class="card-label">Conversations</span><span class="card-value" id="chats-count">—</span></div>
+      </div>
+      <div class="panel">
+        <h3>Recent conversations</h3>
+        <table class="data-table" id="table-chats">
+          <thead><tr><th>Title</th><th>Project</th><th>Last activity</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="chats">Download CSV</button></div>
+    </section>
+
+    <!-- ── Devices tab (paired CC/Codex devices + dispatches + sessions) ── -->
+    <section class="tab-panel" data-tab="devices" hidden>
+      <p class="tab-desc">Local agents (Claude Code, Codex) paired to this account via <code>gipity claude</code>. Devices receive prompts dispatched from the web CLI's <code>cc&gt;</code> mode and stream their session transcript back here. <span class="try-it">Try it: <code>$ gipity claude</code> on your laptop, then <code>/cc</code> in the web CLI.</span></p>
+      <div class="cards">
+        <div class="card" title="Local Claude Code / Codex instances paired to your account."><span class="card-label">Active devices</span><span class="card-value" id="rmt-devices">—</span></div>
+        <div class="card" title="Prompts sent from the web CLI to a paired device in this window."><span class="card-label">Dispatches</span><span class="card-value" id="rmt-dispatches">—</span></div>
+        <div class="card" title="Dispatches still waiting for a device to pick them up."><span class="card-label">Pending</span><span class="card-value" id="rmt-pending">—</span></div>
+        <div class="card" title="Remote sessions opened from paired devices in this window."><span class="card-label">Sessions</span><span class="card-value" id="rmt-sessions">—</span></div>
+      </div>
+      <div class="panel">
+        <h3>Paired devices</h3>
+        <table class="data-table" id="table-rmt-devices">
+          <thead><tr><th>Name</th><th>Platform</th><th>Status</th><th>Last seen</th><th>Paired</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Recent dispatches</h3>
+        <table class="data-table" id="table-rmt-dispatches">
+          <thead><tr><th>Time</th><th>Device</th><th>Project</th><th>Kind</th><th>Status</th><th>Message</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Recent remote sessions</h3>
+        <table class="data-table" id="table-rmt-sessions">
+          <thead><tr><th>Started</th><th>Title</th><th>Source</th><th>Project</th><th>cwd</th><th>State</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Alerts tab ───────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="alerts" hidden>
+      <p class="tab-desc">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold — plus an optional daily/weekly digest with all the cards from each tab. <span class="try-it">Configure here; the schedule checks every 5 minutes.</span></p>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Email digest</h3>
+        </div>
+        <p class="muted small">Receive a summary email with the dashboard totals + top errors on a regular cadence.</p>
+        <form id="digest-form" class="digest-form">
+          <label>Cadence
+            <select id="digest-cadence">
+              <option value="off">Off</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </label>
+          <label>Email
+            <input type="email" id="digest-email" maxlength="255" />
+          </label>
+          <button type="submit" class="primary-btn">Save</button>
+          <span id="digest-status" class="muted small"></span>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Alerts</h3>
+          <button id="new-alert-btn" class="primary-btn">+ New alert</button>
+        </div>
+        <p class="muted small">
+          Send yourself an email when LLM spend, function calls, auth failures, or app errors spike.
+          The checker evaluates every 5 minutes; each alert has its own window and cooldown.
+        </p>
+        <table class="data-table" id="table-alerts">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Project</th>
+              <th class="num">Threshold</th>
+              <th class="num">Window</th>
+              <th class="num">Last observed</th>
+              <th>Last fired</th>
+              <th>State</th>
+              <th>Email</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <dialog id="alert-form-dialog" class="alert-dialog">
+        <form id="alert-form" method="dialog">
+          <h3 id="alert-form-title">New alert</h3>
+          <input type="hidden" id="alert-id" />
+          <label>Kind
+            <select id="alert-kind" required>
+              <option value="llm_spend">LLM spend (USD)</option>
+              <option value="function_rate">Function call rate</option>
+              <option value="auth_failures">Auth failures</option>
+              <option value="error_rate">App error count</option>
+            </select>
+          </label>
+          <label>Project
+            <select id="alert-project">
+              <option value="">All projects</option>
+            </select>
+          </label>
+          <label>Threshold
+            <input type="number" step="0.01" min="0.01" id="alert-threshold" required />
+            <span class="hint" id="alert-threshold-hint">USD over the window</span>
+          </label>
+          <label>Window (minutes)
+            <input type="number" min="5" max="10080" step="1" id="alert-window" value="60" required />
+            <span class="hint">5 = 5 min · 60 = 1 hour · 1440 = 1 day</span>
+          </label>
+          <label>Cooldown (minutes)
+            <input type="number" min="5" max="10080" step="1" id="alert-cooldown" value="60" />
+            <span class="hint">Don't re-fire within this many minutes</span>
+          </label>
+          <label>Email
+            <input type="email" id="alert-email" required maxlength="255" />
+          </label>
+          <label class="check">
+            <input type="checkbox" id="alert-active" checked />
+            Active
+          </label>
+          <div class="dialog-actions">
+            <button type="button" id="alert-cancel">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- ── Audit tab ────────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="audit" hidden>
+      <div class="sub-tabs">
+        <button data-audit="auth" class="active">Auth</button>
+        <button data-audit="upload">Uploads</button>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Events over time</h3>
+        <canvas id="chart-audit" height="80"></canvas>
+      </div>
+      <div class="panel">
+        <h3>Recent events</h3>
+        <table class="data-table" id="table-audit">
+          <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>IP</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="audit">Download CSV</button></div>
+    </section>
+
+    </div><!-- /.main-content -->
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

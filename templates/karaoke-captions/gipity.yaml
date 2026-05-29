@@ -1,0 +1,85 @@
+version: 1
+
+# karaoke-captions — turn audio + lyrics into word-aligned karaoke captions
+# rendered to MP4. Ships with the @gipity/audio-align kit pre-bundled at
+# src/packages/audio-align/.
+#
+# Phases run top-down on `gipity deploy dev`:
+#   files     - static frontend (upload UI, editor, result view)
+#   database  - per-project DB: songs + renders tables (see migrations/)
+#   functions - song + render CRUD + on_complete handlers
+#   jobs      - audio-align (GPU, from the kit) + render (CPU, in this template)
+deploy:
+  phases:
+    - name: files
+      type: static
+      source: src
+
+    # Per-project DB. {{DATABASE}} is replaced with a slug derived from the
+    # project name at install time (web-fullstack uses the same pattern).
+    - name: database
+      type: sql
+      source: migrations
+      database: {{DATABASE}}
+
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        # ── Song lifecycle (browser-facing) ────────────────────
+        - name: song-create
+          auth: public
+          tables: [songs]
+          description: "Create a song row with audio_url + lyrics + optional phonetic respellings"
+        - name: song-get
+          auth: public
+          tables: [songs, renders]
+          description: "Fetch a song + its renders by short_guid"
+        - name: song-align
+          auth: public
+          tables: [songs]
+          description: "Submit an audio-align GPU job for a song's audio + lyrics"
+        - name: song-save-alignment
+          auth: public
+          tables: [songs]
+          description: "Editor save: replace a song's alignment_json with the hand-tuned version"
+        - name: song-render
+          auth: public
+          tables: [songs, renders]
+          description: "Submit a render job for a song (mode: preview / hd / 4k)"
+        # ── on_complete callbacks (job-fired, not browser-facing) ─
+        - name: song-align-complete
+          auth: public
+          tables: [songs]
+          description: "Fired by the platform when an audio-align job finishes — writes alignment_json back to the song row"
+        - name: render-complete
+          auth: public
+          tables: [renders]
+          description: "Fired by the platform when a render job finishes — writes video_url back to the render row"
+
+    # Both jobs in one phase — the audio-align kit's GPU pipeline + the
+    # template's CPU render job. on_complete chains the alignment result back
+    # into the song row, and the render result back into the render row —
+    # the browser only polls song-get, never the job system directly.
+    - name: jobs
+      type: jobs
+      job_definitions:
+        - name: audio-align
+          handler: src/packages/audio-align/jobs/align/main.py
+          runtime: python-3.11
+          compute: gpu-small
+          timeout_ms: 600000
+          on_complete: song-align-complete
+          description: "Audio + lyrics → word-level timing JSON (Modal L4)"
+
+        # CPU render job (Node + Remotion + ffmpeg). cpu-large is required for
+        # Remotion's headless Chromium + the larger memory budget; first deploy
+        # pays a ~5-10 min npm install for Remotion (cached after).
+        - name: render
+          handler: jobs/render/main.js
+          runtime: node-20
+          compute: cpu-large
+          timeout_ms: 1800000   # 30 min — 4K renders take a while
+          deps: package.json    # triggers `npm install` for @remotion/* on first invocation
+          on_complete: render-complete
+          description: "Render a song's alignment + audio into a karaoke MP4"

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Stamped by `gipity deploy`. The chatbot resolves the project GUID from this meta. -->
+  <meta name="gipity-app" content="YOUR_PROJECT_GUID_HERE">
+  <title>Chatbot — basic example</title>
+  <style>
+    :root { --primary: #6ea8ff; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+      margin: 0; padding: 40px;
+      background: #0f1115; color: #e6e8ee;
+    }
+    h1 { font-size: 28px; margin: 0 0 8px; }
+    p { color: #8a92a6; max-width: 520px; }
+  </style>
+</head>
+<body>
+  <h1>Chatbot demo</h1>
+  <p>
+    Look in the bottom-right corner. Click the bubble to chat. The bot only
+    answers questions about this demo and politely refuses everything else.
+  </p>
+
+  <chatbot-widget id="bot"></chatbot-widget>
+
+  <script type="module">
+    import { mount } from '../index.js';
+    import config from './basic.config.js';
+    mount('#bot', config);
+  </script>
+</body>
+</html>

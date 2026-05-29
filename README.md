@@ -72,7 +72,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for the dev loop, how to add a new templa
 
 ## What is Gipity?
 
-The agent-tuned platform where AI-built apps live: hosting, databases, file storage, deployment, scheduled workflows, code execution, monitoring. Agent-tuned from idea to deploy.
+The full-stack platform tuned for AI agents: hosting, databases, file storage, deployment, scheduled workflows, code execution, monitoring. Agent-tuned from idea to deploy.
 
 Describe what you want. Your agent writes the code, builds the app, sets up the database, deploys it to a live URL, and keeps it running.
 

@@ -7,20 +7,21 @@ Templates and kits are designed to be edited and added to. This guide covers the
 - A Gipity account and the CLI (`npm install -g gipity && gipity init`)
 - A clone of the main Gipity repo alongside this one — the catalog metadata (`TEMPLATES` and `KITS` arrays) and the dev/sync scripts live there. This repo holds only the source files for each template and kit.
 
-## Editing an existing template or kit
+## Editing an existing template
 
-Use `just dev-push <app> --template <template>` from the main Gipity repo. It mirrors a local `registry/templates/<template>/` (and the kits it pulls in) into a linked dev app, then deploys it.
+From inside the linked dev app directory, run `gipity add <path-to-the-template> --force` followed by `gipity deploy dev`. The CLI walks the template directory, POSTs a payload, and the server runs the same `installTemplate` pipeline a real user hits — placeholder substitution (`{{TITLE}}`, `{{PROJECT_GUID}}`, `{{DESCRIPTION_META}}`...), favicon generation, deploy-checksum tracking. ~1-2 s round trip.
 
 ```bash
-just dev-push my-test-app --template 3d-world   # first push pins the template
-just dev-watch my-test-app                       # re-push on every save
+cd ~/GipityProjects/my-test-app
+gipity add /home/me/Gipity/registry/templates/3d-world --force
+gipity deploy dev
 ```
 
-The first push needs `--template`; subsequent pushes remember it via `<app>/.gipity/dev-source.json`. `<app>` resolves to `~/GipityProjects/<app>` or a path; if it isn't linked locally yet, dev-push adopts it automatically.
+For multi-client / realtime work, after the deploy use `just multi-test <url>` from the main Gipity repo to spin staggered headless clients at the deployed URL and check host election, world sync, presence, and reconnection.
 
-Protected per-app files (`index.html`, `js/config.js`, `gipity.yaml`) are never overwritten — they carry per-app values like the title or feature config. dev-push warns (with a git diff) when the template's copy of one drifts so you can reconcile by hand.
+### Editing a kit
 
-For multi-client / realtime work, after a `dev-push` use `just multi-test <url>` to spin staggered headless clients at the deployed URL and check host election, world sync, presence, and reconnection.
+Kits still install through the server's bundled catalog via `gipity add <kit-name>`. A kit edit requires the server to be redeployed (`just deploy-server-fast` from `platform/`) before `gipity add <kit-name>` picks up the new version. If the kit is bundled inside a template (e.g. `audio-align` inside `karaoke-captions`), iterate on the template instead — the kit ships as part of the template payload.
 
 ## Adding a new template
 
@@ -106,4 +107,4 @@ E2E_BASE_URL=https://a.gipity.ai \
 - [ ] Tests added (file-presence assertions for templates; install behavior for kits)
 - [ ] `npx tsx scripts/sync-registry.ts --check` passes
 - [ ] `npm run test:fast` passes (from `platform/server/`)
-- [ ] Verified locally via `just dev-push` against a real dev app
+- [ ] Verified locally via `gipity add <path> --force` + `gipity deploy dev` against a real dev app

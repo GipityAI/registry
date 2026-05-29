@@ -9,9 +9,9 @@
 
 import { getSettings } from './settings.js';
 
-// Pinned Colyseus client build. Must match the server's Colyseus major/minor
-// (see platform/services/colyseus). Upgrading Colyseus = change this one line,
-// and the server in lockstep.
+// Pinned Colyseus client build. Must match the major/minor that the Gipity
+// realtime server (wss://rt.gipity.ai) is running - upgrading Colyseus means
+// bumping both this line and the server release in lockstep.
 const COLYSEUS_ESM = 'https://esm.sh/colyseus.js@0.16.22?bundle-deps';
 
 export function createClient() {

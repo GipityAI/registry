@@ -1,0 +1,14 @@
+{
+  "name": "karaoke-captions-render-job",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Remotion-based karaoke caption MP4 renderer. Runs as a Gipity cpu-large job.",
+  "main": "main.js",
+  "dependencies": {
+    "@remotion/bundler": "4.0.380",
+    "@remotion/renderer": "4.0.380",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "4.0.380"
+  }
+}

@@ -1,6 +1,6 @@
 # Gipity Templates
 
-Project templates for [Gipity](https://gipity.ai) - the agent-tuned platform where AI-built apps live. Tell your AI agent what to build, and it handles the rest: code, hosting, databases, deployment, multiplayer, and more.
+Project templates for [Gipity](https://gipity.ai) - the full-stack platform tuned for AI agents. Tell your AI agent what to build, and it handles the rest: code, hosting, databases, deployment, multiplayer, and more.
 
 Templates are the starting points. Each one is production-ready with all files fully editable. Your AI agent (or you) writes the creative part - the template handles the infrastructure.
 
@@ -81,9 +81,9 @@ These templates are designed for the Gipity platform, but the engine code is sta
 
 ## What is Gipity?
 
-The agent-tuned platform where AI-built apps live.
+The full-stack platform tuned for AI agents.
 
-[Gipity](https://gipity.ai) is the platform: hosting, databases, file storage, deployment, scheduled workflows, code execution, and monitoring. Agent-tuned from idea to deploy. One place - not seven SaaS products stitched together. No setup. No API keys. No config files.
+[Gipity](https://gipity.ai) is the platform: hosting, databases, file storage, deployment, scheduled workflows, code execution, and monitoring. Agent-tuned from idea to deploy. No setup. No API keys. No config files.
 
 Describe what you want. Your agent writes the code, builds the app, sets up the database, deploys it to a live URL, and keeps it running. From idea to production in one conversation. Any model, any infra, always your code.
 

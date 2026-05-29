@@ -1,0 +1,363 @@
+/* Design tokens — mirrors `platform/client/src/css/variables.css` so the Admin
+   app reads as part of the same product family as the terminal, while staying
+   a standalone build (no shared CSS file). Any colour or radius change here
+   should be made in both places. */
+:root {
+  --bg: #0d0d0d;
+  --surface: #1a1a1a;
+  --surface-hover: #232323;
+  --text: #e8e4db;
+  --text-muted: #a8a29e;
+  --text-faint: #6f6f78;
+  --border: #333;
+  --primary: #f26522;
+  --error: #ef4444;
+  --warning: #f59e0b;
+  --success: #22c55e;
+  --info: #60a5fa;
+  --radius-xxs: 2px;
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --splitter-width: 2px;
+  --transition-fast: 0.15s;
+  /* Aliases kept for the existing rules — gradually retire bg-card → surface. */
+  --bg-card: var(--surface);
+  --bg-card-hover: var(--surface-hover);
+}
+
+/* Override Water.css base palette so our explicit tokens win on body + form
+   elements that we don't otherwise re-style. */
+html, body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
+
+/* Dashboard layout — header on top, then a two-column flex with the sidebar
+   nav on the left, a draggable splitter, and the active tab panel filling the
+   rest. */
+#dashboard { display: flex; align-items: stretch; gap: 0; min-height: calc(100vh - 6rem); }
+.main-content { flex: 1; min-width: 0; padding-left: 1.25rem; }
+
+/* Vertical splitter — copied from the terminal's pattern. 2px line in the
+   border colour, with a 4×36px grip centred on it; widens the hit-area via
+   `::before`. Drag to resize the sidebar; localStorage persists the width. */
+.v-splitter {
+  width: var(--splitter-width);
+  background: var(--border);
+  cursor: col-resize;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 5;
+}
+.v-splitter::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: -5px; right: -5px;
+  cursor: col-resize;
+}
+.v-splitter::after {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px; height: 36px;
+  border-radius: var(--radius-xxs);
+  background: var(--text-muted);
+  opacity: 0.5;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  pointer-events: none;
+}
+.v-splitter:hover, .v-splitter.dragging { background: var(--primary); }
+.v-splitter:hover::after, .v-splitter.dragging::after { background: var(--text); opacity: 1; }
+
+@media (max-width: 800px) {
+  #dashboard { flex-direction: column; min-height: 0; }
+  .sidebar { width: 100% !important; flex-direction: row; flex-wrap: wrap; }
+  .v-splitter { display: none; }
+  .main-content { padding-left: 0; padding-top: 1rem; }
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+.monitor-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.5rem; }
+.monitor-header .brand { display: flex; align-items: center; gap: 0.65rem; }
+.monitor-header .brand-logo { display: block; width: 36px; height: 36px; flex-shrink: 0; }
+.monitor-header h1 { margin: 0; font-size: 1.6rem; line-height: 1.1; }
+
+.controls { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.controls label { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85em; margin: 0; }
+.controls .control-label { color: var(--text-muted); }
+.controls select,
+.controls #refresh { height: 2.1rem; box-sizing: border-box; margin: 0; }
+.controls select { min-width: 140px; padding: 0 0.5rem; }
+#refresh { padding: 0 0.9rem; }
+
+/* Per-tab CSV download — sits subtle at the very bottom of tabs that have an
+   exportable list endpoint. Text-link style; competes with nothing. */
+.tab-footer { display: flex; justify-content: flex-end; padding-top: 0.5rem; margin-top: 0.5rem; }
+.tab-footer .export-csv-btn { padding: 0.2rem 0.4rem; background: transparent; border: none; color: var(--text-faint); font-size: 0.78em; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.tab-footer .export-csv-btn:hover { color: var(--text); }
+
+/* ── Sidebar nav (primary) ──────────────────────────────── */
+/* Grouped left rail: PROJECT section + ACCOUNT section, each with its own
+   uppercase label. Active item gets a 2px left-border accent in the brand
+   colour plus a subtle background tint — the same vocabulary as the underline
+   on the sub-tabs strip, just rotated 90°. */
+.sidebar { display: flex; flex-direction: column; gap: 1.25rem; width: 180px; flex-shrink: 0; position: sticky; top: 1rem; }
+.sidebar-group { display: flex; flex-direction: column; gap: 0.05rem; }
+.sidebar-label { margin: 0.6rem 0 0.4rem 0.4rem; padding: 0 0.5rem 0.35rem; font-size: 0.7em; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff; opacity: 1; border-bottom: 1px solid var(--border); }
+.sidebar-group:first-child .sidebar-label { margin-top: 0; }
+.sidebar button { background: transparent; border: none; border-left: 2px solid transparent; padding: 0.45rem 0.85rem; font-size: 0.9em; cursor: pointer; color: var(--text-muted); text-align: left; border-radius: 0 4px 4px 0; }
+.sidebar button:hover { color: white; background: var(--bg-card); }
+.sidebar button.active { color: white; background: var(--bg-card); border-left-color: var(--primary); }
+
+/* Compact horizontal layout on narrow screens — labels become inline chips. */
+@media (max-width: 800px) {
+  .sidebar { gap: 0.5rem; position: static; }
+  .sidebar-group { flex-direction: row; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
+  .sidebar-label { margin: 0; }
+  .sidebar button { border-left: none; border-bottom: 2px solid transparent; border-radius: 4px; padding: 0.35rem 0.7rem; }
+  .sidebar button.active { border-left-color: transparent; border-bottom-color: var(--primary); }
+}
+
+/* ── Sub-tabs strip (secondary nav at top of main content) ── */
+.sub-tabs { display: flex; gap: 0; padding-left: 0.4rem; border-bottom: 1px solid var(--border); }
+.sub-tabs button { background: transparent; border: none; border-bottom: 2px solid transparent; padding: 0.35rem 0.75rem; font-size: 0.78em; cursor: pointer; color: var(--text-muted); margin-bottom: -1px; border-radius: 0; }
+.sub-tabs button:hover { color: white; }
+.sub-tabs button.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* `:not([hidden])` is critical — without it, our `display: flex` would beat the
+   HTML `hidden` attribute and every panel would render at once. */
+.tab-panel { display: none; }
+.tab-panel:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Cards (hero numbers) ───────────────────────────────── */
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0.75rem; }
+.card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 0.85rem 1rem; display: flex; flex-direction: column; }
+.card-label { font-size: 0.8em; opacity: 0.65; text-transform: uppercase; letter-spacing: 0.04em; }
+.card-value { font-size: 1.7em; font-weight: 600; margin-top: 0.3rem; font-variant-numeric: tabular-nums; }
+
+/* ── Panels ─────────────────────────────────────────────── */
+.panel { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 1rem; }
+.panel h3 { font-size: 0.9em; margin: 0 0 0.75rem; opacity: 0.8; text-transform: uppercase; letter-spacing: 0.04em; }
+.chart-panel canvas { max-height: 220px; }
+
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
+@media (max-width: 900px) {
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+}
+
+/* ── Data tables ────────────────────────────────────────── */
+.data-table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+.data-table th { text-align: left; font-weight: 500; padding: 0.4rem 0.5rem; border-bottom: 1px solid var(--border); opacity: 0.7; font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.04em; }
+.data-table td { padding: 0.5rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover { background: var(--bg-card-hover); }
+/* Numeric columns: th and td both right-align so headers line up with the digits. */
+.data-table th.num, .data-table td.num { text-align: right; }
+.data-table td.num { font-variant-numeric: tabular-nums; }
+.data-table td.muted { color: var(--text-muted); font-size: 0.85em; }
+.data-table td.mono { font-family: ui-monospace, monospace; word-break: break-word; max-width: 480px; }
+.data-table.compact td, .data-table.compact th { padding: 0.3rem 0.5rem; }
+
+/* Status pills */
+.pill { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 10px; font-size: 0.75em; font-weight: 500; }
+.pill-ok { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.pill-error { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+.pill-warn { background: color-mix(in srgb, var(--warning) 15%, transparent); color: var(--warning); }
+.pill-info { background: color-mix(in srgb, var(--info) 15%, transparent); color: var(--info); }
+
+/* Issue row: 2-line message + meta */
+.data-table.issues td.mono { white-space: pre-wrap; }
+.data-table.issues .meta { color: var(--text-muted); font-size: 0.8em; margin-top: 0.25rem; }
+
+/* Errors / issues table - lock column widths so the Message column gets the
+   bulk of the row and Project / Count / Last seen stay narrow. Without these
+   widths the browser balances columns equally and the message gets squeezed. */
+.data-table.issues { table-layout: fixed; width: 100%; }
+.data-table.issues th:nth-child(1), .data-table.issues td:nth-child(1) { width: auto; }   /* Message - elastic */
+.data-table.issues th:nth-child(2), .data-table.issues td:nth-child(2) { width: 9rem; }    /* Project */
+.data-table.issues th:nth-child(3), .data-table.issues td:nth-child(3) { width: 5rem; }    /* Count */
+.data-table.issues th:nth-child(4), .data-table.issues td:nth-child(4) { width: 7rem; }    /* Last seen */
+.data-table.issues td.mono { max-width: none; word-break: break-word; }
+
+#errors-search { width: 100%; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 0.9em; }
+
+/* ── Auth gate ──────────────────────────────────────────── */
+#auth-gate { text-align: center; padding: 3rem 1rem; }
+#auth-gate button { background: var(--primary); border: none; color: white; padding: 0.5rem 1.5rem; font-size: 1em; cursor: pointer; border-radius: 4px; }
+
+/* ── Empty state ────────────────────────────────────────── */
+.empty { text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: 0.9em; }
+
+/* ── Delta badges (period comparison on cards) ─────────── */
+.delta { display: inline-block; margin-left: 0.5rem; padding: 0.05rem 0.4rem; border-radius: 10px; font-size: 0.5em; font-weight: 600; vertical-align: middle; }
+.delta.good { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.delta.bad { background: color-mix(in srgb, var(--error) 15%, transparent); color: var(--error); }
+.delta.neutral { background: var(--surface-hover); color: var(--text-muted); }
+
+/* ── Alerts tab ─────────────────────────────────────────── */
+.panel-head { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+.panel-head h3 { margin: 0; }
+.small { font-size: 0.85em; }
+.primary-btn { background: var(--primary); border: none; color: white; padding: 0.4rem 0.9rem; font-size: 0.9em; cursor: pointer; border-radius: 4px; font-weight: 500; }
+.primary-btn:hover { filter: brightness(1.1); }
+.link-btn { background: transparent; border: none; color: var(--primary); padding: 0 0.4rem; cursor: pointer; font-size: 0.85em; }
+.link-btn:hover { text-decoration: underline; }
+.link-btn.danger { color: var(--error); }
+.pill.ok { background: color-mix(in srgb, var(--success) 15%, transparent); color: var(--success); }
+.pill.muted { background: var(--surface-hover); color: var(--text-muted); }
+
+.digest-form { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+.digest-form label { display: flex; flex-direction: column; font-size: 0.8em; color: var(--text-muted); }
+.digest-form select, .digest-form input { padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 0.9em; min-width: 180px; }
+
+/* Alert form dialog */
+.alert-dialog { background: var(--bg-card); color: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; max-width: 460px; width: 100%; }
+.alert-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+.alert-dialog h3 { margin: 0 0 1rem 0; }
+.alert-dialog label { display: block; margin-bottom: 0.7rem; font-size: 0.85em; color: var(--text-muted); }
+.alert-dialog label.check { display: flex; align-items: center; gap: 0.4rem; color: white; }
+.alert-dialog input[type="number"], .alert-dialog input[type="email"], .alert-dialog select { width: 100%; margin-top: 0.2rem; padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 0.95em; box-sizing: border-box; }
+.alert-dialog .hint { display: block; font-size: 0.75em; color: var(--text-muted); margin-top: 0.2rem; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+.dialog-actions button { padding: 0.4rem 0.9rem; border-radius: 4px; cursor: pointer; font-size: 0.9em; background: var(--bg); color: white; border: 1px solid var(--border); }
+.dialog-actions button.primary-btn { background: var(--primary); border-color: var(--primary); }
+
+/* ── Chats: row-expanded transcript ────────────────────── */
+.chat-row { cursor: pointer; }
+.chat-row td:first-child::before {
+  content: '▸';
+  display: inline-block;
+  width: 1em;
+  margin-right: 0.25rem;
+  color: var(--text-muted);
+  transition: transform 0.12s ease;
+}
+.chat-row.expanded td:first-child::before { transform: rotate(90deg); color: var(--primary); }
+.chat-thread-row td { padding: 0.75rem 1rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
+.chat-thread { display: flex; flex-direction: column; gap: 0.4rem; }
+.chat-msg { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid #555; border-radius: 4px; padding: 0.5rem 0.7rem; }
+.chat-msg-user      { border-left-color: var(--primary); }
+.chat-msg-assistant { border-left-color: var(--info); }
+.chat-msg-system    { border-left-color: var(--text-muted); }
+.chat-msg-tool      { border-left-color: var(--warning); }
+.chat-msg-head { display: flex; align-items: baseline; gap: 0.5rem; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.3rem; }
+.chat-msg-role { color: var(--text); font-weight: 600; }
+.chat-msg-model { font-family: ui-monospace, monospace; font-size: 0.7rem; opacity: 0.7; }
+.chat-msg-time { margin-left: auto; text-transform: none; }
+.chat-msg-body { white-space: pre-wrap; word-break: break-word; font-size: 0.88rem; line-height: 1.45; color: var(--text); max-height: 32rem; overflow: auto; }
+
+/* ── Per-tab description with optional "Try it" CLI hint ─ */
+.tab-desc { margin: 0; color: var(--text-muted); font-size: 0.85em; line-height: 1.5; max-width: 920px; }
+.tab-desc.small { font-size: 0.8em; }
+.tab-desc code { background: var(--bg-card); padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.95em; color: white; font-family: ui-monospace, monospace; }
+.tab-desc .try-it { display: inline-block; margin-left: 0.4rem; padding-left: 0.6rem; border-left: 2px solid var(--border); color: white; }
+.tab-desc .try-it code { background: rgba(242, 101, 34, 0.12); color: var(--primary); }
+
+/* ── Services sub-panels (LLMs / Speech / Media / Realtime / Browser / Search) */
+.svc-panel { display: none; }
+.svc-panel:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Compute sub-panels (Functions / Jobs / Sandbox) */
+.cmp-panel { display: none; }
+.cmp-panel:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Data sub-panels (Files / DB) */
+.data-panel { display: none; }
+.data-panel:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Hosting sub-panels (Deploys / Domains / CDN) */
+.hosting-panel { display: none; }
+.hosting-panel:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+
+/* ── Activity tab — unified per-app timeline. Each entry is a card with
+   a header line (time + kind tag + summary) and a per-kind detail body.
+   Visual goal: an agent or human scanning top-down sees what broke and what
+   came right before it without clicking into individual rows. */
+.activity-toolbar {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+.activity-toolbar label.inline {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.activity-toolbar input[type="search"] {
+  flex: 1; min-width: 220px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 0.4rem 0.6rem;
+}
+.activity-toolbar #activity-status {
+  margin-left: auto;
+}
+
+.activity-timeline {
+  list-style: none; padding: 0; margin: 0;
+  display: flex; flex-direction: column; gap: 0.5rem;
+}
+.activity-entry {
+  background: var(--surface);
+  border: 1px solid var(--border); border-left: 3px solid #888;
+  border-radius: 4px;
+  padding: 0.6rem 0.9rem;
+}
+.activity-entry.activity-error    { border-left-color: #e74c3c; }
+.activity-entry.activity-function { border-left-color: #f39c12; }
+.activity-entry.activity-service  { border-left-color: #f39c12; }
+.activity-entry.activity-traffic  { border-left-color: #7f8c8d; }
+
+.activity-line {
+  display: flex; align-items: baseline; gap: 0.6rem; flex-wrap: wrap;
+  font-size: 0.9rem;
+}
+.activity-time { min-width: 6.5rem; font-size: 0.8rem; }
+.activity-kind {
+  display: inline-block; padding: 0.1rem 0.45rem;
+  color: white; font-size: 0.7rem; font-weight: 700; text-transform: uppercase;
+  border-radius: 3px; letter-spacing: 0.04em;
+}
+.activity-summary { flex: 1; color: var(--text); }
+
+.activity-detail {
+  margin-top: 0.4rem; padding-left: 7.5rem;
+  font-size: 0.85rem; color: var(--text-muted);
+}
+.activity-msg {
+  background: var(--bg); padding: 0.3rem 0.5rem;
+  border-radius: 3px; white-space: pre-wrap; word-break: break-word;
+  max-height: 16rem; overflow: auto;
+}
+.activity-net { color: var(--text-muted); }
+.activity-net .net-url { color: var(--text); word-break: break-all; }
+.activity-net .net-status { color: #e74c3c; font-weight: 600; }
+.activity-corr {
+  margin-top: 0.3rem; color: var(--text-muted); font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.8rem;
+}
+.activity-corr code { color: var(--text); }
+.activity-corr .status-ok { color: #27ae60; }
+.activity-corr .status-error,
+.activity-corr .status-failed { color: #e74c3c; }
+.activity-meta { display: flex; gap: 0.6rem; align-items: baseline; flex-wrap: wrap; }
+.activity-meta code { color: var(--text); }
+.activity-extra { margin-top: 0.4rem; }
+.activity-extra summary { cursor: pointer; color: var(--text-muted); font-size: 0.8rem; }
+.activity-extra pre { background: var(--bg); padding: 0.4rem 0.6rem; border-radius: 3px; max-height: 24rem; overflow: auto; font-size: 0.75rem; }
+
+.activity-crumbs {
+  display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: baseline;
+  margin-top: 0.4rem; font-size: 0.75rem; color: var(--text-muted);
+}
+.crumb {
+  background: var(--bg); padding: 0.05rem 0.35rem;
+  border-radius: 3px; font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+}
+.crumb-click { color: #3498db; }
+.crumb-fetch, .crumb-xhr { color: #f39c12; }
+.crumb-nav { color: #9b59b6; }
+.crumb-console_error { color: #e74c3c; }
+.crumb-sep { color: var(--text-muted); padding: 0 0.1rem; }

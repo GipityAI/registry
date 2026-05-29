@@ -1,0 +1,24 @@
+{
+  "name": "@gipity/chatbot",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Drop-in chatbot for Gipity apps: configurable persona, scope guardrails (allowed/refused with refusal examples), static knowledge (20k token budget), streaming LLM responses, suggested-prompt chips. Headless engine + bubble widget; bring your own UI if you want.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "permissions": {
+      "network": [
+        "https://a.gipity.ai/api"
+      ]
+    },
+    "exposes": ["examples", "tests"],
+    "install": {
+      "importMap": {
+        "@gipity/chatbot": "./packages/chatbot/index.js",
+        "@gipity/chatbot/": "./packages/chatbot/"
+      }
+    }
+  }
+}

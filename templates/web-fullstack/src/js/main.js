@@ -1,5 +1,4 @@
 // App entry point - calls our own server functions for weather + recent lookups
-import { config } from './config.js';
 import { settings } from './settings.js';
 import { t } from './strings.js';
 
@@ -26,12 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.disabled = true;
 
     try {
-      const res = await fetch(`${config.apiBase}/get-weather`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ zip }),
-      });
-      const data = await res.json();
+      const data = await Gipity.fn('get-weather', { zip });
 
       if (data.error) {
         showError(data.error);
@@ -63,12 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadRecent() {
     const list = document.getElementById('recent-list');
     try {
-      const res = await fetch(`${config.apiBase}/get-recent`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ limit: settings.recentLimit }),
-      });
-      const data = await res.json();
+      const data = await Gipity.fn('get-recent', { limit: settings.recentLimit });
       const lookups = data.lookups || [];
       if (lookups.length === 0) {
         list.innerHTML = `<li>${t('noRecent')}</li>`;
