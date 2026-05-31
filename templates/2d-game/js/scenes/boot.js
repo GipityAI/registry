@@ -1,6 +1,5 @@
 // Boot scene - preloader with progress bar
 import { settings } from '../settings.js';
-import { t } from '../strings.js';
 
 export class Boot extends Phaser.Scene {
   constructor() {
@@ -18,7 +17,7 @@ export class Boot extends Phaser.Scene {
 
     const bg = this.add.rectangle(width / 2, barY, barW, barH, 0x333333).setOrigin(0.5);
     const fill = this.add.rectangle(barX, barY - barH / 2, 0, barH, settings.colors.player).setOrigin(0, 0);
-    const text = this.add.text(width / 2, barY - 30, t('loading'), {
+    const text = this.add.text(width / 2, barY - 30, 'Loading...', {
       fontSize: '16px',
       color: settings.colors.text,
     }).setOrigin(0.5);

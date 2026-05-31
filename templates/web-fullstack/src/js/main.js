@@ -1,6 +1,5 @@
 // App entry point - calls our own server functions for weather + recent lookups
 import { settings } from './settings.js';
-import { t } from './strings.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('weather-form');
@@ -16,12 +15,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const zip = document.getElementById('zip').value.trim();
     if (!/^\d{5}$/.test(zip)) {
-      showError(t('errorInvalidZip'));
+      showError('Please enter a valid 5-digit US zip code.');
       return;
     }
 
     const btn = form.querySelector('button');
-    btn.textContent = t('loadingText');
+    btn.textContent = 'Looking up weather...';
     btn.disabled = true;
 
     try {
@@ -42,9 +41,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       loadRecent();
     } catch (err) {
-      showError(t('errorNetwork'));
+      showError('Network error - please try again.');
     } finally {
-      btn.textContent = t('submitLabel');
+      btn.textContent = 'Get Weather';
       btn.disabled = false;
     }
   });
@@ -60,14 +59,14 @@ document.addEventListener('DOMContentLoaded', () => {
       const data = await Gipity.fn('get-recent', { limit: settings.recentLimit });
       const lookups = data.lookups || [];
       if (lookups.length === 0) {
-        list.innerHTML = `<li>${t('noRecent')}</li>`;
+        list.innerHTML = '<li>No recent lookups yet.</li>';
         return;
       }
       list.innerHTML = lookups
         .map(l => `<li><strong>${l.zip}</strong> - ${l.location}: ${l.temperature_f}°F, ${l.condition}</li>`)
         .join('');
     } catch (err) {
-      list.innerHTML = `<li>${t('errorNetwork')}</li>`;
+      list.innerHTML = '<li>Network error - please try again.</li>';
     }
   }
 });

@@ -1,6 +1,5 @@
 // Main game scene - gameplay logic
 import { settings } from '../settings.js';
-import { t } from '../strings.js';
 
 export class Game extends Phaser.Scene {
   constructor() {
@@ -36,14 +35,14 @@ export class Game extends Phaser.Scene {
     this.spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     // Title text
-    this.add.text(width / 2, 30, t('title'), {
+    this.add.text(width / 2, 30, '{{JS_TITLE}}', {
       fontSize: '28px',
       color: settings.colors.text,
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // Instructions
-    this.add.text(width / 2, 65, t('welcome'), {
+    this.add.text(width / 2, 65, 'Arrow keys to move, Space to jump', {
       fontSize: '14px',
       color: '#aaaaaa',
     }).setOrigin(0.5);

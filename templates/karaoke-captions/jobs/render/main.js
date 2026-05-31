@@ -67,7 +67,7 @@ const RENDER_DEFAULTS = Object.freeze({
   phrase_mode:    'natural',
   phrase_target:  8,
   show_next_line: true,     // the small upcoming-phrase preview at the bottom
-  show_watermark: true,     // the "BUILT ON GIPITY" footer
+  show_watermark: true,     // the "POWERED BY GIPITY" footer
 });
 
 const PHRASE_TARGET_MIN = 1;
@@ -452,7 +452,7 @@ export function SongVideo({ audioUrl, alignmentJson, title, style }) {
       ) : null}
       {(!(style && style.show_watermark === false)) ? (
         <div style={{ position: 'absolute', bottom: pad, width: '100%', textAlign: 'center', color: '#3a3a40', fontSize: Math.round(shortSide * 0.018), letterSpacing: '0.1em' }}>
-          BUILT ON GIPITY
+          POWERED BY GIPITY
         </div>
       ) : null}
     </AbsoluteFill>

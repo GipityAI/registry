@@ -3,7 +3,6 @@
 import { setConfig, onInit, onUpdate, physics, player, primitives, ui, features } from './core.js';
 import { config } from './config.js';
 import { settings } from './settings.js';
-import { t } from './strings.js';
 import { buildDemoScene } from './scene.js';
 
 setConfig(config);
@@ -21,7 +20,7 @@ onInit(async () => {
 
   buildDemoScene();
 
-  ui.showMessage(t('welcome'), settings.gameplay.messageDuration);
+  ui.showMessage('{{JS_TITLE}}', settings.gameplay.messageDuration);
 });
 
 // --- Audio ---

@@ -1,37 +1,43 @@
 # @gipity/i18n
 
-Multi-language for any Gipity web app — a language picker, locale persistence, RTL, and plural/translation lookup. It **transparently upgrades** the app's existing copy calls: every `import { t } from '@gipity/i18n'` becomes translation-aware and a picker mounts itself. **No app code changes.**
+Multi-language for any Gipity web app — a language picker, locale persistence, RTL, and plural/translation lookup.
 
 ```
 i18n/
-  index.js         the @gipity/i18n runtime (overrides the app's monolingual default)
+  index.js         the @gipity/i18n runtime (lookup + auto-mounted picker)
   lib/runtime.js   pure lookup engine (createI18n) — unit-tested
   picker.js        the <select> language switcher (auto-mounted)
   translations.js  per-language data (agent fills this)
-  examples/        worked drop-in
+  examples/        worked drop-in (also the scaffolded strings.js starter)
   tests/           Node-runnable (`gipity sandbox run`)
 ```
 
 ## How it works
 
-Web starter apps keep all copy in `src/js/strings.js` and read it via `t('key')`, importing the runtime from `@gipity/i18n`. Out of the box that specifier points at a tiny **monolingual** runtime — `t()` just returns your string with `{placeholder}` interpolation.
+Gipity apps keep copy right in the page by default — no i18n machinery, nothing to learn. You add this kit only when an app actually needs more than one language.
 
-`gipity add i18n` overrides the `@gipity/i18n` import to this kit. Because your app already routes copy through `t()`, every call site lights up at once — translation lookup, a language `<select>`, `localStorage` persistence, and automatic `<html dir>` flipping for RTL scripts. The kit reads your existing copy via the `@app/strings` alias (`src/js/strings.js`), so nothing in your app has to move.
+`gipity add i18n`:
 
-> Add i18n **early** — while you're writing UI. Routing copy through `t('key')` as you build is what makes this a zero-edit install. Bolting it onto an app with hard-coded strings means rewriting that copy first.
+1. **Scaffolds `src/js/strings.js`** — a copy table (`export const strings = { ... }`), if the app doesn't already have one.
+2. **Wires the import map** — `@gipity/i18n` → this kit's runtime, and `@app/strings` → your `src/js/strings.js`.
+3. **Auto-mounts** a language `<select>`, persists the choice to `localStorage`, and flips `<html dir>` for RTL scripts.
+
+Then you do the one-time migration: move your user-facing strings into `strings.js` as `key: 'text'` and swap hard-coded copy for `t('key')`. From then on every call site is translation-aware.
+
+> Adding i18n means routing copy through `t('key')`. If the app already has hard-coded strings, that copy moves into `strings.js` as part of the install — a quick, mechanical pass. Most single-language apps never need this kit at all.
 
 ## Use it
 
-Nothing to import or call — installing the kit is the integration. Keep writing UI text as:
+Read copy through `t()` (and `tn()` for plurals):
 
 ```js
-import { t, getLang } from '@gipity/i18n';
+import { t, tn, getLang } from '@gipity/i18n';
 el.textContent = t('welcome');
 el.textContent = t('greeting', { name: 'Sam' });       // "Hello, Sam!"
 el.textContent = tn('items', cart.length);             // plural-aware
 ```
 
-For your text to re-render when the user switches language, re-pull it on the `i18n:changed` event (the web starter's `main.js` already wires this):
+For your text to re-render when the user switches language, re-pull it on the `i18n:changed` event:
 
 ```js
 function render() { /* your t('key') → DOM assignments */ }

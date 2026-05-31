@@ -1,0 +1,111 @@
+/* gipity-theme.css — the canonical Gipity brand + polish layer for Water.css apps.
+   SINGLE SOURCE OF TRUTH: registry/templates/_shared/css/gipity-theme.css.
+   The per-template copies are synced by scripts/sync-registry.ts — DON'T edit a
+   copy; edit the source and re-run `npx tsx scripts/sync-registry.ts`.
+
+   How it works: the page forces dark (Water's dark.css build) and this file maps
+   the Gipity brand onto Water.css's OWN variables, so every plain element (links,
+   buttons, inputs, tables…) is on-brand with zero per-element CSS. The
+   --background-body / --text-main / --links / etc. names below are Water.css's;
+   loaded after water.css, they recolor the whole classless page. App-specific and
+   agent-added styles belong in the template's own styles.css (loaded after this).
+   To rebrand the accent, change --primary in one place. */
+:root {
+  color-scheme: dark;
+  accent-color: #f26522; /* native checkboxes, radios, range, progress */
+
+  /* Gipity brand palette */
+  --primary: #f26522;
+  --primary-hover: #d9541a;
+
+  /* Surface colors (custom components + Water's panels/inputs/code) */
+  --surface: #1a1a1a;
+  --surface-alt: #151515;
+  --text-muted: #a8a29e;
+
+  /* Map the brand onto Water.css's variables (left = Water's name) */
+  --background-body: #0d0d0d;           /* page background (Gipity black) */
+  --background: var(--surface);         /* inputs, code, table stripe */
+  --background-alt: var(--surface-alt);
+  --text-main: #f0f0eb;                 /* body text (Gipity cream) */
+  --text-bright: #ffffff;               /* headings, button text */
+  --links: var(--primary);              /* links */
+  --focus: rgba(242, 101, 34, 0.6);     /* focus ring */
+  --border: #333333;
+  --button-base: var(--primary);        /* buttons → orange */
+  --button-hover: var(--primary-hover);
+  --form-text: #f0f0eb;
+  --form-placeholder: #6f6f78;
+  --selection: rgba(242, 101, 34, 0.4); /* text selection */
+  --code: #f6b88a;                      /* inline / preformatted code */
+  --scrollbar-thumb: #333333;
+  --scrollbar-thumb-hover: #444444;
+
+  /* Spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --space-xl: 4rem;
+
+  /* Shape */
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Brand the two native elements Water's vars + accent-color don't reach. */
+mark {
+  background-color: #f7b27a; /* pale Gipity orange highlighter */
+  color: #1a1a1a; /* dark text for contrast on the highlight */
+}
+meter::-webkit-meter-bar {
+  background: var(--surface-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+meter::-webkit-meter-optimum-value,
+meter::-webkit-meter-suboptimum-value,
+meter::-webkit-meter-even-less-good-value {
+  background: var(--primary);
+}
+meter::-moz-meter-bar {
+  background: var(--primary);
+}
+
+/* Modern polish: unified radius + smooth interactions. Pure cosmetic token
+   tweaks on Water's native elements - no layout change. */
+button, input, select, textarea {
+  border-radius: var(--radius);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+button {
+  font-weight: 600;
+}
+pre {
+  border-radius: var(--radius);
+}
+code, kbd {
+  border-radius: 5px;
+}
+/* Pill-shaped gauges. Styling a progress pseudo-element opts out of
+   accent-color, so the orange fill must be re-asserted here. */
+progress, meter {
+  border-radius: 999px;
+}
+progress::-webkit-progress-bar {
+  background: var(--surface-alt);
+  border-radius: 999px;
+}
+progress::-webkit-progress-value {
+  background: var(--primary);
+  border-radius: 999px;
+}
+progress::-moz-progress-bar {
+  background: var(--primary);
+}
+meter::-webkit-meter-bar, meter::-webkit-meter-optimum-value {
+  border-radius: 999px;
+}
+h1, h2 {
+  letter-spacing: -0.02em; /* subtle modern tightening on large headings */
+}

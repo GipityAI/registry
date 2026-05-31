@@ -1,18 +1,4 @@
-/* Design tokens - customize these instead of hardcoding values */
-:root {
-  --primary: #f26522;
-  --primary-hover: #d9541a;
-
-  --surface: #1a1a2e;
-  --surface-alt: #16213e;
-  --text-muted: #999;
-
-  --space-xs: 0.25rem;
-  --space-sm: 0.5rem;
-  --space-md: 1rem;
-  --space-lg: 2rem;
-  --space-xl: 4rem;
-
-  --radius: 6px;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
+/* App-specific styles. The Gipity brand + design tokens (--primary, --surface,
+   --space-*, --radius, --shadow, …) come from gipity-theme.css, which loads
+   before this file. Add your own component styles here using those tokens;
+   never hardcode colors, spacing, or radii. */

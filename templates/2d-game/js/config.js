@@ -9,6 +9,9 @@ const config = {
   width: settings.canvas.width,
   height: settings.canvas.height,
   backgroundColor: settings.canvas.background,
+  // Round render positions to whole pixels so pointer-followed objects (paddles,
+  // cursors) don't shimmer sub-pixel as they move.
+  roundPixels: true,
   physics: {
     default: 'arcade',
     arcade: {

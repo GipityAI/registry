@@ -1,6 +1,6 @@
 # {{TITLE}}
 
-A REST API built on Gipity. No frontend - just functions and tests.
+A REST API powered by Gipity. No frontend - just functions and tests.
 
 ## Quick Start
 

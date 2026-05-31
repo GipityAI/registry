@@ -114,7 +114,7 @@ All at 100% platform margin over provider rates.
 
 ## Customization
 
-- **Style without code.** The **Style** tab covers most of what you'd want: caption colors, font size (fixed % or auto-fit "max"), edge padding, aspect ratio (16:9 / 9:16 / 1:1), phrase splitting (natural / fixed-length), and toggles for the upcoming-line preview and the "Built on Gipity" footer. Each render keeps its own style snapshot, so the Render tab can re-apply any past look.
+- **Style without code.** The **Style** tab covers most of what you'd want: caption colors, font size (fixed % or auto-fit "max"), edge padding, aspect ratio (16:9 / 9:16 / 1:1), phrase splitting (natural / fixed-length), and toggles for the upcoming-line preview and the "Powered by Gipity" footer. Each render keeps its own style snapshot, so the Render tab can re-apply any past look.
 - **Resolution & aspect.** Choose the resolution tier (Preview 720p / HD 1080p / 4K) and aspect ratio in the Style tab — the frame size is the tier's short side × the aspect, so the same font size looks identical across both.
 - **Composition design.** The Remotion composition is inlined in `jobs/render/main.js` as `COMP_SONGVIDEO_JSX` (a React component string). Edit it to change layout, animation, or per-word styling beyond what the Style tab exposes.
 - **Skip demucs for clean audio.** Edit `functions/song-align.js` to pass `skip_demucs: true` (or extend the song row to expose it from the UI). Saves ~20 s of GPU per run on a cappella / dry stem inputs.
