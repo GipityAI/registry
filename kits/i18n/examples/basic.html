@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>@gipity/i18n - basic example</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 40rem; margin: 4rem auto; padding: 0 1rem; }
+    .lang-picker { float: right; }
+    [dir="rtl"] .lang-picker { float: left; }
+  </style>
+  <!-- After `gipity add i18n`, the installer rewires "@gipity/i18n" to the kit.
+       This standalone example maps the specifiers by hand to show the wiring. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@gipity/i18n": "../index.js",
+      "@app/strings": "./strings.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <main>
+    <h1 id="welcome"></h1>
+    <p id="greet"></p>
+    <p id="count"></p>
+  </main>
+
+  <script type="module">
+    import { t, tn, getLang } from '@gipity/i18n';
+
+    function render() {
+      document.documentElement.lang = getLang();
+      document.getElementById('welcome').textContent = t('welcome');
+      document.getElementById('greet').textContent = t('greeting', { name: 'Sam' });
+      document.getElementById('count').textContent = tn('items', 3);
+    }
+
+    document.addEventListener('i18n:changed', render);
+    render();
+  </script>
+</body>
+</html>

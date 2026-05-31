@@ -20,8 +20,8 @@
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Language picker - inert unless config.features.i18n is true (see js/i18n.js).
-   Safe to keep even when i18n is off; nothing renders it in that case. */
+/* Language picker - rendered by the i18n kit (`gipity add i18n`) once the app
+   has translations. No-op until then; safe to keep. */
 .lang-picker {
   position: fixed;
   top: var(--space-sm);

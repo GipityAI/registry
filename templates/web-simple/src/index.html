@@ -10,11 +10,17 @@
   <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
   <link rel="stylesheet" href="./css/styles.css">
-  <!-- Add npm packages here - no install needed. Example:
-       "lodash-es": "https://esm.sh/lodash-es@4.17.21"
-       Then in JS: import { debounce } from 'lodash-es'; -->
+  <!-- Import map. "@gipity/i18n" is the copy seam: it points at the local
+       monolingual reader (js/i18n.js). `gipity add i18n` overrides it with the
+       i18n kit to make the app multi-language - no code changes.
+       Add npm packages here too (no install needed), e.g.
+       "lodash-es": "https://esm.sh/lodash-es@4.17.21" → import { debounce } from 'lodash-es'; -->
   <script type="importmap">
-  { "imports": {} }
+  {
+    "imports": {
+      "@gipity/i18n": "./js/i18n.js"
+    }
+  }
   </script>
   {{JSON_LD_BLOCK}}
   {{ANALYTICS_SCRIPT}}

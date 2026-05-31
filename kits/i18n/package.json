@@ -1,0 +1,19 @@
+{
+  "name": "@gipity/i18n",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Multi-language for any Gipity web app: a language picker, locale persistence, RTL, and plural/translation lookup. Transparently upgrades the app's existing `import { t } from '@gipity/i18n'` copy calls - zero code changes. Copy lives in src/js/strings.js; translations in translations.js.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "exposes": ["examples", "tests"],
+    "install": {
+      "importMap": {
+        "@gipity/i18n": "./packages/i18n/index.js",
+        "@app/strings": "./js/strings.js"
+      }
+    }
+  }
+}

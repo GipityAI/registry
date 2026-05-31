@@ -1,14 +1,10 @@
-// App configuration - identity, constants, and feature flags
+// App configuration - identity and constants.
 // Import: import { config } from './config.js';
+//
+// Multi-language isn't a flag here - run `gipity add i18n` when the app needs
+// it; the kit upgrades the app's t() copy calls in place.
 
 export const config = {
   title: '{{JS_TITLE}}',
   version: 1,
-  features: {
-    // i18n: enable the language picker + translations.js lookup.
-    // When false (default), t() returns strings[key] directly - no picker,
-    // no localStorage, translations.js ignored. Flip to true when the app
-    // needs multiple languages.
-    i18n: false,
-  },
 };

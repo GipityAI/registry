@@ -1,40 +1,35 @@
-// Language picker - mounted only when config.features.i18n is true.
-// main.js dynamic-imports this file so apps with i18n off don't pay for it.
+// The i18n seam - the default, monolingual reader behind `@gipity/i18n`.
 //
-// Add a language: translate strings into translations.js, then add a
-// display name to LANG_NAMES below so it shows nicely in the dropdown.
+// main.js imports { t, getLang } from '@gipity/i18n'; the importmap in
+// index.html points that at this file. t() returns your strings.js copy with
+// {placeholder} interpolation - no language switching, no extra weight.
+//
+// Run `gipity add i18n` to make the app multi-language: it overrides the
+// `@gipity/i18n` import with the kit (translations, a language picker,
+// persistence, RTL) and every t('key') call site upgrades in place - no edits
+// to main.js. You don't edit this file; you add the kit.
 
-import { getLang, setLang, availableLangs } from './strings.js';
+import { strings } from './strings.js';
 
-const LANG_NAMES = {
-  en: 'English',
-  es: 'Español',
-  zh: '中文',
-  hi: 'हिन्दी',
-  ar: 'العربية',
-  pt: 'Português',
-  fr: 'Français',
-  sw: 'Kiswahili',
-};
-
-/** Mount the language picker into `parent` (defaults to document.body).
- *  Returns the wrapper element so callers can style or remove it. */
-export function mountLangPicker(parent = document.body) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'lang-picker';
-
-  const select = document.createElement('select');
-  select.setAttribute('aria-label', 'Language');
-  for (const code of availableLangs()) {
-    const option = document.createElement('option');
-    option.value = code;
-    option.textContent = LANG_NAMES[code] ?? code;
-    if (code === getLang()) option.selected = true;
-    select.appendChild(option);
-  }
-  select.addEventListener('change', (e) => setLang(e.target.value));
-
-  wrapper.appendChild(select);
-  parent.prepend(wrapper);
-  return wrapper;
+/** Localized string for `key`, interpolating {placeholder} vars when given.
+ *  Missing key returns the key itself (never blank). */
+export function t(key, vars) {
+  let str = strings[key];
+  if (str == null) str = key;
+  if (vars) return String(str).replace(/\{(\w+)\}/g, (_, k) => (k in vars ? vars[k] : `{${k}}`));
+  return str;
 }
+
+/** Pluralized lookup. Picks `${key}_${rule}` for the count (one/other/...),
+ *  falling back to `${key}_other`, then the bare key. `count` is merged in. */
+export function tn(key, count, vars = {}) {
+  const rule = new Intl.PluralRules('en').select(count);
+  const has = (k) => strings[k] != null;
+  const chosen = has(`${key}_${rule}`) ? `${key}_${rule}` : has(`${key}_other`) ? `${key}_other` : key;
+  return t(chosen, { count, ...vars });
+}
+
+export const getLang = () => 'en';
+export const isRtl = () => false;
+export const availableLangs = () => ['en'];
+export const setLang = () => {}; // no-op until `gipity add i18n` is installed
