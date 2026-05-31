@@ -1,18 +1,56 @@
-/* Design tokens - customize these instead of hardcoding values */
+/* The Gipity look - a light, warm default theme. Customize these instead of
+   hardcoding values; the user can override anything. Built on Water.css
+   (vendored at ./water.css); the --xxx overrides below retheme Water's base
+   elements so the whole page is on-brand out of the box. */
 :root {
-  --primary: #f26522;
-  --primary-hover: #d9541a;
+  /* Gipity palette */
+  --gip-cream:  #f0efee;  /* page canvas */
+  --gip-black:  #141415;  /* text */
+  --gip-white:  #fafafa;  /* cards / surfaces */
+  --gip-orange: #f26522;  /* the one accent */
 
-  --surface: #1a1a2e;
-  --surface-alt: #16213e;
-  --text-muted: #999;
+  /* Water.css variable overrides - retheme every default element */
+  --background-body: var(--gip-cream);
+  --background:      var(--gip-white);
+  --background-alt:  #e9e8e7;
+  --text-main:       var(--gip-black);
+  --text-bright:     var(--gip-black);
+  --text-muted:      #6b6b6e;
+  --links:           var(--gip-orange);
+  --focus:           rgba(242, 101, 34, 0.4);
+  --border:          #e2e0de;
+  --button-base:     var(--gip-orange);
+  --button-hover:    #d9541a;
 
+  /* Type - system stack + five sizes (pick from these, don't invent new ones) */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 20px;
+  --text-xl: 28px;
+
+  /* App tokens for your own component styles */
+  --primary: var(--gip-orange);
+  --primary-hover: var(--button-hover);
+  --surface: var(--background);
+  --surface-alt: var(--background-alt);
+
+  /* Spacing scale */
   --space-xs: 0.25rem;
   --space-sm: 0.5rem;
   --space-md: 1rem;
   --space-lg: 2rem;
   --space-xl: 4rem;
 
-  --radius: 6px;
-  --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  /* Shape */
+  --radius: 8px;
+  --shadow: 0 2px 8px rgba(20, 20, 21, 0.08);
 }
+
+body { font-family: var(--font-sans); }
+
+/* Orange buttons read best with light text (Water leaves button text dark). */
+button,
+input[type='submit'],
+input[type='button'] { color: var(--gip-white); }
