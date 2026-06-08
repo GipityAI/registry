@@ -1,0 +1,3 @@
+
+# gw worktrees (git tracks them via .git/worktrees metadata; the dir itself is scratch)
+.worktrees/
