@@ -122,8 +122,8 @@ test('song-render persists render_options on the renders row', async (ctx) => {
     font_scale: 1.3,
   };
   const res = await ctx.fn.call('song-render', { song_guid: songGuid, mode: 'preview', render_options: styled });
-  assert.ok(res.data?.render_guid, 'should return a render_guid');
-  const renderGuid = res.data.render_guid;
+  assert.ok(res?.render_guid, 'should return a render_guid');
+  const renderGuid = res.render_guid;
 
   const row = await ctx.db.query(
     'select render_options from renders where short_guid = $1',
@@ -140,10 +140,10 @@ test('song-render with no render_options leaves the column NULL (back-compat pat
     return;
   }
   const res = await ctx.fn.call('song-render', { song_guid: songGuid, mode: 'preview' });
-  assert.ok(res.data?.render_guid, 'should return a render_guid');
+  assert.ok(res?.render_guid, 'should return a render_guid');
   const row = await ctx.db.query(
     'select render_options from renders where short_guid = $1',
-    [res.data.render_guid],
+    [res.render_guid],
   );
   assert.equal(row.rows[0].render_options, null, 'no render_options in body → NULL in DB');
 });
@@ -159,10 +159,10 @@ test('song-render rejects garbage render_options without failing the whole call'
     mode: 'preview',
     render_options: { bg_color: 'not-a-color', font_family: 'Comic Sans' },
   });
-  assert.ok(res.data?.render_guid, 'render should still be created');
+  assert.ok(res?.render_guid, 'render should still be created');
   const row = await ctx.db.query(
     'select render_options from renders where short_guid = $1',
-    [res.data.render_guid],
+    [res.render_guid],
   );
   assert.equal(row.rows[0].render_options, null, 'all-garbage options → NULL, not partial');
 });

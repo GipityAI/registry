@@ -7,23 +7,23 @@
 
 test('get-weather returns weather for a valid zip code', async (ctx) => {
     const result = await ctx.fn.call('get-weather', { zip: '10001' });
-    assert.ok(result.data.location, 'should have a location');
-    assert.equal(result.data.zip, '10001');
-    assert.ok(typeof result.data.temperature_f === 'number', 'temperature should be a number');
-    assert.ok(result.data.condition, 'should have a condition');
-    assert.ok(typeof result.data.humidity === 'number', 'humidity should be a number');
-    assert.ok(typeof result.data.wind_mph === 'number', 'wind should be a number');
-    assert.ok(result.data.commentary, 'should have commentary');
-    assert.ok(result.data.timestamp, 'should have a timestamp');
+    assert.ok(result.location, 'should have a location');
+    assert.equal(result.zip, '10001');
+    assert.ok(typeof result.temperature_f === 'number', 'temperature should be a number');
+    assert.ok(result.condition, 'should have a condition');
+    assert.ok(typeof result.humidity === 'number', 'humidity should be a number');
+    assert.ok(typeof result.wind_mph === 'number', 'wind should be a number');
+    assert.ok(result.commentary, 'should have commentary');
+    assert.ok(result.timestamp, 'should have a timestamp');
 });
 
 test('get-weather returns error for invalid zip', async (ctx) => {
     const result = await ctx.fn.call('get-weather', { zip: 'abc' });
-    assert.ok(result.data.error, 'should return an error');
-    assert.ok(result.data.error.includes('zip code'), 'error should mention zip code');
+    assert.ok(result.error, 'should return an error');
+    assert.ok(result.error.includes('zip code'), 'error should mention zip code');
 });
 
 test('get-weather returns error for missing zip', async (ctx) => {
     const result = await ctx.fn.call('get-weather', {});
-    assert.ok(result.data.error, 'should return an error');
+    assert.ok(result.error, 'should return an error');
 });
