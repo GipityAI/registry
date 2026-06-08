@@ -1,3 +1,7 @@
 
+# Dependencies (no trailing slash, so a worktree-linked node_modules SYMLINK is
+# ignored too, not just a real directory — never commit a linked node_modules)
+node_modules
+
 # gw worktrees (git tracks them via .git/worktrees metadata; the dir itself is scratch)
 .worktrees/
