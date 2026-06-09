@@ -11,7 +11,11 @@
 
 export const NOOP_PRESENCE = {
   encode: () => null,             // local state -> wire payload (null = skip)
-  apply: () => {},                // (peerRecord, payload) -> void
+  // Default: merge the received payload into the peer record so custom fields
+  // (name, color, status, ...) survive the round trip. This makes the common
+  // named-roster case work without a custom adapter; supply one only to
+  // transform/validate fields. Apps that override `apply` skip this entirely.
+  apply: (peer, payload) => { if (payload && typeof payload === 'object') Object.assign(peer, payload); },
   newPeer: () => ({}),            // -> blank peer record
 };
 
