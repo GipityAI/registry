@@ -16,25 +16,25 @@
 
   /* Gipity brand palette */
   --primary: #f26522;
-  --primary-hover: #d9541a;
+  --primary-hover: #fa8c46;
 
   /* Surface colors (custom components + Water's panels/inputs/code) */
-  --surface: #1a1a1a;
-  --surface-alt: #151515;
+  --surface: #202020;
+  --surface-alt: #191919;
   --text-muted: #a8a29e;
 
   /* Map the brand onto Water.css's variables (left = Water's name) */
   --background-body: #0d0d0d;           /* page background (Gipity black) */
   --background: var(--surface);         /* inputs, code, table stripe */
   --background-alt: var(--surface-alt);
-  --text-main: #f0f0eb;                 /* body text (Gipity cream) */
-  --text-bright: #ffffff;               /* headings, button text */
+  --text-main: #e6e6f0;                 /* body text (Gipity cream) */
+  --text-bright: #fffeff;               /* headings, button text */
   --links: var(--primary);              /* links */
   --focus: rgba(242, 101, 34, 0.6);     /* focus ring */
   --border: #333333;
   --button-base: var(--primary);        /* buttons → orange */
   --button-hover: var(--primary-hover);
-  --form-text: #f0f0eb;
+  --form-text: #e6e6f0;
   --form-placeholder: #6f6f78;
   --selection: rgba(242, 101, 34, 0.4); /* text selection */
   --code: #f6b88a;                      /* inline / preformatted code */
