@@ -62,7 +62,7 @@ If a kit is meant to ship pre-installed in a specific template (like `realtime` 
 
 ## The sync gate
 
-`registry/templates/_shared/` is the canonical source for non-kit code reused across templates (currently the weather example used by `web-fullstack` and `api`). Same for kits that are pre-installed in templates (`realtime` → 3D templates, `web-vision-mediapipe` → `web-vision-cam`).
+`registry/templates/_shared/` is the canonical source for non-kit code reused across templates (currently the `gipity-theme.css` brand theme used by the Water.css templates `web-simple` and `web-fullstack`). Same for kits that are pre-installed in templates (`realtime` → 3D templates, `web-vision-mediapipe` → `web-vision-cam`).
 
 After any edit to `_shared/` or to a synced kit:
 

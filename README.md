@@ -17,11 +17,11 @@ Templates are further split by `kind`:
 |------|------|-------|
 | [`web-simple`](templates/web-simple/) | template | Static frontend-only web app — landing page, dashboard, simple game. No backend. |
 | [`3d-engine`](templates/3d-engine/) | template | Minimal 3D multiplayer wiring — Three.js + Rapier physics + Colyseus, no gameplay. |
-| [`web-fullstack`](templates/web-fullstack/) | starter | Web app with backend API + database. Weather-by-zip demo included. |
+| [`web-fullstack`](templates/web-fullstack/) | template | Web app with backend API + database — blank fullstack wiring (frontend + functions + migrations) that deploys green. |
 | [`web-vision-cam`](templates/web-vision-cam/) | starter | Fullscreen camera app with on-device gesture/pose/object detection. |
 | [`2d-game`](templates/2d-game/) | starter | 2D Phaser 3 game — platformer/arcade/puzzle. |
 | [`3d-world`](templates/3d-world/) | starter | Playable 3D multiplayer rocket-launcher demo, built on `3d-engine`. |
-| [`api`](templates/api/) | starter | Pure API backend (no frontend) — weather-by-zip endpoint with tests. |
+| [`api`](templates/api/) | template | Pure API backend (no frontend) — blank wiring with one example function and a passing test. |
 
 ### Kits
 
@@ -60,7 +60,7 @@ registry/
     └── web-vision-mediapipe/
 ```
 
-The `_shared/` directory holds canonical files (e.g. the weather example used by `web-fullstack` and `api`) that get synced into each consuming template. Run `npx tsx scripts/sync-registry.ts` after editing any file under `_shared/` or any kit referenced by a template; CI uses `--check` to fail on drift.
+The `_shared/` directory holds canonical files (e.g. the `gipity-theme.css` brand theme used by the Water.css templates) that get synced into each consuming template. Run `npx tsx scripts/sync-registry.ts` after editing any file under `_shared/` or any kit referenced by a template; CI uses `--check` to fail on drift.
 
 ## Contributing
 

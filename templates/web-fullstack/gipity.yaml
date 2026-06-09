@@ -2,11 +2,11 @@ version: 1
 
 # Project: {{PROJECT_GUID}}
 #
-# Frontend (src/) → CDN
-# Migrations (migrations/) → user database
-# Functions (functions/) → serverless endpoints
+# Frontend (src/)          → CDN
+# Migrations (migrations/) → your Gipity database
+# Functions (functions/)   → serverless endpoints
 #
-# Call your endpoints with:
+# Call an endpoint with:
 #   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
 #     -H 'Content-Type: application/json' -d '{}'
 
@@ -24,14 +24,11 @@ deploy:
       database: {{DATABASE}}
 
     # Serverless functions
+    # New functions are auto-added here. Edit entries to customize permissions.
+    # Fields: name, auth (public|user|member), tables, fetch_domains, services
     - name: functions
       type: functions
       source: functions
       function_definitions:
-        - name: get-weather
+        - name: example
           auth: public
-          fetch_domains: [geocoding-api.open-meteo.com, api.open-meteo.com]
-          tables: [weather_lookups]
-        - name: get-recent
-          auth: public
-          tables: [weather_lookups]

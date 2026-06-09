@@ -20,34 +20,14 @@
 <body>
   <main>
     <h1>{{TITLE}}</h1>
-    <p>Enter a US zip code to look up current weather. Lookups are saved to the database.</p>
 
-    <form id="weather-form">
-      <label for="zip">ZIP Code</label>
-      <input type="text" id="zip" name="zip" placeholder="90210" maxlength="5" pattern="\d{5}" required>
-      <button type="submit">Get Weather</button>
-    </form>
+    <!-- Build your UI here. This template is intentionally blank: the frontend
+         (src/), serverless functions (functions/), and a database (migrations/)
+         are all wired up and deploy green. Add to it - there's nothing to delete. -->
 
-    <div id="result" hidden>
-      <h2 id="location"></h2>
-      <table>
-        <tr><td>Temperature</td><td id="temp"></td></tr>
-        <tr><td>Condition</td><td id="condition"></td></tr>
-        <tr><td>Humidity</td><td id="humidity"></td></tr>
-        <tr><td>Wind</td><td id="wind"></td></tr>
-      </table>
-      <p id="commentary"></p>
-    </div>
-
-    <div id="error" hidden>
-      <p id="error-msg"></p>
-    </div>
-
-    <section>
-      <h2>Recent Lookups</h2>
-      <ul id="recent-list"><li>Loading...</li></ul>
-    </section>
+    <p id="status">Connecting to the backend…</p>
   </main>
+
   <script type="module" src="./js/main.js"></script>
 </body>
 </html>

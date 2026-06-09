@@ -6,8 +6,8 @@ Templates are the starting points. Each one is production-ready with all files f
 
 Every template is one of two kinds:
 
-- **Templates** - minimal framework wiring (e.g. `web-simple`, `3d-engine`). Blank slate for new builds.
-- **Starter apps** - complete working demos (e.g. `3d-world`, `web-fullstack`, `2d-game`, `api`). Playable reference you can learn from or extend.
+- **Templates** - minimal framework wiring (e.g. `web-simple`, `web-fullstack`, `api`, `3d-engine`). Blank slate that deploys green; build on it with nothing to delete.
+- **Starter apps** - complete working demos (e.g. `3d-world`, `2d-game`, `web-vision-cam`). Playable reference you can learn from or extend.
 
 To add a reusable building block (e.g. multiplayer) into an *existing* app, use a **kit** instead - see the sibling `kits/` directory in this registry.
 

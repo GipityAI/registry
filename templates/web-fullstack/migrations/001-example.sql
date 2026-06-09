@@ -1,0 +1,12 @@
+-- Database migrations run in filename order, each exactly once (idempotent).
+-- This template ships no tables so it deploys clean - there's nothing to delete.
+-- Uncomment the example below (or replace it) to define your schema, then redeploy.
+--
+-- CREATE TABLE IF NOT EXISTS items (
+--     short_guid  VARCHAR(20) PRIMARY KEY,   -- external id; make one with guid('item') in a function
+--     name        VARCHAR(200) NOT NULL,
+--     created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+-- );
+--
+-- -- Index every column you filter or sort on:
+-- CREATE INDEX IF NOT EXISTS idx_items_created ON items(created_at DESC);

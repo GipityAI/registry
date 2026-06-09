@@ -2,7 +2,9 @@ version: 1
 
 # Project: {{PROJECT_GUID}}
 #
-# Call your endpoints with:
+# Functions (functions/) → serverless HTTP endpoints. No frontend, no database.
+#
+# Call an endpoint with:
 #   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
 #     -H 'Content-Type: application/json' -d '{}'
 
@@ -16,6 +18,5 @@ deploy:
       type: functions
       source: functions
       function_definitions:
-        - name: get-weather
+        - name: example
           auth: public
-          fetch_domains: [geocoding-api.open-meteo.com, api.open-meteo.com]
