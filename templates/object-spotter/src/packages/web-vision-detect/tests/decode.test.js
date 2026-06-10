@@ -12,7 +12,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { makeGrids, decodeYolox, letterboxParams, mapToSource } from '../lib/decode.js';
+import { FORMATS, makeGrids, decodeYolox, letterboxParams, mapToSource } from '../lib/decode.js';
 import { nms } from '../lib/nms.js';
 import { COCO_LABELS } from '../lib/labels.js';
 
@@ -59,6 +59,20 @@ test('decode + nms reproduces the reference detections', () => {
       assert.ok(Math.abs(g - e) < 0.05, `det ${i} box ${g} != ${e}`);
     }
   });
+});
+
+test('FORMATS.yolox table wiring matches the direct decode call', () => {
+  const state = FORMATS.yolox.makeState(golden.inputSize);
+  const viaTable = FORMATS.yolox.decode(raw, [1, state.count, 85], state, golden.scoreThreshold);
+  const direct = decodeYolox(raw, makeGrids(golden.inputSize), { numClasses: 80, scoreThreshold: golden.scoreThreshold });
+  assert.deepEqual(viaTable, direct);
+  // Preprocess contract: YOLOX is BGR, unnormalized, top-left pad.
+  assert.equal(FORMATS.yolox.channelOrder, 'BGR');
+  assert.equal(FORMATS.yolox.pixelScale, 1);
+  assert.equal(FORMATS.yolox.centerPad, false);
+  assert.equal(FORMATS.yolo.channelOrder, 'RGB');
+  assert.equal(FORMATS.yolo.pixelScale, 255);
+  assert.equal(FORMATS.yolo.centerPad, true);
 });
 
 test('decodeYolox rejects a mismatched tensor size', () => {

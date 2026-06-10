@@ -82,11 +82,14 @@ export async function mountDetect(config) {
   } = config;
   if (!video || !canvas) throw new Error('mountDetect needs both { video, canvas } elements.');
 
+  // Live option state: setScoreThreshold/setCamera mutate these, so a later
+  // switchModel/flipCamera rebuilds with the *current* settings rather than
+  // the construction-time ones.
   const detectorOptions = { backend, scoreThreshold, iouThreshold, maxDetections };
+  let camOpts = { facingMode: 'environment', ...cameraOptions };
   const ctx = canvas.getContext('2d');
-  let facingMode = cameraOptions.facingMode || 'environment';
-  let mirrored = mirror ?? (facingMode === 'user');
-  let cam = await startCamera(video, { ...cameraOptions, facingMode });
+  let mirrored = mirror ?? (camOpts.facingMode === 'user');
+  let cam = await startCamera(video, camOpts);
 
   // `detector` is swappable; the loop reads it through a stable closure.
   let detector = await createDetector({ ...detectorOptions, model });
@@ -121,26 +124,29 @@ export async function mountDetect(config) {
     pause() { loop.stop(); },
     resume() { loop.start(); },
     /** Adjust the confidence cutoff live (no model reload). */
-    setScoreThreshold: (v) => detector.setScoreThreshold(v),
+    setScoreThreshold(v) {
+      detectorOptions.scoreThreshold = v;
+      detector.setScoreThreshold(v);
+    },
     /**
      * Restart the camera with new constraints (e.g. a different facingMode).
      * Mirroring auto-tracks the front/rear convention unless an explicit
      * `mirror` is passed.
      * @returns {Promise<{facingMode:string, mirror:boolean}>}
      */
-    async setCamera({ facingMode: nextFacing, mirror: nextMirror, ...rest } = {}) {
+    async setCamera({ mirror: nextMirror, ...rest } = {}) {
       loop.stop();
       cam.stop();
-      facingMode = nextFacing || facingMode;
-      mirrored = nextMirror ?? (facingMode === 'user');
-      cam = await startCamera(video, { ...cameraOptions, ...rest, facingMode });
+      camOpts = { ...camOpts, ...rest };
+      mirrored = nextMirror ?? (camOpts.facingMode === 'user');
+      cam = await startCamera(video, camOpts);
       clearCanvas(ctx);
       loop.start();
-      return { facingMode, mirror: mirrored };
+      return { facingMode: camOpts.facingMode, mirror: mirrored };
     },
     /** Toggle front <-> rear camera. Resolves with the new state. */
     async flipCamera() {
-      const next = facingMode === 'user' ? 'environment' : 'user';
+      const next = camOpts.facingMode === 'user' ? 'environment' : 'user';
       return this.setCamera({ facingMode: next });
     },
     /** True iff flipping facing mode would land on a *different* physical
@@ -151,7 +157,7 @@ export async function mountDetect(config) {
     /** Which execution provider is running: 'webgpu' or 'wasm'. */
     currentBackend: () => detector.backend,
     /** Current camera facing mode ('user' | 'environment'). */
-    currentFacingMode: () => facingMode,
+    currentFacingMode: () => camOpts.facingMode,
     /** Whether the overlay is currently mirroring geometry. */
     currentMirror: () => mirrored,
     /** Tear everything down: stop the loop, free the model, stop the camera. */
@@ -171,7 +177,7 @@ export { createDetector } from './lib/detector.js';
 export { startCamera, canSwitchFacing } from './lib/camera.js';
 export { createLoop, createFps } from './lib/loop.js';
 export { fitCanvas, clearCanvas, drawDetections } from './lib/draw.js';
-export { makeGrids, decodeYolox, decodeYolo, letterboxParams, mapToSource } from './lib/decode.js';
+export { FORMATS, makeGrids, decodeYolox, decodeYolo, letterboxParams, mapToSource } from './lib/decode.js';
 export { nms } from './lib/nms.js';
 export { COCO_LABELS } from './lib/labels.js';
 export { PRESETS, PRESET_NAMES, resolveModel, ORT_VERSION, ORT_WASM_BASE } from './lib/models.js';

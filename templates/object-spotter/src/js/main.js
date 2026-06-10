@@ -31,18 +31,31 @@ const errorMsg = document.getElementById('error-msg');
 // The live vision session, set once the camera starts.
 let vision = null;
 
+// Last-rendered HUD strings - frames usually repeat them, so skip the DOM
+// write (and its repaint) when nothing changed.
+let lastCounts = '';
+let lastFps = '';
+
 /** "2 × person, 1 × cup" - aggregate one frame's detections per label. */
 function renderCounts(detections) {
-  if (!detections.length) {
-    countsEl.textContent = 'nothing spotted';
-    return;
-  }
   const counts = {};
   for (const det of detections) counts[det.label] = (counts[det.label] || 0) + 1;
-  countsEl.textContent = Object.entries(counts)
+  const text = Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
     .map(([label, n]) => `${n} × ${label}`)
-    .join('   ');
+    .join('   ') || 'nothing spotted';
+  if (text !== lastCounts) {
+    lastCounts = text;
+    countsEl.textContent = text;
+  }
+}
+
+function renderFps(fps) {
+  const text = `${fps} FPS · ${vision?.currentBackend() ?? ''}`;
+  if (text !== lastFps) {
+    lastFps = text;
+    fpsEl.textContent = text;
+  }
 }
 
 /** Build the bottom model-switcher buttons from config.models. */
@@ -120,6 +133,7 @@ async function detectPhoto(file) {
     photo.hidden = false;
     backBtn.hidden = false;
     fpsEl.hidden = true;
+    modelBar.hidden = true;
     renderCounts(result.detections);
   } catch (err) {
     console.error('photo detection failed:', err);
@@ -132,6 +146,7 @@ function backToLive() {
   photo.hidden = true;
   backBtn.hidden = true;
   fpsEl.hidden = false;
+  modelBar.hidden = false;
   photoInput.value = '';
   vision?.resume();
 }
@@ -147,7 +162,7 @@ async function start() {
       model: config.defaultModel,
       scoreThreshold: config.scoreThreshold,
       camera: { facingMode: config.facingMode },
-      onFps: (fps) => { fpsEl.textContent = `${fps} FPS · ${vision?.currentBackend() ?? ''}`; },
+      onFps: renderFps,
       onResult: ({ detections }) => renderCounts(detections),
     });
     startGate.hidden = true;
@@ -170,8 +185,7 @@ async function start() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.title = config.title;
-  // Front-facing camera reads naturally mirrored; updated again after start.
-  stage.classList.toggle('mirror', config.facingMode === 'user');
+  applyMirror();
   buildModelBar();
   startBtn.addEventListener('click', start);
   flipBtn.addEventListener('click', flipCamera);

@@ -11,30 +11,26 @@
  *
  * Preprocessing happens on a scratch canvas: the frame is letterboxed into
  * the model's square input (aspect ratio preserved, gray padding), then read
- * back and laid out as the CHW float tensor each model family expects -
- * YOLOX wants BGR 0-255, Ultralytics YOLO wants RGB 0-1. The matching
- * decoder is pure math in lib/decode.js.
+ * back and laid out as the CHW float tensor the model family expects. The
+ * per-family contract (channel order, normalization, padding, decoder) lives
+ * in the FORMATS table in lib/decode.js - this file is format-agnostic.
  */
 
 import * as ort from 'onnxruntime-web';
 import { ORT_WASM_BASE, resolveModel } from './models.js';
 import { COCO_LABELS } from './labels.js';
-import { makeGrids, decodeYolox, decodeYolo, letterboxParams, mapToSource } from './decode.js';
+import { FORMATS, letterboxParams, mapToSource } from './decode.js';
 import { nms } from './nms.js';
 
 // Letterbox padding value - 114/255 gray, the constant both YOLO families
 // train with.
 const PAD_FILL = 'rgb(114, 114, 114)';
 
-let ortConfigured = false;
-function configureOrt() {
-  if (ortConfigured) return;
-  ort.env.wasm.wasmPaths = ORT_WASM_BASE;
-  ortConfigured = true;
-}
+// Tell ONNX Runtime where its WASM/WebGPU binaries live. Module scope:
+// assignment is idempotent and ort is already imported eagerly above.
+ort.env.wasm.wasmPaths = ORT_WASM_BASE;
 
 async function createSession(url, backend) {
-  configureOrt();
   const tryOrder = backend === 'auto'
     ? (navigator.gpu ? ['webgpu', 'wasm'] : ['wasm'])
     : [backend];
@@ -76,8 +72,15 @@ export async function createDetector(options = {}) {
   const outputName = session.outputNames[0];
 
   const size = spec.inputSize;
-  const isYolox = spec.format === 'yolox';
-  const grids = isYolox ? makeGrids(size) : null;
+  const format = FORMATS[spec.format];
+  if (!format) {
+    throw new Error(`Unknown model format "${spec.format}". Use one of: ${Object.keys(FORMATS).join(', ')}`);
+  }
+  const formatState = format.makeState(size);
+  // Hoisted per-pixel constants: RGBA offsets in channel order, and a
+  // multiplier instead of a per-pixel divide.
+  const [c0, c1, c2] = format.channelOrder === 'BGR' ? [2, 1, 0] : [0, 1, 2];
+  const pixelScale = 1 / format.pixelScale;
 
   // Scratch canvas + tensor buffer, reused across frames.
   const scratch = document.createElement('canvas');
@@ -87,28 +90,17 @@ export async function createDetector(options = {}) {
   const tensorData = new Float32Array(3 * size * size);
 
   function preprocess(source, srcWidth, srcHeight) {
-    const box = letterboxParams(srcWidth, srcHeight, size, !isYolox);
+    const box = letterboxParams(srcWidth, srcHeight, size, format.centerPad);
     sctx.fillStyle = PAD_FILL;
     sctx.fillRect(0, 0, size, size);
     sctx.drawImage(source, box.padX, box.padY, box.drawWidth, box.drawHeight);
     const { data } = sctx.getImageData(0, 0, size, size);
     const plane = size * size;
-    if (isYolox) {
-      // CHW, BGR channel order, raw 0-255 (YOLOX trains without normalization).
-      for (let i = 0; i < plane; i++) {
-        const p = i * 4;
-        tensorData[i] = data[p + 2];
-        tensorData[plane + i] = data[p + 1];
-        tensorData[2 * plane + i] = data[p];
-      }
-    } else {
-      // CHW, RGB, normalized 0-1 (Ultralytics convention).
-      for (let i = 0; i < plane; i++) {
-        const p = i * 4;
-        tensorData[i] = data[p] / 255;
-        tensorData[plane + i] = data[p + 1] / 255;
-        tensorData[2 * plane + i] = data[p + 2] / 255;
-      }
+    for (let i = 0; i < plane; i++) {
+      const p = i * 4;
+      tensorData[i] = data[p + c0] * pixelScale;
+      tensorData[plane + i] = data[p + c1] * pixelScale;
+      tensorData[2 * plane + i] = data[p + c2] * pixelScale;
     }
     return box;
   }
@@ -130,9 +122,7 @@ export async function createDetector(options = {}) {
     const inferMs = performance.now() - t0;
 
     const out = result[outputName];
-    const candidates = isYolox
-      ? decodeYolox(out.data, grids, { numClasses: out.dims[2] - 5, scoreThreshold })
-      : decodeYolo(out.data, { numAnchors: out.dims[2], numClasses: out.dims[1] - 4, scoreThreshold });
+    const candidates = format.decode(out.data, out.dims, formatState, scoreThreshold);
     const kept = nms(candidates, { iouThreshold, maxDetections });
     const mapped = mapToSource(kept, { ...box, srcWidth, srcHeight });
 

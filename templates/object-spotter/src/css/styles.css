@@ -167,9 +167,6 @@ html, body {
 .model-bar button.active { background: var(--primary); }
 .model-bar button:disabled { opacity: 0.5; cursor: default; }
 
-/* A photo result replaces the model bar visually - hide it underneath */
-#photo:not([hidden]) ~ .model-bar { visibility: hidden; }
-
 /* Centered gates - start prompt and error message */
 .overlay {
   position: absolute;
