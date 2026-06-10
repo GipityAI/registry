@@ -24,6 +24,23 @@ test('keeps the methods the app supplied', () => {
   assert.equal(a.entities.id, myId);
 });
 
+test('default presence.apply merges custom peer fields (named-roster case)', () => {
+  // Without a custom adapter, a received payload (e.g. {name}) must land on the
+  // peer record so the common "who's here" roster shows real names. (#164)
+  const a = normalizeAdapter();
+  const peer = a.presence.newPeer();
+  a.presence.apply(peer, { name: 'Ada', color: 'orange' });
+  assert.equal(peer.name, 'Ada');
+  assert.equal(peer.color, 'orange');
+});
+
+test('default presence.apply ignores a non-object payload', () => {
+  const a = normalizeAdapter();
+  const peer = a.presence.newPeer();
+  a.presence.apply(peer, null);
+  assert.deepEqual(peer, {});
+});
+
 test('tracksDrift is true only when getDriftAnchor is supplied', () => {
   const physics = normalizeAdapter({ entities: { getDriftAnchor: () => ({ x: 0, y: 0, z: 0 }) } });
   assert.equal(physics.entities.tracksDrift, true);
