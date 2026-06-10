@@ -1,0 +1,219 @@
+/* Design tokens - customize these instead of hardcoding values */
+:root {
+  --primary: #f26522;
+  --primary-hover: #d9541a;
+  --ink: #ffffff;
+  --bg: #0c0c10;
+  --chip-bg: rgba(12, 12, 16, 0.72);
+  --space-sm: 0.5rem;
+  --space-md: 1rem;
+  --space-lg: 2rem;
+  --radius: 999px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: system-ui, -apple-system, sans-serif;
+  overflow: hidden;
+}
+
+/* Fullscreen camera stage */
+#stage {
+  position: fixed;
+  inset: 0;
+}
+
+/* Video feed and canvas overlay share the stage 1:1. Both use object-fit:
+   cover so a non-matching screen aspect crops them identically - keeping the
+   overlay aligned with the video. */
+#cam,
+#overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#overlay { pointer-events: none; }
+
+/* Still-photo result: whole image visible, letterboxed on black. */
+#photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: var(--bg);
+}
+
+/* Front ('user') camera reads naturally when mirrored. main.js adds/removes
+   this class based on facingMode. The overlay canvas is *not* flipped here -
+   if it were, every caption would read backwards. The kit mirrors the
+   detection geometry in code so boxes line up while text stays upright. */
+#stage.mirror #cam {
+  transform: scaleX(-1);
+}
+
+/* HUD chip - the FPS/backend readout */
+.hud-chip {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  padding: 0.35rem 0.7rem;
+  background: var(--chip-bg);
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* Live per-class counts, under the FPS chip */
+.counts {
+  position: absolute;
+  top: 3.4rem;
+  left: var(--space-md);
+  max-width: min(70vw, 24rem);
+  padding: 0.35rem 0.7rem;
+  background: var(--chip-bg);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Icon buttons (photo, flip camera), top-right */
+.top-actions {
+  position: absolute;
+  top: var(--space-md);
+  right: var(--space-md);
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.icon-btn {
+  width: 2.6rem;
+  height: 2.6rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--chip-bg);
+  color: var(--ink);
+  font-size: 1.4rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.icon-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.icon-btn:disabled { opacity: 0.5; cursor: default; }
+.icon-btn svg { width: 1.4rem; height: 1.4rem; fill: currentColor; }
+
+/* Back-to-camera button shown over a photo result */
+.back-btn {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.75rem 1.8rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.back-btn:hover { background: var(--primary-hover); }
+
+/* Model switcher */
+.model-bar {
+  position: absolute;
+  bottom: var(--space-lg);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-sm);
+  padding: var(--space-sm);
+  background: var(--chip-bg);
+  border-radius: var(--radius);
+}
+
+.model-bar button {
+  margin: 0;
+  padding: 0.55rem 1.2rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.model-bar button:hover { background: rgba(255, 255, 255, 0.12); }
+.model-bar button.active { background: var(--primary); }
+.model-bar button:disabled { opacity: 0.5; cursor: default; }
+
+/* A photo result replaces the model bar visually - hide it underneath */
+#photo:not([hidden]) ~ .model-bar { visibility: hidden; }
+
+/* Centered gates - start prompt and error message */
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  text-align: center;
+  background: rgba(12, 12, 16, 0.92);
+}
+
+.overlay[hidden] { display: none; }
+
+.overlay h1 {
+  margin: 0;
+  font-size: 1.9rem;
+}
+
+.overlay p {
+  margin: 0;
+  max-width: 32rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.overlay .fine-print {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.overlay button {
+  margin-top: var(--space-sm);
+  padding: 0.75rem 1.8rem;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--primary);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.overlay button:hover { background: var(--primary-hover); }

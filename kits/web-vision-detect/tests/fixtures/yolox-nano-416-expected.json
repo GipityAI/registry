@@ -1,0 +1,43 @@
+{
+ "inputSize": 416,
+ "ratio": 0.5416666666666666,
+ "imageWidth": 768,
+ "imageHeight": 576,
+ "scoreThreshold": 0.5,
+ "iouThreshold": 0.45,
+ "expected": [
+  {
+   "class": "dog",
+   "classId": 16,
+   "score": 0.8285,
+   "box": [
+    72.08,
+    112.12,
+    175.82,
+    293.72
+   ]
+  },
+  {
+   "class": "car",
+   "classId": 2,
+   "score": 0.8094,
+   "box": [
+    252.79,
+    42.36,
+    374.58,
+    92.92
+   ]
+  },
+  {
+   "class": "bicycle",
+   "classId": 1,
+   "score": 0.808,
+   "box": [
+    24.71,
+    71.46,
+    309.7,
+    233.22
+   ]
+  }
+ ]
+}

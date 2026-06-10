@@ -42,7 +42,7 @@ vision.stop();                     // release camera + free GPU memory
 | `detect`  | EfficientDet-Lite      | Bounding boxes for the 80 COCO classes (person, cup, laptop, ...) |
 | `pose`    | Pose Landmarker        | 33 body landmarks per person |
 
-Gesture is the kit's strongest task. Detection uses EfficientDet-Lite — fast, but lower accuracy than a dedicated detector; treat it as "good enough for a demo", not production-grade.
+Gesture is the kit's strongest task. Detection uses EfficientDet-Lite — fast, but lower accuracy than a dedicated detector; treat it as "good enough for a demo", not production-grade. When detection itself is the product (counting, labeling, custom classes), use the `@gipity/web-vision-detect` kit instead.
 
 ## API
 

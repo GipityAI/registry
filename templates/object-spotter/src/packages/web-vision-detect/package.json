@@ -1,0 +1,27 @@
+{
+  "name": "@gipity/web-vision-detect",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Browser object-detection kit for Gipity apps: YOLOX (Apache-2.0) on ONNX Runtime Web - WebGPU-accelerated with WASM fallback, 80 COCO classes, bring-your-own custom YOLO/YOLOX ONNX model. Web only - runs fully client-side, no server, no upload.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "protocolVersion": 1,
+    "permissions": {
+      "network": [
+        "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0",
+        "https://media.gipity.ai/models/yolox"
+      ],
+      "camera": true
+    },
+    "exposes": ["examples", "tests"],
+    "install": {
+      "importMap": {
+        "@gipity/web-vision-detect": "./packages/web-vision-detect/index.js",
+        "@gipity/web-vision-detect/": "./packages/web-vision-detect/",
+        "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort.min.mjs"
+      }
+    }
+  }
+}

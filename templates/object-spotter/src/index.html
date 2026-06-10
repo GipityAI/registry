@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="./css/styles.css">
+  <!-- The detection kit + ONNX Runtime are pre-wired here. `gipity add` would
+       do this for you when installing a kit; in a starter the wiring ships ready. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "@gipity/web-vision-detect": "./packages/web-vision-detect/index.js",
+      "@gipity/web-vision-detect/": "./packages/web-vision-detect/",
+      "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort.min.mjs"
+    }
+  }
+  </script>
+  {{JSON_LD_BLOCK}}
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <!-- Fullscreen camera stage. The canvas overlays the video 1:1. -->
+  <div id="stage">
+    <video id="cam" playsinline muted></video>
+    <canvas id="overlay"></canvas>
+
+    <!-- Still-photo view: image + boxes drawn on one canvas. Hidden in live mode. -->
+    <canvas id="photo" hidden></canvas>
+
+    <!-- FPS + backend readout, top-left -->
+    <div id="fps" class="hud-chip" hidden>0 FPS</div>
+
+    <!-- Live per-class counts, under the FPS chip -->
+    <div id="counts" class="counts" hidden></div>
+
+    <!-- Top-right controls -->
+    <div class="top-actions">
+      <!-- Detect a photo instead of the live camera -->
+      <button id="pick-photo" class="icon-btn" type="button" aria-label="Detect a photo" title="Detect a photo" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3 3.5-4.5 4.5 6H5l3.5-4.5z"/>
+        </svg>
+      </button>
+      <!-- Flip camera. Shown only when the device has >1 camera. -->
+      <button id="flip-camera" class="icon-btn" type="button" aria-label="Switch camera" title="Switch camera" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 5h-3.2l-1.8-2H9L7.2 5H4a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm-8 12.5a4.5 4.5 0 0 1-4.42-3.66l-.95.95-.71-.71 2.12-2.12 2.12 2.12-.7.7-.95-.94A3.5 3.5 0 0 0 12 16.5a3.5 3.5 0 0 0 3.46-3h1.01A4.5 4.5 0 0 1 12 17.5zm4.95-5.66l-2.12-2.12.7-.7.95.94A3.5 3.5 0 0 0 12 7.5a3.5 3.5 0 0 0-3.46 3H7.53A4.5 4.5 0 0 1 12 6.5a4.5 4.5 0 0 1 4.42 3.66l.95-.95.71.71-2.13 2.12z"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Back to the live camera from a photo result -->
+    <button id="back-live" class="back-btn" type="button" hidden>Back to camera</button>
+
+    <!-- Hidden file input behind the photo button -->
+    <input id="photo-input" type="file" accept="image/*" hidden>
+
+    <!-- Model switcher, bottom-center -->
+    <div id="models" class="model-bar" hidden></div>
+
+    <!-- Start gate: getUserMedia needs a user gesture -->
+    <div id="start" class="overlay">
+      <h1>{{TITLE}}</h1>
+      <p>Point the camera at things - they get boxed, labeled, and counted,
+         live. Everything runs on this device; nothing is uploaded.</p>
+      <button id="start-btn" type="button">Enable camera</button>
+      <p class="fine-print">First start downloads the detector (~4 MB), then it's cached.</p>
+    </div>
+
+    <!-- Error gate -->
+    <div id="error" class="overlay" hidden>
+      <h1>Camera unavailable</h1>
+      <p id="error-msg"></p>
+    </div>
+  </div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>
