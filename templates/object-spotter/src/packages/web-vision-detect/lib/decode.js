@@ -132,6 +132,36 @@ export function letterboxParams(srcWidth, srcHeight, inputSize, center = false) 
 }
 
 /**
+ * Per-family model contract: how to lay out the input tensor and how to read
+ * the output. The detector is format-agnostic - it looks everything up here,
+ * so supporting a new model family means adding a row, not editing branches.
+ *
+ * - centerPad:    letterbox padding position (YOLOX trains top-left, Ultralytics centered)
+ * - channelOrder: input channel layout ('BGR' | 'RGB')
+ * - pixelScale:   divide raw 0-255 pixels by this (1 = no normalization)
+ * - makeState:    per-model precomputation (e.g. the YOLOX anchor grid); passed to decode
+ * - decode:       (outputData, outputDims, state, scoreThreshold) -> candidates
+ */
+export const FORMATS = {
+  yolox: {
+    centerPad: false,
+    channelOrder: 'BGR',
+    pixelScale: 1,
+    makeState: (inputSize) => makeGrids(inputSize),
+    decode: (data, dims, state, scoreThreshold) =>
+      decodeYolox(data, state, { numClasses: dims[2] - 5, scoreThreshold }),
+  },
+  yolo: {
+    centerPad: true,
+    channelOrder: 'RGB',
+    pixelScale: 255,
+    makeState: () => null,
+    decode: (data, dims, _state, scoreThreshold) =>
+      decodeYolo(data, { numAnchors: dims[2], numClasses: dims[1] - 4, scoreThreshold }),
+  },
+};
+
+/**
  * Map post-NMS boxes from model-input pixels back to source-image pixels,
  * clamped to the frame.
  * @returns {Array<{x:number,y:number,width:number,height:number,score:number,classId:number}>}

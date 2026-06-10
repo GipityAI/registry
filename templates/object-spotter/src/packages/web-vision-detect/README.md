@@ -71,7 +71,7 @@ model: {
 
 ## API
 
-**`mountDetect({ video, canvas, model?, backend?, scoreThreshold?, iouThreshold?, maxDetections?, camera?, mirror?, showScore?, onFps?, onResult? })`** → `{ switchModel, detect, pause, resume, setScoreThreshold, setCamera, flipCamera, hasMultipleCameras, currentModel, currentBackend, stop, video, canvas }`
+**`mountDetect({ video, canvas, model?, backend?, scoreThreshold?, iouThreshold?, maxDetections?, camera?, mirror?, showScore?, onFps?, onResult? })`** → `{ switchModel, detect, pause, resume, setScoreThreshold, setCamera, flipCamera, hasMultipleCameras, currentModel, currentBackend, currentFacingMode, currentMirror, stop, video, canvas }`
 
 The high-level path. `camera` is `{ facingMode, width, height }` — default facing is `'environment'` (rear), the natural choice for pointing at objects. `backend` is `'auto'` (WebGPU with WASM fallback), `'webgpu'`, or `'wasm'`.
 
@@ -83,6 +83,7 @@ The high-level path. `camera` is `{ facingMode, width, height }` — default fac
 - `createFps(window?)` → `{ tick, value, reset }`
 - `drawDetections(ctx, result, { accent?, mirror?, showScore? })`, `fitCanvas(canvas, video)`, `clearCanvas(ctx)`
 - Pure math (Node-testable): `makeGrids`, `decodeYolox`, `decodeYolo`, `letterboxParams`, `mapToSource`, `nms`
+- Model contracts: `FORMATS` (per-family preprocess + decode table - add a row to support a new model family), `resolveModel`
 - Constants: `PRESETS`, `PRESET_NAMES`, `COCO_LABELS`, `ORT_VERSION`, `ORT_WASM_BASE`
 
 See `examples/` — `detect-camera.js` (low-level loop), `detect-image.js` (still image + counts), `custom-model.js`.
