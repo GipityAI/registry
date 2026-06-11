@@ -1,6 +1,6 @@
 {
   "name": "@gipity/agent-api",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Named API keys for agent/script writes through the records kit's single write path - machine writes carry AGENT/API actor attribution on the same audit spine as human edits.",
   "gipity": {

@@ -23,8 +23,8 @@ export function createRecord(object, values) {
   return call('record-write', { action: 'create', object, values });
 }
 
-export function updateRecord(object, id, values) {
-  return call('record-write', { action: 'update', object, id, values });
+export function updateRecord(object, id, values, extra = {}) {
+  return call('record-write', { action: 'update', object, id, values, ...extra });
 }
 
 export function deleteRecord(object, id) {

@@ -12,8 +12,9 @@ Needs a database — use the `web-fullstack` or `api` template. Pairs with the
 
 ## What gets installed
 
-- `functions/record-read/`, `functions/record-write/`, `functions/_lib/` — the
-  generic read/write functions and shared modules. **Sealed kit code**: don't
+- `functions/record-read/`, `functions/record-write/`, `functions/_lib/records/` — the
+  generic read/write functions and shared modules (namespaced under `_lib/records/`
+  so they never collide with your app's own `_lib` files). **Sealed kit code**: don't
   edit; re-adding the kit at a newer version overwrites them (that's the
   upgrade path).
 - `migrations/000-kit-records-core.sql` — the registry tables (`kit_objects`,
@@ -82,6 +83,16 @@ const { records, total } = await listRecords('asset', {
 ```
 
 Relations filter on the target id: `{ field: 'company', op: 'eq', value: '<company id>' }`.
+
+## Concurrency and provenance
+
+- **Optimistic concurrency**: pass `expect_updated_at` (the record's `updated_at`
+  you loaded) with an update - if someone changed the record in between, you get
+  a clean "changed since you loaded it" error instead of silent last-write-wins.
+- **Label refresh**: renaming a record updates the denormalized `{id, label}` on
+  every relation that points at it, inside the same transaction.
+- **Import provenance**: `record-write` accepts `source: "IMPORT"` for bulk paths
+  (CSV import) so events read "imported", not "created", on the timeline.
 
 ## The one rule
 

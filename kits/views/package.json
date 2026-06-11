@@ -1,6 +1,6 @@
 {
   "name": "@gipity/views",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "table.js",
   "description": "Registry-driven UI over records-kit objects: dense sortable/filterable table with saved-view support, create/edit forms with type-appropriate widgets, kanban board with drag-to-update.",

@@ -68,3 +68,9 @@ dialog.kit-form {
 .kit-form-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
 .kit-form-actions .kit-danger { margin-left: auto; background: #b33; }
 .kit-error { color: #e66; font-weight: 600; }
+
+/* inline cell editing */
+.kit-table td.kit-editing { padding: 0.1rem 0.2rem; max-width: none; overflow: visible; }
+.kit-table td.kit-editing input, .kit-table td.kit-editing select {
+  margin: 0; width: 100%; min-width: 8ch; font-size: inherit; padding: 0.15rem 0.35rem;
+}

@@ -6,7 +6,7 @@
 import { validateValues } from './validate.js';
 import { emitEvent, diffChanges } from './events.js';
 
-export async function performWrite({ db, guid, object, actor, action, id, values }) {
+export async function performWrite({ db, guid, object, actor, action, id, values, expectUpdatedAt }) {
   if (action === 'create') {
     const clean = validateValues(object, values, { isCreate: true });
     const recordId = guid(object.name.slice(0, 3));
@@ -31,6 +31,7 @@ export async function performWrite({ db, guid, object, actor, action, id, values
     const clean = validateValues(object, values, { isCreate: false });
     const result = await db.tx(async (tx) => {
       const before = await lockRecord(tx, object, id);
+      assertNotStale(object, before, expectUpdatedAt);
       await resolveRelations(tx, object, clean);
       const changes = diffChanges(object, before, clean);
       if (!Object.keys(changes).length) return { record: before, unchanged: true };
@@ -46,6 +47,9 @@ export async function performWrite({ db, guid, object, actor, action, id, values
       await emitEvent(tx, guid, {
         object, recordId: id, action: 'update', actor, changes, title: titleOf(object, row),
       });
+      if (changes[object.title_field]) {
+        await refreshRelationLabels(tx, object, id, row[object.title_field]);
+      }
       return { record: row };
     });
     return result.unchanged
@@ -90,6 +94,42 @@ async function resolveRelations(tx, object, values) {
       throw new Error(`No ${target.label} with id '${values[field.name].id}' (for field '${field.name}').`);
     }
     values[field.name] = { id: values[field.name].id, label: String(rows[0].title ?? values[field.name].id) };
+  }
+}
+
+// Optimistic concurrency: a caller that loaded the record can pass its
+// updated_at back as expect_updated_at; if someone else changed the record in
+// between, the write is rejected with a self-correcting error instead of
+// silently last-write-wins (matters for inline cell editing).
+function assertNotStale(object, before, expectUpdatedAt) {
+  if (!expectUpdatedAt) return;
+  const expected = new Date(expectUpdatedAt).getTime();
+  const actual = new Date(before.updated_at).getTime();
+  if (Number.isFinite(expected) && expected !== actual) {
+    const who = before.updated_by?.name || before.updated_by?.source || 'someone else';
+    throw new Error(`This ${object.label} changed since you loaded it (last updated by ${who}). Reload the record and retry.`);
+  }
+}
+
+// When a record's title changes, refresh the denormalized {id,label} copies on
+// every relation field that points at this object (the registry knows them
+// all - including the polymorphic *_target join objects). Runs inside the same
+// transaction as the rename; no events are emitted (denormalization
+// maintenance, not a data change).
+async function refreshRelationLabels(tx, object, recordId, newTitle) {
+  const { rows: refs } = await tx.query(
+    `SELECT f.object_name, f.name, o.table_name
+     FROM kit_fields f JOIN kit_objects o ON o.name = f.object_name
+     WHERE f.type = 'relation' AND f.options->>'object' = $1`,
+    [object.name]
+  );
+  for (const ref of refs) {
+    await tx.query(
+      `UPDATE ${ref.table_name}
+       SET ${ref.name} = jsonb_set(${ref.name}, '{label}', to_jsonb($1::text))
+       WHERE ${ref.name}->>'id' = $2 AND deleted_at IS NULL`,
+      [String(newTitle ?? recordId), recordId]
+    );
   }
 }
 

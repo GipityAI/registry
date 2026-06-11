@@ -1,6 +1,6 @@
 // records kit - read path (public): schema | list | get | events | activity.
 // All identifiers resolve through the registry; values are parameterized.
-import { loadObject, loadSchema } from '../_lib/registry.js';
+import { loadObject, loadSchema } from '../_lib/records/registry.js';
 import { buildListQuery } from './query.js';
 
 export default async function recordRead(ctx, { db }) {

@@ -1,6 +1,6 @@
 // Safe list-query builder. Identifiers come ONLY from the registry (whitelist);
 // every value is parameterized. Pure helper: no service access.
-import { fieldByName, isQueryableField } from '../_lib/registry.js';
+import { fieldByName, isQueryableField } from '../_lib/records/registry.js';
 
 const OPS = {
   eq: '=', neq: '!=', gt: '>', gte: '>=', lt: '<', lte: '<=',

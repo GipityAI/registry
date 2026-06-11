@@ -4,7 +4,9 @@
 import { listRecords, updateRecord } from '../records/api.js';
 import { formatValue, prettyLabel } from './fields.js';
 
-export function renderKanban({ mount, object, groupField, cardFields = [], onCardClick, canEdit = () => true }) {
+// `metricField` (a currency field) adds a per-column total next to the count -
+// the pipeline-metrics bar falls out of the registry for free.
+export function renderKanban({ mount, object, groupField, cardFields = [], metricField, onCardClick, canEdit = () => true }) {
   const group = object.fields.find(f => f.name === groupField);
   if (!group || group.type !== 'select') {
     throw new Error(`Kanban needs a select field to group by; '${groupField}' is not one on ${object.name}.`);
@@ -36,6 +38,12 @@ export function renderKanban({ mount, object, groupField, cardFields = [], onCar
       const n = document.createElement('span');
       n.className = 'kit-count';
       n.textContent = records.length;
+      if (metricField) {
+        const micros = records.reduce((t, r) => t + (Number(r[metricField]?.amountMicros) || 0), 0);
+        if (micros > 0) {
+          n.textContent += ` · ${(micros / 1_000_000).toLocaleString(undefined, { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}`;
+        }
+      }
       head.appendChild(n);
       col.appendChild(head);
 
