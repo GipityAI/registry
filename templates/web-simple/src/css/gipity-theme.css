@@ -53,6 +53,13 @@
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Make the HTML `hidden` attribute always win. Author CSS beats the UA's
+   `[hidden] { display: none }`, so a rule like `#overlay { display: flex }` on a
+   hidden-toggled element silently breaks `el.hidden = true` — stuck fullscreen
+   overlays, "loading…" placeholders that never clear. This guard makes any
+   `display:` rule safe to write on elements toggled via the hidden attribute. */
+[hidden] { display: none !important; }
+
 /* Brand the two native elements Water's vars + accent-color don't reach. */
 mark {
   background-color: #f7b27a; /* pale Gipity orange highlighter */
