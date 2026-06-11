@@ -2,6 +2,10 @@
  * 3D World - Player Controller
  * Character movement, camera, and input.
  *
+ * Physics model: the player is a DYNAMIC rigid body (additional mass 2), so
+ * it shoves and knocks over dynamic Parts on contact for free. Its rotation
+ * is locked so it stays upright and never topples.
+ *
  * Controls (configurable via initPlayer config):
  *   - Right-click + drag: orbit camera (works without pointer lock, Roblox-style)
  *   - Left-click (on canvas): locks pointer for always-on mouse look

@@ -9,6 +9,10 @@ version: 1
 # Call an endpoint with:
 #   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
 #     -H 'Content-Type: application/json' -d '{}'
+#
+# Response shape: raw HTTP wraps the result as {"data": ...}. Everything else -
+# ctx.fn.call in tests, `gipity fn call`, and the client Gipity.fn - returns it
+# unwrapped: use result.field, never result.data.field.
 
 deploy:
   phases:

@@ -1,8 +1,12 @@
 /**
  * 3D World - Asset Loader
  * Loads models, sounds, and textures from the shared CDN.
+ * Also home of MATERIAL_PRESETS - the per-material physics (friction,
+ * elasticity) + visual defaults that primitives.createPart applies when a
+ * Part sets `material`.
  *
- * Exports: initAssets(), loadModel, loadSound, playSound, getTexture, preload
+ * Exports: initAssets(), loadModel, loadSound, playSound, getTexture, preload,
+ *          MATERIAL_PRESETS, SHAPES, buildSubVoxelGeometry
  */
 import { scene, THREE } from './world.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';

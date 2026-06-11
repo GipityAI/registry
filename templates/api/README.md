@@ -34,6 +34,8 @@ curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/example \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
+**Response shape:** raw HTTP wraps the result as `{"data": ...}`. Everything else - `ctx.fn.call` in tests, `gipity fn call`, and the client `Gipity.fn` - returns it **unwrapped**: use `result.field`, never `result.data.field`.
+
 **URL pattern:** `POST /api/{PROJECT_GUID}/fn/{name}`
 
 **Auth levels:** `public` (no auth), `user` (login required), `member` (project member required).
