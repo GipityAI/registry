@@ -1,6 +1,6 @@
 {
   "name": "@gipity/records",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "main": "api.js",
   "description": "Registry-driven generic data plane: objects/fields declared as data, generic CRUD functions with validation + full-text search, soft delete, ACTOR provenance, and a transactional audit event spine.",

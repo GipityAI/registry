@@ -74,3 +74,23 @@ dialog.kit-form {
 .kit-table td.kit-editing input, .kit-table td.kit-editing select {
   margin: 0; width: 100%; min-width: 8ch; font-size: inherit; padding: 0.15rem 0.35rem;
 }
+
+/* relation typeahead */
+.kit-typeahead { position: relative; }
+.kit-typeahead input { width: 100%; margin-top: 0.15rem; }
+.kit-typeahead-menu {
+  position: absolute;
+  left: 0; right: 0; top: 100%;
+  z-index: 50;
+  max-height: 14rem;
+  overflow-y: auto;
+  background: var(--background, #1b1c22);
+  border: 1px solid rgba(127, 127, 127, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.kit-typeahead-opt { padding: 0.3rem 0.55rem; cursor: pointer; font-size: 0.9rem; }
+.kit-typeahead-opt:hover { background: rgba(127, 127, 127, 0.18); }
+.kit-typeahead-clear { opacity: 0.7; border-bottom: 1px solid rgba(127, 127, 127, 0.25); }
+/* the form dialog must not clip the dropdown */
+dialog.kit-form { overflow: visible; }

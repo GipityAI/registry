@@ -27,8 +27,10 @@ const table = renderTable({
 // Kanban: columns from any select field; drag-to-update flows through record-write.
 renderKanban({ mount, object, groupField: 'status', cardFields: ['price'], metricField: 'price', canEdit: () => !!user });
 
-// Form: create/edit/delete dialog with type-appropriate widgets (relations get
-// an async-populated select; composites edit their primary value).
+// Form: create/edit/delete dialog with type-appropriate widgets. Relation fields
+// render a debounced typeahead that searches the target object server-side (no
+// preloading), so they scale past a few hundred records; composites edit their
+// primary value. Inline cell editing covers scalar types - relations edit in the form.
 openRecordForm({ object, record, onSaved: (rec) => table.refresh() });
 ```
 

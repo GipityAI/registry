@@ -1,7 +1,7 @@
-// records kit - read path (public): schema | list | get | events | activity.
+// records kit - read path (public): schema | list | get | events | activity | aggregate.
 // All identifiers resolve through the registry; values are parameterized.
 import { loadObject, loadSchema } from '../_lib/records/registry.js';
-import { buildListQuery } from './query.js';
+import { buildListQuery, buildAggregateQuery } from './query.js';
 
 export default async function recordRead(ctx, { db }) {
   const { action = 'list' } = ctx.body || {};
@@ -48,7 +48,21 @@ export default async function recordRead(ctx, { db }) {
       return { events };
     }
 
-    return { error: `Unknown action '${action}'. Valid actions: schema, list, get, events.` };
+    if (action === 'aggregate') {
+      // GROUP BY in the database (count + optional sum), not by paging rows
+      // into the client. { group_by, sum?, filters?, q? }.
+      const { sql, params } = buildAggregateQuery(object, ctx.body);
+      const { rows } = await db.query(sql, params);
+      return {
+        groups: rows.map(r => ({
+          group: r.grp,
+          count: r.count,
+          ...(r.sum != null ? { sum: Number(r.sum) } : {}),
+        })),
+      };
+    }
+
+    return { error: `Unknown action '${action}'. Valid actions: schema, list, get, events, activity, aggregate.` };
   } catch (err) {
     return { error: err.message };
   }

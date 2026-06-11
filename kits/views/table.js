@@ -3,9 +3,9 @@
 import { listRecords, updateRecord } from '../records/api.js';
 import { formatValue, prettyLabel, buildWidget } from './fields.js';
 
-// Field types editable in place; textarea/json want a form, relation labels
-// resolve server-side so the async select widget works in a cell too.
-const INLINE_TYPES = new Set(['text', 'number', 'date', 'select', 'currency', 'relation', 'emails', 'phones', 'links']);
+// Field types editable in place. Excludes textarea/json (want a roomy form) and
+// relation (its typeahead dropdown needs the form's space, not a table cell).
+const INLINE_TYPES = new Set(['text', 'number', 'date', 'select', 'currency', 'emails', 'phones', 'links']);
 
 // Renders a table for `object` into `mount`. Returns { refresh, getState }.
 // `initial` ({ q, filters, sort }) pre-applies a saved view's configuration.

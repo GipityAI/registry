@@ -6,25 +6,35 @@
 import { validateValues } from './validate.js';
 import { emitEvent, diffChanges } from './events.js';
 
-export async function performWrite({ db, guid, object, actor, action, id, values, expectUpdatedAt }) {
+export async function performWrite({ db, guid, object, actor, action, id, values, rows, expectUpdatedAt }) {
   if (action === 'create') {
     const clean = validateValues(object, values, { isCreate: true });
-    const recordId = guid(object.name.slice(0, 3));
-    const record = await db.tx(async (tx) => {
-      await resolveRelations(tx, object, clean);
-      const cols = ['id', 'created_by', 'updated_by', ...Object.keys(clean)];
-      const vals = [recordId, actor, actor, ...Object.values(clean)];
-      const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
-      const { rows: [row] } = await tx.query(
-        `INSERT INTO ${object.table_name} (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
-        vals
-      );
-      await emitEvent(tx, guid, {
-        object, recordId, action: 'create', actor, title: titleOf(object, row),
-      });
-      return row;
-    });
+    const record = await db.tx((tx) => insertRecord(tx, guid, object, actor, clean));
     return { record: strip(record) };
+  }
+
+  if (action === 'create_many') {
+    if (!Array.isArray(rows)) {
+      return { error: "create_many needs 'rows': an array of value objects." };
+    }
+    const max = maxBatch(object);
+    if (rows.length > max) {
+      return { error: `create_many accepts at most ${max} rows per call for ${object.name} (per-call query budget); send in chunks of ${max}.` };
+    }
+    // Each row commits in its OWN transaction, so one bad row doesn't roll back
+    // the good ones - per-row results let the caller report partial success
+    // (the CSV-import pattern). Validation is per-row and outside the tx.
+    const results = [];
+    for (const raw of rows) {
+      try {
+        const clean = validateValues(object, raw, { isCreate: true });
+        const record = await db.tx((tx) => insertRecord(tx, guid, object, actor, clean));
+        results.push({ ok: true, record: strip(record) });
+      } catch (err) {
+        results.push({ ok: false, error: err.message });
+      }
+    }
+    return { results, created: results.filter(r => r.ok).length };
   }
 
   if (action === 'update') {
@@ -71,7 +81,35 @@ export async function performWrite({ db, guid, object, actor, action, id, values
     return { ok: true };
   }
 
-  return { error: `Unknown action '${action}'. Valid actions: create, update, delete.` };
+  return { error: `Unknown action '${action}'. Valid actions: create, create_many, update, delete.` };
+}
+
+// One record's insert + provenance event, on the caller's transaction. Shared
+// by create and create_many so the write path never forks.
+async function insertRecord(tx, guid, object, actor, clean) {
+  await resolveRelations(tx, object, clean);
+  const recordId = guid(object.name.slice(0, 3));
+  const cols = ['id', 'created_by', 'updated_by', ...Object.keys(clean)];
+  const vals = [recordId, actor, actor, ...Object.values(clean)];
+  const placeholders = cols.map((_, i) => `$${i + 1}`).join(', ');
+  const { rows: [row] } = await tx.query(
+    `INSERT INTO ${object.table_name} (${cols.join(', ')}) VALUES (${placeholders}) RETURNING *`,
+    vals
+  );
+  await emitEvent(tx, guid, {
+    object, recordId, action: 'create', actor, title: titleOf(object, row),
+  });
+  return row;
+}
+
+// Largest create_many batch that stays under the function query budget (50).
+// Per row: insert(1) + event(1) + 2 per relation field (object lookup +
+// existence check, worst case all relations present). 45 leaves headroom for
+// the entry's own loadObject/ensureMember. The client (e.g. CSV import) sizes
+// its chunks from the same object shape, so the cap is never actually hit.
+function maxBatch(object) {
+  const relCount = object.fields.filter(f => f.type === 'relation').length;
+  return Math.max(1, Math.floor(45 / (2 + 2 * relCount)));
 }
 
 // Relation values arrive as { id }; verify the target exists and denormalize its

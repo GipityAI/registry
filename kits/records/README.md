@@ -74,12 +74,25 @@ and the label denormalized inside the write transaction; options:
 ## Call it
 
 ```js
-import { listRecords, createRecord } from '@gipity/records';
+import { listRecords, aggregate, createMany, getSchema } from '@gipity/records';
+
 const { records, total } = await listRecords('asset', {
   q: 'macbook',
   filters: [{ field: 'status', op: 'eq', value: 'in_use' }],
   sort: { field: 'price', dir: 'desc' },
 });
+
+// Server-side GROUP BY - count + optional sum, one query, no client paging.
+// sum is in micros for a currency field. Honors the same filters/q as list.
+const { groups } = await aggregate('opportunity', { group_by: 'stage', sum: 'amount' });
+// → [{ group: 'won', count: 5, sum: 1525000000000 }, …]
+
+// Bulk create through the single write path, auto-chunked to the query budget.
+// Returns a flat [{ ok, record? , error? }] in input order; one bad row doesn't
+// sink the others. The objectDef is a schema object (with .fields).
+const { objects } = await getSchema('myapp');
+const asset = objects.find(o => o.name === 'asset');
+const results = await createMany(asset, rowsFromCsv, { source: 'IMPORT', onProgress });
 ```
 
 Relations filter on the target id: `{ field: 'company', op: 'eq', value: '<company id>' }`.
@@ -90,9 +103,16 @@ Relations filter on the target id: `{ field: 'company', op: 'eq', value: '<compa
   you loaded) with an update - if someone changed the record in between, you get
   a clean "changed since you loaded it" error instead of silent last-write-wins.
 - **Label refresh**: renaming a record updates the denormalized `{id, label}` on
-  every relation that points at it, inside the same transaction.
+  every relation that points at it, inside the same transaction. **Bound:** the
+  refresh is one `UPDATE` per referencing table, subject to the function's
+  `max_rows_affected` (1,000). Renaming a record referenced by >1,000 live rows
+  in a single table will fail the rename; raise the limit on `record-write` or
+  reconcile labels out of band if you expect fan-out that large.
 - **Import provenance**: `record-write` accepts `source: "IMPORT"` for bulk paths
   (CSV import) so events read "imported", not "created", on the timeline.
+- **Bulk create**: `create_many` (via `createMany`) runs each row in its own
+  transaction - per-row results, partial success on error. The client chunks to
+  the object's `batchSize` automatically; `agent-write` accepts it too.
 
 ## The one rule
 
