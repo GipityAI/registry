@@ -48,12 +48,17 @@ deploy:
           tables: [songs, renders]
           description: "Submit a render job for a song (mode: preview / hd / 4k)"
         # ── on_complete callbacks (job-fired, not browser-facing) ─
+        # auth: member (NOT public). The platform fires these directly via the
+        # job executor (bypassing HTTP auth), so they never need a public
+        # endpoint. Leaving them public let anyone POST a forged
+        # {run_guid, status:'success', output:{video_url}} to overwrite a
+        # render's video_url with an attacker URL — `member` closes that.
         - name: song-align-complete
-          auth: public
+          auth: member
           tables: [songs]
           description: "Fired by the platform when an audio-align job finishes — writes alignment_json back to the song row"
         - name: render-complete
-          auth: public
+          auth: member
           tables: [renders]
           description: "Fired by the platform when a render job finishes — writes video_url back to the render row"
 

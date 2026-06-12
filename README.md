@@ -60,7 +60,7 @@ registry/
     └── web-vision-mediapipe/
 ```
 
-The `_shared/` directory holds canonical files (e.g. the `gipity-theme.css` brand theme used by the Water.css templates) that get synced into each consuming template. Run `npx tsx scripts/sync-registry.ts` after editing any file under `_shared/` or any kit referenced by a template; CI uses `--check` to fail on drift.
+The `_shared/` directory holds canonical files (e.g. the `gipity-theme.css` brand theme used by the Water.css templates) that get synced into each consuming template. Run `npx tsx platform/scripts/sync-registry.ts` after editing any file under `_shared/` or any kit referenced by a template; CI uses `--check` to fail on drift.
 
 ## Contributing
 

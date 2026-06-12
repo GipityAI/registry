@@ -58,7 +58,7 @@ A kit is an npm-style package that gets copied into an app's `src/packages/<key>
 3. A `README.md` in the kit directory explaining the kit's API.
 4. Tests covering kit-install behavior. See `platform/server/src/__tests__/kit-install.test.ts` for the unit test pattern; e2e behavior is exercised by `add-e2e.test.ts`.
 
-If a kit is meant to ship pre-installed in a specific template (like `realtime` in the 3D templates), wire that up in `scripts/sync-registry.ts` so the kit is mirrored into the template at sync time.
+If a kit is meant to ship pre-installed in a specific template (like `realtime` in the 3D templates), wire that up in `platform/scripts/sync-registry.ts` so the kit is mirrored into the template at sync time.
 
 ## The sync gate
 
@@ -67,8 +67,8 @@ If a kit is meant to ship pre-installed in a specific template (like `realtime` 
 After any edit to `_shared/` or to a synced kit:
 
 ```bash
-npx tsx scripts/sync-registry.ts          # write copies
-npx tsx scripts/sync-registry.ts --check  # CI gate — fail on drift
+npx tsx platform/scripts/sync-registry.ts          # write copies
+npx tsx platform/scripts/sync-registry.ts --check  # CI gate — fail on drift
 ```
 
 The `--check` mode runs in CI and will block a merge if a synced file is out of date.
@@ -105,6 +105,6 @@ E2E_BASE_URL=https://a.gipity.ai \
 - [ ] Directory created under `registry/templates/` or `registry/kits/`
 - [ ] User-facing docs updated (`registry/templates/README.md` or `registry/kits/<kit>/README.md`)
 - [ ] Tests added (file-presence assertions for templates; install behavior for kits)
-- [ ] `npx tsx scripts/sync-registry.ts --check` passes
+- [ ] `npx tsx platform/scripts/sync-registry.ts --check` passes
 - [ ] `npm run test:fast` passes (from `platform/server/`)
 - [ ] Verified locally via `gipity add <path> --force` + `gipity deploy dev` against a real dev app

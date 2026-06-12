@@ -1,0 +1,111 @@
+version: 1
+
+# app-itsm — an IT service-management starter: incidents, SLAs, a service
+# catalog, a knowledge base, and AI-assisted triage driven by workflows.
+#
+# This manifest is what makes the backend real. Without it `gipity deploy`
+# registers nothing (no functions, no DB, no workflows) and the frontend 404s.
+#
+# ⚠️ SECURITY: like the other starter apps, the frontend talks to the backend
+# with the app's PUBLIC token (no user sign-in), so the Records API and
+# functions below are exposed at `public` — anyone with the app id can read and
+# write the data, including incident contents. That's fine for a demo, but ITSM
+# data is sensitive: before putting real data in, add Sign in with Gipity, flip
+# these to `auth: member` / `auth_level: member`, and add row-level RBAC so each
+# caller only sees what they should.
+deploy:
+  phases:
+    # Static frontend (SPA: incidents, catalog, KB, reporting).
+    - name: files
+      type: static
+      source: src
+
+    # Per-project DB: migrations/ define the schema, seed/ loads default
+    # categories, priority matrix, SLA definitions, teams, catalog, sample KB.
+    - name: database
+      type: sql
+      source: migrations
+      seed: seed
+      database: {{DATABASE}}
+
+    # Serverless functions. `suggest-resolution` is the one the browser calls
+    # directly; the rest are invoked by the workflows below (record triggers +
+    # cron) and use the LLM service for AI triage/summarisation.
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: suggest-resolution
+          auth: public
+          tables: [incidents, knowledge_articles]
+          services: [llm]
+          description: "Suggest a resolution for an incident from similar KB articles (browser-facing)."
+        - name: classify-incident
+          auth: public
+          tables: [incidents, categories, priority_matrix, teams]
+          services: [llm]
+          description: "AI-categorise + prioritise a new incident."
+        - name: analyze-sentiment
+          auth: public
+          tables: [comments]
+          services: [llm]
+          description: "Score the sentiment of incident comments (drives escalation)."
+        - name: smart-assign
+          auth: public
+          tables: [incidents, team_members]
+          description: "Assign an incident to the best-fit available agent."
+        - name: calculate-sla
+          auth: public
+          tables: [incidents, sla_definitions, sla_tasks]
+          description: "Create SLA target tasks for an incident from its priority."
+        - name: check-sla-breaches
+          auth: public
+          tables: [sla_tasks, incidents, comments]
+          description: "Cron: flag breached/at-risk SLA tasks and note them on the incident."
+        - name: generate-kb-article
+          auth: public
+          tables: [incidents, comments, knowledge_articles]
+          services: [llm]
+          description: "Draft a KB article from a resolved incident's thread."
+        - name: collect-kpis
+          auth: public
+          tables: [incidents, sla_tasks, kpi_scores]
+          description: "Cron: roll up daily KPI scores."
+        - name: generate-weekly-digest
+          auth: public
+          tables: [incidents, sla_tasks, kpi_scores]
+          services: [llm]
+          description: "Cron: summarise the week's incidents + KPIs into a digest."
+
+    # Records API — the frontend's read/write path for the app's entities
+    # (GET/POST/PUT/DELETE /api/{{PROJECT_GUID}}/records/<table>). Also what the
+    # record.after_insert workflow triggers fire on. See the SECURITY note above
+    # before exposing real data: these are `public` to match the demo frontend.
+    - name: records
+      type: records
+      tables:
+        - { table: incidents, auth_level: public }
+        - { table: comments, auth_level: public }
+        - { table: categories, auth_level: public }
+        - { table: priority_matrix, auth_level: public }
+        - { table: teams, auth_level: public }
+        - { table: team_members, auth_level: public }
+        - { table: sla_definitions, auth_level: public }
+        - { table: sla_tasks, auth_level: public }
+        - { table: knowledge_articles, auth_level: public }
+        - { table: service_requests, auth_level: public }
+        - { table: catalog_categories, auth_level: public }
+        - { table: catalog_items, auth_level: public }
+        - { table: major_incidents, auth_level: public }
+        - { table: major_incident_updates, auth_level: public }
+        - { table: kpi_scores, auth_level: public }
+        - { table: notifications, auth_level: public }
+        - { table: business_calendars, auth_level: public }
+        - { table: user_profiles, auth_level: public }
+        - { table: app_settings, auth_level: public }
+
+    # Workflow automations (record triggers + cron). Reconciled into real
+    # workflow records and (re)armed on the scheduler.
+    - name: workflows
+      type: workflows
+      source: workflows
