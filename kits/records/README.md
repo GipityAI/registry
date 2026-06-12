@@ -10,6 +10,20 @@ Needs a database — use the `web-fullstack` or `api` template. Pairs with the
 `views` kit (registry-driven tables/forms/kanban) and the `agent-api` kit
 (named API keys for agent writes).
 
+## ⚠️ The read path is PUBLIC by default
+
+`record-read` ships at `auth: "public"` (writes are gated at `auth: "user"`).
+That means **anyone who knows your app's id can read every row of every object**
+— including composite PII fields (emails/phones/links), the full schema, and the
+audit/activity log with actor names — with no sign-in. That's convenient for a
+public directory or demo, but it's the wrong default for anything private
+(contacts, deals, anything CRM-shaped).
+
+Before you ship private data, change `record-read`'s `auth` in the kit's
+`package.json` install block (or your app's `gipity.yaml`) to `"user"` or
+`"member"`, and add row-level RBAC policies so a signed-in caller only sees
+their own rows. Treat the public default as opt-in, not a given.
+
 ## What gets installed
 
 - `functions/record-read/`, `functions/record-write/`, `functions/_lib/records/` — the
