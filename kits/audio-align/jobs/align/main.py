@@ -16,7 +16,7 @@ Pipeline:
   5. Librosa onset refinement (snap word starts to nearest audio onset within ±50ms)
   6. Return word-timing JSON
 
-Input shape (via GIPITY_RUN_INPUT env):
+Input shape (read via `ctx.input`):
   {
     "audio_url": "https://...",          # required, audio file URL (mp3/wav/m4a/...). Max 100 MB.
     "lyrics": "line one\\nline two ...",  # required, DISPLAY text. May include acronyms (AI, AWS),
@@ -33,7 +33,7 @@ Input shape (via GIPITY_RUN_INPUT env):
     "refine_onsets": true                # optional, librosa onset snap
   }
 
-Output shape (printed as JSON, captured into the run's `output` field):
+Output shape (set via `ctx.set_output`, stored as the run's `output` field):
   {
     "words": [
       {
@@ -71,6 +71,8 @@ import sys
 import tempfile
 import unicodedata
 import urllib.request
+
+from gipity_ctx import ctx  # platform SDK, injected alongside the handler
 
 
 # ─── Phonetic normalisation (ported from siverson914/SupCap/src/supcap/phonetics.py) ───
@@ -190,27 +192,6 @@ def phonetic_normalize(raw_word: str) -> tuple[str, str]:
     return cleaned, cleaned
 
 
-# ─── Progress callback ──────────────────────────────────────────────────────
-
-def _progress(pct: float, message: str) -> None:
-    """Best-effort progress callback. Swallows errors so observability blips
-    never fail the alignment."""
-    url = os.environ.get("GIPITY_PROGRESS_URL")
-    token = os.environ.get("GIPITY_PROGRESS_TOKEN")
-    if not url or not token:
-        return
-    try:
-        req = urllib.request.Request(
-            url,
-            data=json.dumps({"pct": pct, "message": message}).encode("utf-8"),
-            method="POST",
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-        )
-        urllib.request.urlopen(req, timeout=5).read()
-    except Exception:
-        pass
-
-
 # ─── Trailing punctuation extraction ────────────────────────────────────────
 # Pull the single most-significant trailing punctuation char off each whitespace-
 # separated token. We keep the punctuation off the source field so the aligner
@@ -231,8 +212,7 @@ def _split_trailing_punct(token: str) -> tuple[str, str]:
 # ─── Main ───────────────────────────────────────────────────────────────────
 
 def main() -> None:
-    raw_input = os.environ.get("GIPITY_RUN_INPUT", "{}")
-    payload = json.loads(raw_input)
+    payload = ctx.input
 
     audio_url = payload.get("audio_url")
     lyrics = payload.get("lyrics")
@@ -355,7 +335,7 @@ def main() -> None:
     MAX_AUDIO_BYTES = 100 * 1024 * 1024  # 100 MB cap
 
     # ── 1. Download audio ──────────────────────────────────────────────────
-    _progress(0.05, "downloading audio")
+    ctx.progress(0.05, "downloading audio")
     try:
         with urllib.request.urlopen(audio_url, timeout=30) as resp:
             content_length = resp.headers.get("Content-Length")
@@ -383,7 +363,7 @@ def main() -> None:
     # ── 2. Demucs vocal isolation (optional) ───────────────────────────────
     vocals_path = audio_path
     if not skip_demucs:
-        _progress(0.15, "running demucs vocal isolation")
+        ctx.progress(0.15, "running demucs vocal isolation")
         from demucs.pretrained import get_model as demucs_get_model
         from demucs.apply import apply_model
         import soundfile as sf  # only needed to write demucs output
@@ -404,7 +384,7 @@ def main() -> None:
         del model, sources
 
     # ── 3. MMS_FA forced alignment ─────────────────────────────────────────
-    _progress(0.55, "running MMS_FA forced alignment")
+    ctx.progress(0.55, "running MMS_FA forced alignment")
     model = mms_bundle.get_model().to(device)
     tokenizer = mms_bundle.get_tokenizer()
     aligner = mms_bundle.get_aligner()
@@ -490,7 +470,7 @@ def main() -> None:
     # ±50 ms. Materially tightens timing for sung-vs-spoken transitions and
     # cuts the "early word" artifact MMS_FA sometimes produces.
     if refine_onsets and words:
-        _progress(0.85, "refining word onsets via librosa")
+        ctx.progress(0.85, "refining word onsets via librosa")
         y_for_onset, _ = _load_audio_np(vocals_path, target_sr=sr)
         # hop_length 512 at 16 kHz → ~32 ms per onset frame.
         onset_frames = librosa.onset.onset_detect(y=y_for_onset, sr=sr, units="frames", hop_length=512)
@@ -525,8 +505,8 @@ def main() -> None:
         })
         cursor += n
 
-    _progress(1.0, "done")
-    print(json.dumps({
+    ctx.progress(1.0, "done")
+    ctx.set_output({
         "words": words,
         "phrases": phrases,
         "metadata": {
@@ -536,7 +516,7 @@ def main() -> None:
             "refined_onsets": refine_onsets,
             "unaligned_count": unaligned_count,
         },
-    }))
+    })
 
 
 if __name__ == "__main__":
