@@ -1,4 +1,10 @@
-/* App-specific styles. The Gipity brand + design tokens (--primary, --surface,
-   --space-*, --radius, --shadow, …) come from gipity-theme.css, which loads
-   before this file. Add your own component styles here using those tokens;
-   never hardcode colors, spacing, or radii. */
+/* App-specific styles. The Gipity brand + design tokens come from
+   gipity-theme.css, which loads before this file. Add your own component styles
+   here using those tokens; never hardcode colors, spacing, sizes, or radii.
+   Available tokens (the full set — there is no other type scale to invent):
+     Colors:  --primary --primary-hover --surface --surface-alt --border
+              --text-main --text-bright --text-muted --code
+     Spacing: --space-xs --space-sm --space-md --space-lg --space-xl
+     Type:    --text-xs --text-sm --text-base --text-lg --text-xl  (font-size)
+     Shape:   --radius --shadow
+   Note: --text-main/--text-bright/--text-muted are COLORS; --text-xs…xl are SIZES. */

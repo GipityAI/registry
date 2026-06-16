@@ -48,6 +48,15 @@
   --space-lg: 2rem;
   --space-xl: 4rem;
 
+  /* Type-size scale (the Gipity "5 sizes only" convention). Use these for
+     font-size; don't invent new sizes. Note --text-xs/sm/base/lg/xl are SIZES,
+     while --text-main/--text-bright/--text-muted above are COLORS. */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.25rem;    /* 20px */
+  --text-xl: 1.75rem;    /* 28px */
+
   /* Shape */
   --radius: 8px;
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
