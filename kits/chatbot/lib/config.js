@@ -128,7 +128,7 @@ function validateScope(s) {
 }
 
 function validateKnowledge(k) {
-  if (k === undefined) return { maxTokens: DEFAULT_KNOWLEDGE_MAX_TOKENS, sources: [], inlineText: '' };
+  if (k === undefined) return { maxTokens: DEFAULT_KNOWLEDGE_MAX_TOKENS, sources: [], inlineText: '', fetchUrls: [] };
   if (!isObject(k)) throw new ChatbotConfigError('config.knowledge must be an object');
 
   const maxTokens = k.maxTokens ?? DEFAULT_KNOWLEDGE_MAX_TOKENS;

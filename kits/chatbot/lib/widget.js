@@ -168,6 +168,9 @@ export class ChatbotWidget extends HTMLElement {
     this._wireEngine();
     if (placement === 'inline') this._open = true;
     this._updateOpenState();
+    // Inline chats are open from mount with no launcher to click, so the
+    // greeting that other placements show on first open must render here.
+    if (placement === 'inline') this._renderGreeting();
   }
 
   _render() {
