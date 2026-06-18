@@ -1,4 +1,5 @@
-// Translations - generated, do not edit by hand.
+// Translations - fill this in by hand (or ask the agent to translate). There is
+// no generator; this is the file you edit to add languages.
 //
 // Shape: { <langCode>: { <stringKey>: '<translated text>' } }, mirroring the
 // keys in src/js/strings.js. Plurals use the same _one/_other suffixes; keep

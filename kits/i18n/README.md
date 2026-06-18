@@ -44,6 +44,8 @@ function render() { /* your t('key') → DOM assignments */ }
 document.addEventListener('i18n:changed', render);
 ```
 
+`setLang()` (and the picker's `change` handler) applies **synchronously**: by the time the call returns, `getLang()`, `<html lang>`/`<html dir>`, and any `i18n:changed` listeners have all run in the same tick. A read immediately after switching reflects the new language — no `setTimeout`/`await` needed.
+
 ## Translate
 
 Ask the agent: **"translate strings to Spanish and Japanese"**. Translations land in `translations.js`:
@@ -64,7 +66,7 @@ The picker appears once at least one translation exists. English is the base (`s
 | `t(key, vars?)` | Localized string; interpolates `{placeholder}` vars. Missing key → the key. |
 | `tn(key, count, vars?)` | Plural-aware lookup; `count` is auto-merged into vars. |
 | `getLang()` | Active 2-letter language code. |
-| `setLang(code)` | Switch + persist; fires `i18n:changed`. |
+| `setLang(code)` | Switch + persist; fires `i18n:changed` synchronously (state is live the moment it returns). |
 | `availableLangs()` | `['en', ...translated]`. |
 | `isRtl(code?)` | Whether a language is right-to-left. |
 | `mountLangPicker(i18n, parent?)` | Mount a picker yourself (already auto-mounted). |
