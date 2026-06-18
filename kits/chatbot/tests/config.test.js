@@ -41,6 +41,8 @@ test('accepts minimal valid config', () => {
   assert.equal(out.knowledge.maxTokens, DEFAULT_KNOWLEDGE_MAX_TOKENS);
   assert.equal(out.knowledge.sources.length, 0);
   assert.equal(out.knowledge.inlineText, '');
+  // Must always be an array — the engine derefs knowledge.fetchUrls.length at construction.
+  assert.deepEqual(out.knowledge.fetchUrls, []);
   assert.equal(out.features.voice.enabled, false);
   assert.equal(out.ui.placement, 'bottom-right');
   assert.equal(out.storage.persistHistory, false);
