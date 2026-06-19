@@ -12,6 +12,14 @@ version: 1
 # ctx.fn.call in tests, `gipity fn call`, and the client Gipity.fn - returns it
 # unwrapped: use result.field, never result.data.field.
 
+# Optional: if this API uses Sign in with Gipity, style the login/consent page -
+# and ONLY that page. Uncomment and `gipity deploy` to apply. Omit any field to
+# keep the Gipity default. See the deploy skill ("auth_branding").
+# auth_branding:
+#   app_name: My API
+#   primary_color: "#f26522"   # quote it - a bare # is a YAML comment
+#   tagline: Sign in to continue
+
 deploy:
   phases:
     # Functions - serverless JavaScript endpoints

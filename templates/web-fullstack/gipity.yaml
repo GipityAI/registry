@@ -14,6 +14,14 @@ version: 1
 # ctx.fn.call in tests, `gipity fn call`, and the client Gipity.fn - returns it
 # unwrapped: use result.field, never result.data.field.
 
+# Optional: style the "Sign in with Gipity" login/consent page - and ONLY that
+# page, not your app's own UI. Uncomment and `gipity deploy` to apply. Omit any
+# field to keep the Gipity default. See the deploy skill ("auth_branding").
+# auth_branding:
+#   app_name: My App
+#   primary_color: "#f26522"   # quote it - a bare # is a YAML comment
+#   tagline: Welcome back
+
 deploy:
   phases:
     # Static files - frontend HTML/CSS/JS
