@@ -30,7 +30,7 @@ function prettyLimitValue(k, v) {
 
 export async function renderPlanTab(api) {
   const res = await api.plan();
-  const { plan, balance, burn, effective_limits, recent_grants } = res.data;
+  const { plan, balance, burn, effective_limits, recent_grants, api_tokens } = res.data;
 
   // Plan card folds the tier + monthly inclusion + price into one line so
   // it reads like a buyer-facing summary ("Pro · $20/mo · 20,000 credits/mo"),
@@ -39,6 +39,7 @@ export async function renderPlanTab(api) {
     ? `${plan.display_name} · ${fmtUsd(plan.monthly_price_usd)}/mo · ${fmtExact(plan.monthly_credits)} credits/mo`
     : '—';
   $('plan-remaining').textContent = fmtExact(balance.remaining);
+  $('plan-tokens').textContent = fmtExact(api_tokens?.count ?? 0);
   $('plan-burn').textContent = burn.per_day != null ? `${fmtExact(Math.round(burn.per_day))} cr` : '—';
   $('plan-days').innerHTML = burn.days_to_empty == null
     ? '<span class="muted">∞</span>'
