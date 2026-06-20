@@ -1,0 +1,111 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# Outreach Agent - a personal outreach funnel governed by a dedicated "Outreach"
+# agent. The agent's soul + rules (its growing playbook) live on Gipity and inject
+# into the drafting workflows automatically. This app holds the contacts, their
+# per-contact knowledge base, the message pipeline, and the schedule.
+#
+#   Frontend (src/)          -> CDN (the dashboard)
+#   Migrations (migrations/) -> your Gipity database
+#   Functions (functions/)   -> serverless endpoints (data plane only - no LLM here)
+#   Workflows (workflows/)   -> the scheduled enrich/draft/send/revise/reply motion
+#
+# ONE-TIME SETUP (before the first deploy):
+#   1. Create an agent named exactly "Outreach" on Gipity, set its soul (your voice)
+#      and goal. The drafting workflows bind to it by name (agent: Outreach).
+#   2. Deploy, then open the dashboard, sign in with Gipity, and paste the Outreach
+#      agent's short_guid into Settings so the Playbook + comment-to-learn loop work.
+#   3. Seed the manual playbook rules from the dashboard (AI-disclosure, length, one
+#      CTA, no em dashes, personalize-from-knowledge-only).
+
+deploy:
+  phases:
+    # Static files - the dashboard
+    - name: files
+      type: static
+      source: src
+
+    # Database migrations - idempotent
+    - name: database
+      type: sql
+      source: migrations
+      database: {{DATABASE}}
+
+    # Serverless functions - all owner-only (member). These are the data plane the
+    # dashboard and workflows read/write. None call the LLM: all drafting/enrichment
+    # happens in agent-governed workflow LLM steps so the agent's soul + rules apply.
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        # --- Dashboard / management ---
+        - name: contacts
+          auth: member
+          tables: [contacts, contact_knowledge, messages]
+        - name: settings
+          auth: member
+          tables: [settings]
+        - name: candidates
+          auth: member
+          tables: [contacts]
+        - name: linkedin-import
+          auth: member
+          tables: [contacts]
+        - name: dashboard
+          auth: member
+          tables: [contacts, messages]
+        - name: knowledge
+          auth: member
+          tables: [contacts, contact_knowledge]
+        - name: review
+          auth: member
+          tables: [messages, contacts]
+        # --- Draft pipeline (draft-due + draft-one child) ---
+        - name: draft-list
+          auth: member
+          tables: [contacts, messages, settings]
+        - name: draft-load
+          auth: member
+          tables: [contacts, contact_knowledge, sequence_steps, messages, settings]
+        - name: draft-save
+          auth: member
+          tables: [contacts, messages, settings]
+        # --- Send pipeline (send-approved) ---
+        - name: send-list
+          auth: member
+          tables: [messages, contacts, settings]
+        - name: send-commit
+          auth: member
+          tables: [messages, contacts, sequence_steps]
+        # --- Revise pipeline (revise-due + revise-one child) ---
+        - name: revise-list
+          auth: member
+          tables: [messages]
+        - name: revise-load
+          auth: member
+          tables: [messages, contacts, contact_knowledge, sequence_steps, settings]
+        - name: revise-save
+          auth: member
+          tables: [messages]
+        # --- Enrich pipeline (enrich-due + enrich-one child) ---
+        - name: enrich-list
+          auth: member
+          tables: [contacts, contact_knowledge]
+        - name: enrich-load
+          auth: member
+          tables: [contacts]
+        - name: save-knowledge
+          auth: member
+          tables: [contacts, contact_knowledge]
+        # --- Reply ingestion (check-replies) ---
+        - name: ingest-reply
+          auth: member
+          tables: [contacts, messages, contact_knowledge]
+
+    # Scheduled outreach workflows. The enrich/draft/revise LLM steps are governed by
+    # the "Outreach" agent (agent: Outreach), so its soul + rules inject into each.
+    - name: workflows
+      type: workflows
+      source: workflows

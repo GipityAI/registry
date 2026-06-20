@@ -1,0 +1,34 @@
+# The send window. Claims approved emails whose scheduled_send_at has arrived, sends
+# them from gipity@gipity.ai, marks them sent, and advances each contact to the next
+# touch on its cadence. Runs hourly so an approval lands at (or just after) its mark.
+# Batched to respect the platform's 10-emails-per-hour limit (settings.daily_send_cap).
+name: send-approved
+description: Send approved outreach emails (batched) and advance each contact's cadence.
+trigger: schedule
+cron: "0 * * * *"
+timezone: America/New_York
+steps:
+  - name: cfg
+    step_type: function
+    config:
+      name: settings
+      body:
+        op: get
+  - name: list
+    step_type: function
+    config:
+      name: send-list
+  - name: send
+    step_type: notify
+    foreach: "{{list.result.items}}"
+    on_failure: continue
+    config:
+      channel: email
+      to: "{{item.to}}"
+      subject: "{{item.subject}}"
+      body: "{{item.body}}"
+      reply_to: "{{cfg.result.settings.notify_email}}"
+  - name: commit
+    step_type: function
+    config:
+      name: send-commit

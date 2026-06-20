@@ -1,0 +1,78 @@
+/* App-specific styles. Brand tokens (--primary, --surface, --space-*, --radius,
+   --shadow, --text-*) come from gipity-theme.css. Use those tokens; never hardcode. */
+
+body { max-width: none; margin: 0; padding: 0; }
+
+/* Short text blocks wrap evenly (house rule) - headings, ledes, card titles. */
+h1, h2, h3, .card-title, .lede, .gate-card p { text-wrap: balance; }
+
+/* ---- Signed-out gate ---- */
+#gate { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: var(--space-lg); }
+.gate-card { max-width: 460px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-xl); box-shadow: var(--shadow); }
+.gate-card h1 { margin-top: 0; }
+
+/* ---- Shell ---- */
+#app { display: flex; min-height: 100vh; align-items: stretch; }
+.sidebar { width: 220px; flex: 0 0 220px; background: var(--surface-alt); border-right: 1px solid var(--border); padding: var(--space-lg) var(--space-md); display: flex; flex-direction: column; gap: var(--space-lg); position: sticky; top: 0; height: 100vh; }
+.brand { font-size: var(--text-lg); font-weight: 700; text-decoration: none; color: var(--text-bright); }
+.brand span { color: var(--primary); }
+#nav { display: flex; flex-direction: column; gap: var(--space-lg); flex: 1; }
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+.nav-label { font-size: var(--text-xs); text-transform: uppercase; letter-spacing: .08em; color: var(--text-muted); margin-bottom: var(--space-xs); }
+#nav a { text-decoration: none; color: var(--text-main); padding: var(--space-xs) var(--space-sm); border-radius: var(--radius); display: flex; justify-content: space-between; align-items: center; }
+#nav a:hover { background: var(--surface); }
+#nav a.active { background: var(--surface); color: var(--primary); font-weight: 600; }
+.sidebar-foot { display: flex; flex-direction: column; gap: var(--space-xs); }
+main#view { flex: 1; min-width: 0; max-width: 1400px; padding: var(--space-lg) var(--space-lg) var(--space-xl); }
+
+.count { background: var(--primary); color: #1a0d06; font-size: var(--text-xs); font-weight: 700; border-radius: 999px; padding: 0 7px; min-width: 18px; text-align: center; }
+
+/* ---- Generic ---- */
+.muted { color: var(--text-muted); }
+.small { font-size: var(--text-sm); }
+.row { display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap; }
+.spread { display: flex; justify-content: space-between; align-items: center; gap: var(--space-md); }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-md); box-shadow: var(--shadow); }
+.card-title { font-size: var(--text-sm); text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); margin: 0 0 var(--space-xs); }
+.stack { display: flex; flex-direction: column; gap: var(--space-md); }
+button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+button.ghost:hover { border-color: var(--primary); color: var(--primary); }
+button.small, .small button { font-size: var(--text-sm); padding: var(--space-xs) var(--space-sm); }
+button.danger { background: #7a2e22; }
+.pill { display: inline-block; font-size: var(--text-xs); padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); color: var(--text-muted); }
+.pill.learned { border-color: var(--primary); color: var(--primary); }
+.pill.manual { color: var(--text-muted); }
+.tag { font-size: var(--text-xs); color: var(--text-muted); }
+
+/* ---- Funnel board ---- */
+.board { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--space-md); margin: var(--space-lg) 0; }
+.board .col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-md); text-align: center; }
+.board .col .n { font-size: var(--text-xl); font-weight: 700; color: var(--primary); display: block; }
+.board .col .label { font-size: var(--text-sm); color: var(--text-muted); }
+
+/* ---- Brain strip ---- */
+.brain { display: flex; gap: var(--space-lg); align-items: center; background: linear-gradient(90deg, var(--surface), var(--surface-alt)); border: 1px solid var(--border); border-left: 3px solid var(--primary); border-radius: var(--radius); padding: var(--space-md); margin-bottom: var(--space-lg); }
+.brain .who { font-weight: 600; color: var(--text-bright); }
+
+/* ---- Queue / cards ---- */
+.queue-item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-md); margin-bottom: var(--space-md); }
+.queue-item .head { display: flex; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-sm); }
+.queue-item .rationale { font-style: italic; color: var(--text-muted); font-size: var(--text-sm); border-left: 2px solid var(--border); padding-left: var(--space-sm); margin: var(--space-sm) 0; }
+.queue-item textarea { width: 100%; min-height: 120px; font-family: inherit; }
+.queue-item input[type=text] { width: 100%; }
+.actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; margin-top: var(--space-sm); }
+.draft-body { white-space: pre-wrap; }
+
+/* ---- Tables / lists ---- */
+table { width: 100%; }
+.knowledge-fact { display: flex; justify-content: space-between; gap: var(--space-sm); padding: var(--space-xs) 0; border-bottom: 1px solid var(--border); }
+
+/* ---- Toast ---- */
+.toast { position: fixed; bottom: var(--space-lg); left: 50%; transform: translateX(-50%); background: var(--surface); border: 1px solid var(--primary); border-radius: var(--radius); padding: var(--space-sm) var(--space-md); box-shadow: var(--shadow); z-index: 50; }
+
+@media (max-width: 900px) {
+  #app { flex-direction: column; }
+  .sidebar { width: auto; flex: none; height: auto; position: static; flex-direction: row; flex-wrap: wrap; }
+  #nav { flex-direction: row; flex-wrap: wrap; }
+  .board { grid-template-columns: repeat(2, 1fr); }
+}

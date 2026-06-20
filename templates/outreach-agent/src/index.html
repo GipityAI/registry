@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Outreach Agent - a personal outreach funnel governed by an AI agent on Gipity. It enriches each contact, drafts a personalized email you approve, learns from your comments, and auto-sends on a schedule.">
+  <title>Outreach Agent</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
+  <link rel="stylesheet" href="./css/gipity-theme.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script type="importmap">
+  { "imports": {} }
+  </script>
+  <script defer crossorigin="anonymous" src="https://media.gipity.ai/client/v1/gipity.js" data-app="{{PROJECT_GUID}}"></script>
+</head>
+<body>
+  <!-- Signed-out gate -->
+  <section id="gate" hidden>
+    <div class="gate-card">
+      <h1>Outreach Agent</h1>
+      <p class="muted">A personal outreach funnel run by an AI agent on Gipity. It learns each contact from your inbox, drafts a candid, personalized email you approve, gets smarter every time you comment, and sends on a schedule you control - you approve every message.</p>
+      <button id="signin-btn">Sign in with Gipity</button>
+      <p id="gate-msg" class="muted small" hidden></p>
+    </div>
+  </section>
+
+  <!-- App -->
+  <div id="app" hidden>
+    <aside class="sidebar">
+      <a class="brand" href="#/dashboard">Outreach<span>Agent</span></a>
+      <nav id="nav">
+        <div class="nav-group">
+          <a href="#/dashboard" data-route="dashboard">Funnel</a>
+          <a href="#/approvals" data-route="approvals">Approvals <span id="nav-appr-count" class="count" hidden>0</span></a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">Pipeline</div>
+          <a href="#/contacts" data-route="contacts">Contacts</a>
+          <a href="#/candidates" data-route="candidates">Candidates <span id="nav-cand-count" class="count" hidden>0</span></a>
+          <a href="#/import" data-route="import">Import</a>
+        </div>
+        <div class="nav-group">
+          <div class="nav-label">The Agent</div>
+          <a href="#/playbook" data-route="playbook">Playbook</a>
+          <a href="#/settings" data-route="settings">Settings</a>
+        </div>
+      </nav>
+      <div class="sidebar-foot">
+        <span id="user-name" class="muted small"></span>
+        <button id="signout-btn" class="ghost small">Sign out</button>
+      </div>
+    </aside>
+    <main id="view"><p class="muted">Loading...</p></main>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

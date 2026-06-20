@@ -1,0 +1,56 @@
+# Child workflow: redraft ONE commented message. Called per-message by revise-due.
+# Same agent-governed LLM draft step as a fresh draft (NO tools), but steered by the
+# prior draft + your comment. Because the comment was also sent to the agent's learn
+# bridge, the freshly-learned rule is already injected here - so the redraft reflects
+# it immediately. Updates the same message back to pending_approval.
+name: revise-one
+description: Redraft one message from your comment, then return it to the review queue.
+trigger: manual
+agent: Outreach
+steps:
+  - name: load
+    step_type: function
+    config:
+      name: revise-load
+      body:
+        message_guid: "{{trigger.payload.message_guid}}"
+
+  - name: draft
+    step_type: llm
+    prompt: |
+      Redraft an outreach email I commented on. Your soul and playbook rules define HOW
+      I write and the hard constraints - follow them. Apply my comment below.
+
+      THE PERSON:
+      - name: {{load.result.name}}
+      - company: {{load.result.company}}
+      - title: {{load.result.title}}
+
+      WHAT I KNOW ABOUT THEM (use ONLY these facts, do not invent more):
+      {{load.result.knowledge}}
+
+      THE ASK: {{load.result.base_ask}}
+      Product: {{load.result.product_name}} ({{load.result.product_url}})
+      This touch: {{load.result.touch_label}} - {{load.result.instruction}}
+
+      YOUR PREVIOUS DRAFT:
+      Subject: {{load.result.prior_subject}}
+      {{load.result.prior_body}}
+
+      MY COMMENT (the change I want - honor it precisely, and keep it as a general habit
+      going forward):
+      {{load.result.comment}}
+
+      Sign off as "{{load.result.signature}}".
+
+      Respond with STRICT JSON only (no markdown, no code fences):
+      {"subject": string, "body": string, "rationale": string}
+      - rationale: one sentence on how this redraft addresses my comment.
+
+  - name: save
+    step_type: function
+    config:
+      name: revise-save
+      body:
+        message_guid: "{{trigger.payload.message_guid}}"
+        draft: "{{draft}}"

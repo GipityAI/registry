@@ -1,0 +1,59 @@
+# Child workflow: draft ONE personalized touch. Called per-contact by draft-due.
+# The draft step is an LLM step governed by the Outreach agent - NO tools - so its
+# soul (your voice) and rules (the playbook, manual + learned) inject automatically.
+# It writes from the stored knowledge base; it never reads Gmail on this path.
+name: draft-one
+description: Draft one personalized, AI-disclosed outreach email from a contact's knowledge.
+trigger: manual
+agent: Outreach
+steps:
+  - name: load
+    step_type: function
+    config:
+      name: draft-load
+      body:
+        contact_guid: "{{trigger.payload.contact_guid}}"
+
+  - name: draft
+    step_type: llm
+    prompt: |
+      Write ONE short outreach email to a person I know, in my voice. Your soul and your
+      playbook rules already define HOW I write and the hard constraints (length, one
+      call to action, plain punctuation, AI disclosure, personalize only from what is
+      known). Follow them. This prompt gives you WHO and WHAT.
+
+      THE PERSON:
+      - name: {{load.result.name}}
+      - email: {{load.result.email}}
+      - company: {{load.result.company}}
+      - title: {{load.result.title}}
+      - my notes: {{load.result.notes}}
+
+      WHAT I KNOW ABOUT THEM (their knowledge base - use ONLY these facts, do not invent
+      more; if this is thin, stay general and warm rather than fabricating specifics):
+      {{load.result.knowledge}}
+
+      THE ASK (what every email in this campaign is ultimately for):
+      {{load.result.base_ask}}
+      Product: {{load.result.product_name}} ({{load.result.product_url}})
+
+      THIS TOUCH - write exactly this one, do not repeat earlier touches:
+      - touch {{load.result.touch_number}} of {{load.result.total_touches}}: {{load.result.touch_label}}
+      - {{load.result.instruction}}
+      Earlier touches already sent to them (do NOT repeat these angles):
+      {{load.result.prior_subjects}}
+
+      Sign off as "{{load.result.signature}}".
+
+      Respond with STRICT JSON only (no markdown, no code fences):
+      {"subject": string, "body": string, "rationale": string}
+      - body: the full plain-text email including the sign-off.
+      - rationale: one sentence for me (the reviewer) on why you chose this angle.
+
+  - name: save
+    step_type: function
+    config:
+      name: draft-save
+      body:
+        contact_guid: "{{trigger.payload.contact_guid}}"
+        draft: "{{draft}}"

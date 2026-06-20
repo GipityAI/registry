@@ -1,0 +1,52 @@
+# Child workflow: enrich ONE contact from Gmail. Called per-contact by enrich-due.
+# The research step is an LLM step governed by the Outreach agent (its soul applies),
+# with Gmail tools, so it reads prior correspondence and distills durable facts.
+name: enrich-one
+description: Scan prior Gmail for one contact and distill facts into their knowledge base.
+trigger: manual
+agent: Outreach
+steps:
+  - name: load
+    step_type: function
+    config:
+      name: enrich-load
+      body:
+        contact_guid: "{{trigger.payload.contact_guid}}"
+
+  - name: research
+    step_type: llm
+    tool_filter: [gmail_search, gmail_read]
+    prompt: |
+      You are building a durable knowledge base about ONE person I know, so I can later
+      write them a genuinely personal email. Scan MY Gmail for my prior correspondence
+      with them and distill what matters.
+
+      Person:
+      - name: {{load.result.name}}
+      - email: {{load.result.email}}
+      - company: {{load.result.company}}
+      - what I already noted: {{load.result.notes}}
+
+      Use gmail_search (e.g. 'from:{{load.result.email}}', 'to:{{load.result.email}}')
+      and gmail_read on the most relevant threads to read the actual messages (their
+      newest text, not quoted history).
+
+      Distill durable, specific FACTS that would help personalize an email: who they are
+      and how I know them, what they work on or care about, anything we have discussed,
+      shared history, and any signal about what they might want to build or try. Be
+      rigorous and honest - only record what the email history actually supports. Do NOT
+      invent a role, company, or project. If there is little history, return few facts.
+
+      Respond with STRICT JSON only (no prose, no code fences), max 12 facts:
+      {"facts": [string, ...]}
+      Each fact is one short, self-contained sentence. If you find nothing usable, return
+      {"facts": []}.
+
+  - name: save
+    step_type: function
+    config:
+      name: save-knowledge
+      body:
+        contact_guid: "{{trigger.payload.contact_guid}}"
+        source: gmail
+        research: "{{research}}"

@@ -1,0 +1,50 @@
+# Watch for replies. Scans your Gmail for recent inbound messages, matches them to
+# contacts in this funnel, marks each replied (which STOPS their follow-ups), appends
+# the reply to their knowledge, and emails YOU immediately so you can respond from your
+# personal Gmail. The scan LLM step is governed by the Outreach agent (Gmail tools).
+name: check-replies
+description: Scan Gmail for replies from contacts, pause their sequence, and alert you.
+trigger: schedule
+cron: "*/15 * * * *"
+timezone: America/New_York
+agent: Outreach
+steps:
+  - name: cfg
+    step_type: function
+    config:
+      name: settings
+      body:
+        op: get
+
+  - name: scan
+    step_type: llm
+    tool_filter: [gmail_search, gmail_read]
+    prompt: |
+      Search MY Gmail inbox for recent personal replies from the last 14 days (use
+      'in:inbox newer_than:14d'). Skip automated senders, newsletters, no-reply,
+      notifications, and receipts. For promising messages, use gmail_read to get the
+      sender's newest text (NOT the quoted thread history).
+
+      Respond with STRICT JSON only (no prose, no code fences), max 25:
+      {"replies": [{"email": string, "subject": string, "body": string}]}
+      If none, return {"replies": []}.
+
+  - name: ingest
+    step_type: function
+    config:
+      name: ingest-reply
+      body:
+        replies: "{{scan}}"
+
+  - name: notify
+    step_type: notify
+    condition: "ingest.result.matched > 0"
+    config:
+      channel: email
+      to: "{{cfg.result.settings.notify_email}}"
+      subject: "A contact replied to your Gipity outreach"
+      body: |
+        {{ingest.result.matched}} contact(s) replied. Their sequence is paused - reply
+        from your personal Gmail when ready.
+
+        {{ingest.result.summary}}

@@ -1,0 +1,21 @@
+# Draft the next touch for every contact that is due (a draft-lead day before its
+# send mark) and has no draft waiting. Drafts land as pending_approval for review -
+# nothing is sent here. Runs each morning; safe to run manually any time.
+name: draft-due
+description: Draft the next personalized touch for every due contact, for your review.
+trigger: schedule
+cron: "0 7 * * *"
+timezone: America/New_York
+steps:
+  - name: list
+    step_type: function
+    config:
+      name: draft-list
+  - name: each
+    step_type: workflow
+    foreach: "{{list.result.items}}"
+    on_failure: continue
+    config:
+      name: draft-one
+      body:
+        contact_guid: "{{item.value}}"

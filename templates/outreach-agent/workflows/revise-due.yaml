@@ -1,0 +1,22 @@
+# The redraft side of the comment-and-redraft loop. Picks up every message you
+# commented on (status 'revising') and redrafts it honoring your comment - and the
+# rule that comment just taught the agent. Runs often so a redraft appears in the
+# review queue within a couple of minutes of your comment.
+name: revise-due
+description: Redraft every commented message, honoring the comment and the new learned rule.
+trigger: schedule
+cron: "*/2 * * * *"
+timezone: America/New_York
+steps:
+  - name: list
+    step_type: function
+    config:
+      name: revise-list
+  - name: each
+    step_type: workflow
+    foreach: "{{list.result.items}}"
+    on_failure: continue
+    config:
+      name: revise-one
+      body:
+        message_guid: "{{item.value}}"

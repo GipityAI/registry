@@ -1,0 +1,22 @@
+# Build the per-contact knowledge base. Picks qualified contacts that have an email
+# but no knowledge yet and enriches each ONCE from your Gmail history. Runs on a
+# schedule and is safe to run manually any time (gipity workflow run enrich-due).
+# This is the ONLY Gmail-reading path; drafting reads the stored knowledge, not Gmail.
+name: enrich-due
+description: Enrich qualified contacts into a knowledge base from prior Gmail history.
+trigger: schedule
+cron: "*/15 * * * *"
+timezone: America/New_York
+steps:
+  - name: list
+    step_type: function
+    config:
+      name: enrich-list
+  - name: each
+    step_type: workflow
+    foreach: "{{list.result.items}}"
+    on_failure: continue
+    config:
+      name: enrich-one
+      body:
+        contact_guid: "{{item.value}}"
