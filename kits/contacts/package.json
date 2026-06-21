@@ -1,0 +1,45 @@
+{
+  "name": "@gipity/contacts",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "api.js",
+  "description": "Source-agnostic contact data layer: ingest LinkedIn CSV + Gmail + paste, resolve duplicates while keeping every value from every source with provenance, a merge-review queue for fuzzy matches, job-change signals across re-imports, user tags, and a transactional event spine.",
+  "gipity": {
+    "kit": true,
+    "install": {
+      "importMap": {
+        "@gipity/contacts": "./packages/contacts/api.js",
+        "@gipity/contacts/": "./packages/contacts/"
+      },
+      "functions": true,
+      "migrations": true,
+      "deployPhase": {
+        "name": "functions",
+        "type": "functions",
+        "source": "functions",
+        "function_definitions": [
+          {
+            "name": "contact-import",
+            "auth": "user",
+            "tables": ["contacts", "contact_attributes", "contact_sources", "merge_candidates", "contact_events", "contact_members"]
+          },
+          {
+            "name": "contact-read",
+            "auth": "user",
+            "tables": ["contacts", "contact_attributes", "contact_sources", "tags", "contact_tags", "merge_candidates", "contact_events"]
+          },
+          {
+            "name": "contact-write",
+            "auth": "user",
+            "tables": ["contacts", "contact_attributes", "contact_sources", "tags", "contact_tags", "merge_candidates", "contact_events", "contact_members"]
+          },
+          {
+            "name": "contact-harvest",
+            "auth": "user",
+            "tables": ["contacts", "contact_attributes", "contact_sources", "merge_candidates", "contact_events", "contact_members"]
+          }
+        ]
+      }
+    }
+  }
+}
