@@ -2,11 +2,15 @@
 # contacts in this funnel, marks each replied (which STOPS their follow-ups), appends
 # the reply to their knowledge, and emails YOU immediately so you can respond from your
 # personal Gmail. The scan LLM step is governed by the Outreach agent (Gmail tools).
+#
+# Trigger is `manual` by design: the Gmail scan is an LLM step that costs ~$0.20 a run,
+# so an aggressive schedule (it used to be every 15 min ≈ $20/day) burns money polling an
+# empty inbox. Run it on demand from the dashboard, or arm a sane schedule yourself by
+# setting `trigger: schedule` with a `cron:` (e.g. "0 */4 * * *" for every 4 hours).
+# Heads up: while manual, replies won't auto-pause a contact's sequence until you run it.
 name: check-replies
 description: Scan Gmail for replies from contacts, pause their sequence, and alert you.
-trigger: schedule
-cron: "*/15 * * * *"
-timezone: America/New_York
+trigger: manual
 agent: Outreach
 steps:
   - name: cfg
