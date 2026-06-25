@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
+  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
+  <meta property="og:type" content="website">
+  <title>{{TITLE}}</title>
+  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
+  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
+  <link rel="stylesheet" href="./css/gipity-theme.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@gipity/stripe": "./packages/stripe/index.js",
+      "@gipity/stripe/": "./packages/stripe/"
+    }
+  }
+  </script>
+  {{JSON_LD_BLOCK}}
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <main>
+    <header class="topbar">
+      <h1>{{TITLE}}</h1>
+      <div id="account" class="account"></div>
+    </header>
+
+    <p class="lede">A working storefront: one-time purchase, monthly subscription, and a members-only area — all powered by Stripe. Edit <code>src/js/main.js</code> and the pricing below to make it yours.</p>
+
+    <!-- A banner reflecting ?checkout=success|cancel after Stripe redirects back. -->
+    <p id="flash" class="flash" hidden></p>
+
+    <section class="pricing">
+      <article class="plan">
+        <h2>Lifetime access</h2>
+        <p class="price">$49 <span>one-time</span></p>
+        <ul>
+          <li>Pay once, keep forever</li>
+          <li>Stripe-hosted secure checkout</li>
+        </ul>
+        <stripe-buy-button name="Lifetime access" amount="4900" button-class="buy">Buy now</stripe-buy-button>
+      </article>
+
+      <article class="plan featured">
+        <h2>Pro</h2>
+        <p class="price">$9 <span>/ month</span></p>
+        <ul>
+          <li>Everything in Lifetime</li>
+          <li>Unlocks the members area</li>
+          <li>Cancel anytime</li>
+        </ul>
+        <stripe-buy-button name="Pro" amount="900" mode="subscription" interval="month" button-class="buy">Subscribe</stripe-buy-button>
+      </article>
+    </section>
+
+    <!-- Members-only area, revealed by main.js when the signed-in user has an
+         active subscription (see getSubscriptionStatus). -->
+    <section id="members" class="members" hidden>
+      <h2>★ Pro members area</h2>
+      <p>This content is gated behind an active subscription. Put your premium features here.</p>
+      <button id="manage-billing" type="button">Manage billing</button>
+    </section>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

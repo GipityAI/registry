@@ -1,0 +1,51 @@
+/* App-specific styles, layered on top of water.css + the Gipity theme. */
+
+h1, h2, .lede { text-wrap: balance; }
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.account { display: flex; align-items: center; gap: 0.5rem; }
+.account span { opacity: 0.85; }
+
+.lede { max-width: 60ch; opacity: 0.9; }
+
+.flash {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border, #444);
+  background: var(--background-alt, #1b1b1b);
+}
+.flash.ok { border-color: var(--primary, #f26522); }
+
+.pricing {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.25rem;
+  margin: 1.5rem 0;
+}
+.plan {
+  border: 1px solid var(--border, #444);
+  border-radius: 12px;
+  padding: 1.25rem;
+  background: var(--background-alt, #1b1b1b);
+  display: flex;
+  flex-direction: column;
+}
+.plan.featured { border-color: var(--primary, #f26522); }
+.plan h2 { margin-top: 0; }
+.plan .price { font-size: var(--text-xl, 28px); font-weight: 700; margin: 0.25rem 0 0.75rem; }
+.plan .price span { font-size: var(--text-sm, 14px); font-weight: 400; opacity: 0.7; }
+.plan ul { flex: 1; padding-left: 1.1rem; }
+.plan .buy { width: 100%; }
+
+.members {
+  border: 1px solid var(--primary, #f26522);
+  border-radius: 12px;
+  padding: 1.25rem;
+  margin-top: 1.5rem;
+}
+.members h2 { margin-top: 0; }

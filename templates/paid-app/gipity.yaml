@@ -1,0 +1,40 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# A storefront that charges real money via Stripe (the @gipity/stripe kit is
+# pre-installed). One-time setup, ONCE, by the app owner:
+#
+#   gipity payments connect    # Stripe-hosted onboarding (bank + identity)
+#   gipity payments status     # confirm "charges enabled"
+#
+# Money lands in the owner's own Stripe account; Gipity takes a small platform
+# fee. The platform brokers checkout and verifies Stripe webhooks, then calls
+# the payment-events function below to record the outcome.
+
+deploy:
+  phases:
+    # Static files - frontend HTML/CSS/JS
+    - name: files
+      type: static
+      source: src
+
+    # Database migrations - creates the payments + subscriptions tables
+    - name: database
+      type: sql
+      source: migrations
+      database: {{DATABASE}}
+
+    # Serverless functions (from the stripe kit)
+    #   payment-events  public  - platform-invoked fulfillment (records paid orders / subs)
+    #   payment-status  user    - the gating read (is this user subscribed?)
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: payment-events
+          auth: public
+          tables: [payments, subscriptions]
+        - name: payment-status
+          auth: user
+          tables: [subscriptions]

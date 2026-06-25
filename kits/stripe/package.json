@@ -1,0 +1,36 @@
+{
+  "name": "@gipity/stripe",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Charge your app's end-users for one-time purchases and subscriptions via Stripe. Owner connects their own Stripe account through Gipity-hosted onboarding; money lands in their account, Gipity takes a small platform fee. Ships a buy-button component, a subscription-status helper, a webhook-verified fulfillment function, and the payments/subscriptions tables.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "install": {
+      "importMap": {
+        "@gipity/stripe": "./packages/stripe/index.js",
+        "@gipity/stripe/": "./packages/stripe/"
+      },
+      "functions": true,
+      "migrations": true,
+      "deployPhase": {
+        "name": "functions",
+        "type": "functions",
+        "source": "functions",
+        "function_definitions": [
+          {
+            "name": "payment-events",
+            "auth": "public",
+            "tables": ["payments", "subscriptions"]
+          },
+          {
+            "name": "payment-status",
+            "auth": "user",
+            "tables": ["subscriptions"]
+          }
+        ]
+      }
+    }
+  }
+}
