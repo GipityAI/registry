@@ -1,6 +1,7 @@
 // records kit - read path (public): schema | list | get | events | activity | aggregate.
 // All identifiers resolve through the registry; values are parameterized.
 import { loadObject, loadSchema } from '../_lib/records/registry.js';
+import { ACTIVITY_DEFAULT_LIMIT, ACTIVITY_MAX_LIMIT, RECORD_EVENTS_LIMIT, OBJECT_EVENTS_LIMIT } from '../_lib/records/constants.js';
 import { buildListQuery, buildAggregateQuery } from './query.js';
 
 export default async function recordRead(ctx, { db }) {
@@ -13,7 +14,7 @@ export default async function recordRead(ctx, { db }) {
 
     if (action === 'activity') {
       // Cross-object recent events - the spine as a feed (PLAN.md Bet 3).
-      const limit = Math.min(Math.max(parseInt(ctx.body.limit, 10) || 50, 1), 100);
+      const limit = Math.min(Math.max(parseInt(ctx.body.limit, 10) || ACTIVITY_DEFAULT_LIMIT, 1), ACTIVITY_MAX_LIMIT);
       const { rows: events } = await db.query(
         `SELECT id, object_name, record_id, action, actor, changes, summary, created_at
          FROM kit_events ORDER BY created_at DESC LIMIT ${limit}`
@@ -34,7 +35,7 @@ export default async function recordRead(ctx, { db }) {
       const record = await fetchRecord(db, object, ctx.body.id);
       if (!record) return { error: `No ${object.label} with id '${ctx.body.id}'.` };
       const { rows: events } = await db.query(
-        'SELECT id, action, actor, changes, summary, created_at FROM kit_events WHERE object_name = $1 AND record_id = $2 ORDER BY created_at DESC LIMIT 50',
+        `SELECT id, action, actor, changes, summary, created_at FROM kit_events WHERE object_name = $1 AND record_id = $2 ORDER BY created_at DESC LIMIT ${RECORD_EVENTS_LIMIT}`,
         [object.name, ctx.body.id]
       );
       return { record: stripVector(record), events };
@@ -42,7 +43,7 @@ export default async function recordRead(ctx, { db }) {
 
     if (action === 'events') {
       const { rows: events } = await db.query(
-        'SELECT id, record_id, action, actor, changes, summary, created_at FROM kit_events WHERE object_name = $1 ORDER BY created_at DESC LIMIT 100',
+        `SELECT id, record_id, action, actor, changes, summary, created_at FROM kit_events WHERE object_name = $1 ORDER BY created_at DESC LIMIT ${OBJECT_EVENTS_LIMIT}`,
         [object.name]
       );
       return { events };

@@ -1,6 +1,7 @@
 // Safe query builders (list + aggregate). Identifiers come ONLY from the
 // registry (whitelist); every value is parameterized. Pure helper: no service access.
 import { fieldByName, isQueryableField } from '../_lib/records/registry.js';
+import { LIST_DEFAULT_LIMIT, LIST_MAX_LIMIT } from '../_lib/records/constants.js';
 
 const OPS = {
   eq: '=', neq: '!=', gt: '>', gte: '>=', lt: '<', lte: '<=',
@@ -83,7 +84,7 @@ function buildWhere(object, { q, filters = [] }) {
 }
 
 export function buildListQuery(object, opts = {}) {
-  const { sort, limit = 100, offset = 0 } = opts;
+  const { sort, limit = LIST_DEFAULT_LIMIT, offset = 0 } = opts;
   const { whereSql, params } = buildWhere(object, opts);
 
   let orderBy = 'created_at DESC';
@@ -95,7 +96,7 @@ export function buildListQuery(object, opts = {}) {
     orderBy = `${sortExpr(object, sort.field)} ${dir} NULLS LAST`;
   }
 
-  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || 100, 1), 200);
+  const safeLimit = Math.min(Math.max(parseInt(limit, 10) || LIST_DEFAULT_LIMIT, 1), LIST_MAX_LIMIT);
   const safeOffset = Math.max(parseInt(offset, 10) || 0, 0);
 
   return {
