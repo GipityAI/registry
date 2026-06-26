@@ -2,7 +2,7 @@
 
 Charge your app's end-users for **one-time purchases** and **subscriptions** via Stripe — with Gipity-hosted onboarding, signature-verified webhooks, and a small platform fee handled for you.
 
-How the money flows: the app owner connects **their own** Stripe account (Stripe Connect Express). Customers pay on Stripe's hosted Checkout; money lands in the owner's account. Gipity takes a configurable platform fee (default 5%) on top of Stripe's processing fees. The owner is the merchant of record.
+How the money flows: the app owner connects **their own** Stripe account (Stripe Connect Express). Customers pay on Stripe's hosted Checkout; money lands in the owner's account. Gipity takes a configurable platform fee (default 1%) on top of Stripe's processing fees. The owner is the merchant of record.
 
 Why part of this is platform-side: an app's serverless functions can't safely verify Stripe webhooks (no raw body, no crypto in the sandbox). So the **platform** calls Stripe with your connected account and verifies every webhook, then forwards the trusted event to this kit's `payment-events` function for fulfillment.
 
