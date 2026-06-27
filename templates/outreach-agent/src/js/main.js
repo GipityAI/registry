@@ -9,6 +9,7 @@ import { renderPlaybook } from './views/playbook.js';
 import { renderContacts, renderContactDetail } from './views/contacts.js';
 import { renderCandidates } from './views/candidates.js';
 import { renderImport } from './views/import.js';
+import { renderTopics } from './views/topics.js';
 import { renderSettings } from './views/settings.js';
 
 // A tiny shared store so any view can read cached settings (esp. agent_guid).
@@ -31,6 +32,7 @@ const routes = [
     { re: /^#\/contacts\/?$/, name: 'contacts', run: () => renderContacts(viewEl) },
     { re: /^#\/candidates\/?$/, name: 'candidates', run: () => renderCandidates(viewEl) },
     { re: /^#\/import\/?$/, name: 'import', run: () => renderImport(viewEl) },
+    { re: /^#\/topics\/?$/, name: 'topics', run: () => renderTopics(viewEl) },
     { re: /^#\/settings\/?$/, name: 'settings', run: () => renderSettings(viewEl) },
     { re: /.*/, name: 'dashboard', run: () => renderDashboard(viewEl) },
 ];

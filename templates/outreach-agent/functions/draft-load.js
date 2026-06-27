@@ -16,6 +16,20 @@ export default async function draftLoad(ctx, { db }) {
     const idx = steps.length ? Math.min(contact.seq_step || 0, steps.length - 1) : 0;
     const step = steps[idx] || { label: 'Intro', instruction: 'Write a warm first touch.' };
 
+    // Pick the active topic that best fits this contact's (stage, persona). A null
+    // audience_stage / audience_persona fits anyone, so the most-specific matching
+    // topic (both fields set) wins over a generic one.
+    const stage = contact.stage || 'cold';
+    const persona = contact.persona || 'unknown';
+    const topic = (await db.query(
+        `SELECT title, body FROM topics
+          WHERE active = true
+            AND (audience_stage IS NULL OR audience_stage = $1)
+            AND (audience_persona IS NULL OR audience_persona = $2)
+          ORDER BY (audience_stage IS NOT NULL)::int + (audience_persona IS NOT NULL)::int DESC,
+                   updated_at DESC
+          LIMIT 1`, [stage, persona])).rows[0] || null;
+
     // Prior outbound subjects so a follow-up does not repeat an earlier touch.
     const priorSubjects = (await db.query(
         "SELECT subject FROM messages WHERE contact_guid=$1 AND direction='outbound' AND status='sent' ORDER BY created_at ASC", [id]
@@ -32,6 +46,10 @@ export default async function draftLoad(ctx, { db }) {
         company: contact.company || '(unknown)',
         title: contact.title || '(unknown)',
         notes: contact.notes || '(none)',
+        stage,
+        persona,
+        topic_title: topic?.title || '(no specific topic - use the base ask)',
+        topic_body: topic?.body || '(none - personalize from what you know and the base ask)',
         knowledge,
         prior_subjects: priorSubjects,
         touch_label: step.label,

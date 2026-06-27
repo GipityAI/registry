@@ -9,6 +9,8 @@ const MEMBER_FUNCTIONS = [
     ['knowledge', { op: 'list', contact_guid: 'x' }],
     ['review', { op: 'queue' }],
     ['linkedin-import', { rows: [{ email: 'a@b.co' }] }],
+    ['signups-import', { rows: [{ email: 'a@b.co', short_guid: 'u_x' }] }],
+    ['topics', { op: 'list' }],
     ['draft-list', {}],
     ['draft-load', { contact_guid: 'x' }],
     ['draft-save', { contact_guid: 'x', draft: '{}' }],

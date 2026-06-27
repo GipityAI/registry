@@ -59,7 +59,24 @@ export const api = {
         save: (s) => fn('settings', { op: 'save', ...s }),
     },
 
+    topics: {
+        list: () => fn('topics', { op: 'list' }),
+        save: (t) => fn('topics', { op: 'save', ...t }),
+        toggle: (short_guid) => fn('topics', { op: 'toggle', short_guid }),
+        remove: (short_guid) => fn('topics', { op: 'delete', short_guid }),
+    },
+
     linkedinImport: (rows) => fn('linkedin-import', { rows }),
+    signupsImport: (rows) => fn('signups-import', { rows }),
+
+    // Platform bridge - admin-only export of Gipity signups (the audience). The same
+    // Sign-in-with-Gipity session cookie authorizes it; only an admin account gets data.
+    accounts: {
+        list: (params = {}) => {
+            const qs = new URLSearchParams(params).toString();
+            return bridge('GET', `/account/accounts${qs ? `?${qs}` : ''}`);
+        },
+    },
 
     // Platform bridge - the agent's playbook + learning.
     rules: {

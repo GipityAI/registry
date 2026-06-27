@@ -11,6 +11,21 @@ export default async function saveKnowledge(ctx, { db, guid }) {
     if (!contact) return { error: 'Contact not found' };
 
     const parsed = extractJson(ctx.body?.research) || {};
+
+    // Stamp the Gmail-enrich pass as done (gmail source only) so the enrich queue
+    // doesn't keep re-listing this contact - mark it even when nothing usable came
+    // back. The persona classification (when it produced a known value) lands in the
+    // same update; 'unknown' is left untouched so we never clobber a real persona.
+    const PERSONAS = ['investor', 'developer', 'designer', 'games', 'enterprise'];
+    const persona = String(parsed.persona || '').trim().toLowerCase();
+    if (source === 'gmail') {
+        if (PERSONAS.includes(persona)) {
+            await db.query('UPDATE contacts SET persona=$2, enriched_at=NOW(), updated_at=NOW() WHERE short_guid=$1', [contactGuid, persona]);
+        } else {
+            await db.query('UPDATE contacts SET enriched_at=NOW(), updated_at=NOW() WHERE short_guid=$1', [contactGuid]);
+        }
+    }
+
     const facts = findArray(parsed, 'facts')
         .map((f) => (typeof f === 'string' ? f : (f && (f.content || f.fact || f.text)) || ''))
         .map((s) => String(s).trim())

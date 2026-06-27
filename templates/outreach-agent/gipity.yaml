@@ -53,6 +53,14 @@ deploy:
         - name: linkedin-import
           auth: member
           tables: [contacts]
+        # Import Gipity signups (rows from the admin /account/accounts export) +
+        # the topics library the drafts pick from.
+        - name: signups-import
+          auth: member
+          tables: [contacts, contact_knowledge]
+        - name: topics
+          auth: member
+          tables: [topics]
         - name: dashboard
           auth: member
           tables: [contacts, messages]
@@ -68,7 +76,7 @@ deploy:
           tables: [contacts, messages, settings]
         - name: draft-load
           auth: member
-          tables: [contacts, contact_knowledge, sequence_steps, messages, settings]
+          tables: [contacts, contact_knowledge, sequence_steps, messages, settings, topics]
         - name: draft-save
           auth: member
           tables: [contacts, messages, settings]
@@ -95,7 +103,7 @@ deploy:
           tables: [contacts, contact_knowledge]
         - name: enrich-load
           auth: member
-          tables: [contacts]
+          tables: [contacts, contact_knowledge]
         - name: save-knowledge
           auth: member
           tables: [contacts, contact_knowledge]

@@ -77,6 +77,11 @@ async function saveContact(ctx, db, guid) {
     const notes = b.notes || null;
     const source = b.source || 'manual';
     const fit = b.fit_score != null ? clampScore(b.fit_score) : null;
+    // Stage/persona are funnel segmentation; null leaves the stored value untouched.
+    const STAGES = ['cold', 'signed_up', 'active'];
+    const PERSONAS = ['investor', 'developer', 'designer', 'games', 'enterprise', 'unknown'];
+    const stage = STAGES.includes(b.stage) ? b.stage : null;
+    const persona = PERSONAS.includes(b.persona) ? b.persona : null;
 
     if (b.short_guid) {
         const existing = await db.findOne('contacts', { short_guid: b.short_guid });
@@ -87,9 +92,10 @@ async function saveContact(ctx, db, guid) {
         const seqStep = restart ? 0 : existing.seq_step;
         const { rows } = await db.query(
             `UPDATE contacts SET email=$2, name=$3, company=$4, title=$5, status=$6, cadence=$7,
-                    notes=$8, next_contact_at=$9, seq_step=$10, fit_score=COALESCE($11, fit_score), updated_at=NOW()
+                    notes=$8, next_contact_at=$9, seq_step=$10, fit_score=COALESCE($11, fit_score),
+                    stage=COALESCE($12, stage), persona=COALESCE($13, persona), updated_at=NOW()
              WHERE short_guid=$1 RETURNING *`,
-            [b.short_guid, email, name, company, title, status, cadence, notes, next, seqStep, fit]);
+            [b.short_guid, email, name, company, title, status, cadence, notes, next, seqStep, fit, stage, persona]);
         return { contact: rows[0] };
     }
 

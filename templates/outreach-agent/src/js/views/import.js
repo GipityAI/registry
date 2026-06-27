@@ -51,6 +51,51 @@ function toRows(csv) {
 export function renderImport(view) {
     view.innerHTML = '';
     view.appendChild(el('h1', {}, 'Import contacts'));
+
+    // --- Import Gipity signups (the primary audience) ------------------------
+    const acctCard = el('div', { class: 'card' },
+        el('div', { class: 'card-title' }, 'Import Gipity signups'));
+    acctCard.appendChild(el('p', { class: 'muted small' },
+        'Pull people who signed up for Gipity straight from the platform (admin only). Each lands as a candidate with a funnel stage (signed up / active) and a starter knowledge base built from their account - apps they built, where they are, what they asked the agent to build.'));
+
+    const createdAfter = el('input', { type: 'date', style: 'width:170px' });
+    const limit = el('input', { type: 'number', value: 100, min: 1, max: 500, style: 'width:100px' });
+    const acctStatus = el('p', { class: 'muted small' });
+    acctCard.appendChild(el('div', { class: 'row' },
+        el('label', { class: 'small muted' }, 'Signed up after'), createdAfter,
+        el('label', { class: 'small muted' }, 'Max'), limit,
+        el('button', { onclick: async () => {
+            acctStatus.textContent = 'Fetching accounts...';
+            let rows;
+            try {
+                const params = { limit: Number(limit.value) || 100 };
+                if (createdAfter.value) params.created_after = new Date(createdAfter.value).toISOString();
+                rows = (await api.accounts.list(params)).data || [];
+            } catch (e) {
+                acctStatus.textContent = e.message === 'UNAUTHENTICATED'
+                    ? 'Sign in again to fetch accounts.'
+                    : `Could not fetch accounts: ${e.message} (admin only).`;
+                return;
+            }
+            if (!rows.length) { acctStatus.textContent = 'No accounts matched.'; return; }
+            acctStatus.textContent = `Importing ${rows.length} signup(s)...`;
+            let added = 0, updated = 0;
+            try {
+                for (let i = 0; i < rows.length; i += 100) {
+                    const r = await api.signupsImport(rows.slice(i, i + 100));
+                    added += r.added || 0; updated += r.updated || 0;
+                }
+                acctStatus.textContent = `Imported: ${added} new, ${updated} updated. Go qualify them.`;
+                toast(`Imported ${added} new signups.`);
+            } catch (e) { acctStatus.textContent = `Failed: ${e.message}`; }
+        } }, 'Fetch & import'),
+        el('a', { href: '#/candidates', class: 'pill' }, 'Go qualify'),
+    ));
+    acctCard.appendChild(acctStatus);
+    view.appendChild(acctCard);
+
+    // --- Import from a CSV (LinkedIn etc.) ----------------------------------
+    view.appendChild(el('div', { class: 'card-title', style: 'margin-top:var(--space-lg)' }, 'Or import a CSV'));
     view.appendChild(el('p', { class: 'muted' },
         'Paste a LinkedIn connections export (Connections.csv) or any CSV with Name/Email/Company/Title columns. Contacts land as candidates to qualify - nothing is emailed until you qualify and approve.'));
 

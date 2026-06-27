@@ -3,6 +3,8 @@ import { el, esc, fmtDate, setStatus, toast } from '../util.js';
 
 const CADENCES = ['every3', 'weekly', 'biweekly', 'monthly', 'paused'];
 const STATUSES = ['new', 'in_sequence', 'replied', 'done', 'paused', 'to_qualify', 'disqualified', 'no_email'];
+const STAGES = ['cold', 'signed_up', 'active'];
+const PERSONAS = ['investor', 'developer', 'designer', 'games', 'enterprise', 'unknown'];
 
 export async function renderContacts(view) {
     setStatus(view, 'Loading contacts...');
@@ -15,11 +17,14 @@ export async function renderContacts(view) {
     if (!contacts.length) { view.appendChild(el('p', { class: 'muted' }, 'No contacts yet. Import some, then qualify your five.')); return; }
 
     const table = el('table', {}, el('thead', {}, el('tr', {},
-        el('th', {}, 'Name'), el('th', {}, 'Status'), el('th', {}, 'Cadence'), el('th', {}, 'Next'), el('th', {}, 'Fit'))));
+        el('th', {}, 'Name'), el('th', {}, 'Stage'), el('th', {}, 'Persona'), el('th', {}, 'Status'),
+        el('th', {}, 'Cadence'), el('th', {}, 'Next'), el('th', {}, 'Fit'))));
     const tbody = el('tbody', {});
     for (const c of contacts) {
         tbody.appendChild(el('tr', {},
             el('td', {}, el('a', { href: `#/contacts/${encodeURIComponent(c.short_guid)}` }, esc(c.name || c.email || c.short_guid))),
+            el('td', {}, el('span', { class: 'pill' }, c.stage || 'cold')),
+            el('td', { class: 'muted small' }, c.persona && c.persona !== 'unknown' ? c.persona : '-'),
             el('td', {}, el('span', { class: 'pill' }, c.status)),
             el('td', {}, c.cadence),
             el('td', { class: 'muted small' }, c.next_contact_at ? fmtDate(c.next_contact_at) : '-'),
@@ -44,16 +49,20 @@ export async function renderContactDetail(view, guid) {
         el('a', { href: '#/contacts', class: 'muted small' }, '< all contacts')));
     view.appendChild(el('p', { class: 'muted' }, esc(c.email || ''), c.company ? ` - ${esc(c.company)}` : '', c.title ? ` - ${esc(c.title)}` : ''));
 
-    // Status + cadence controls.
+    // Stage + persona + status + cadence controls.
+    const stageSel = el('select', {}, ...STAGES.map((x) => el('option', { value: x, selected: x === (c.stage || 'cold') }, x)));
+    const personaSel = el('select', {}, ...PERSONAS.map((x) => el('option', { value: x, selected: x === (c.persona || 'unknown') }, x)));
     const statusSel = el('select', {}, ...STATUSES.map((x) => el('option', { value: x, selected: x === c.status }, x)));
     const cadenceSel = el('select', {}, ...CADENCES.map((x) => el('option', { value: x, selected: x === c.cadence }, x)));
     view.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, 'Status & cadence'),
+        el('div', { class: 'card-title' }, 'Stage, persona & cadence'),
         el('div', { class: 'row' },
+            el('label', { class: 'small muted' }, 'Stage'), stageSel,
+            el('label', { class: 'small muted' }, 'Persona'), personaSel,
             el('label', { class: 'small muted' }, 'Status'), statusSel,
             el('label', { class: 'small muted' }, 'Cadence'), cadenceSel,
             el('button', { class: 'small', onclick: async () => {
-                try { await api.contacts.save({ short_guid: c.short_guid, email: c.email, name: c.name, company: c.company, title: c.title, notes: c.notes, status: statusSel.value, cadence: cadenceSel.value }); toast('Saved.'); renderContactDetail(view, guid); }
+                try { await api.contacts.save({ short_guid: c.short_guid, email: c.email, name: c.name, company: c.company, title: c.title, notes: c.notes, status: statusSel.value, cadence: cadenceSel.value, stage: stageSel.value, persona: personaSel.value }); toast('Saved.'); renderContactDetail(view, guid); }
                 catch (e) { toast(e.message); }
             } }, 'Save'),
             el('button', { class: 'small ghost', onclick: async () => {

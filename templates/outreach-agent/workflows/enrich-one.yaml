@@ -25,22 +25,35 @@ steps:
       - name: {{load.result.name}}
       - email: {{load.result.email}}
       - company: {{load.result.company}}
+      - Gipity stage: {{load.result.stage}}
       - what I already noted: {{load.result.notes}}
+
+      WHAT I ALREADY KNOW (facts already on file - including signals from their Gipity
+      account like apps they built and what they asked the agent to build):
+      {{load.result.knowledge}}
 
       Use gmail_search (e.g. 'from:{{load.result.email}}', 'to:{{load.result.email}}')
       and gmail_read on the most relevant threads to read the actual messages (their
-      newest text, not quoted history).
+      newest text, not quoted history). A cold signup may have no Gmail history at all -
+      that is fine; lean on the account facts above for the persona call.
 
       Distill durable, specific FACTS that would help personalize an email: who they are
       and how I know them, what they work on or care about, anything we have discussed,
       shared history, and any signal about what they might want to build or try. Be
       rigorous and honest - only record what the email history actually supports. Do NOT
       invent a role, company, or project. If there is little history, return few facts.
+      The knowledge base may already hold facts gathered from their Gipity account (geo,
+      apps they built, what they asked the agent to build) - factor those in too.
+
+      Also CLASSIFY their persona into exactly one of:
+        investor | developer | designer | games | enterprise | unknown
+      Base it only on what the facts actually support (their role, what they build, what
+      they care about). Use "unknown" when there is not enough signal - do not guess.
 
       Respond with STRICT JSON only (no prose, no code fences), max 12 facts:
-      {"facts": [string, ...]}
+      {"facts": [string, ...], "persona": "investor|developer|designer|games|enterprise|unknown"}
       Each fact is one short, self-contained sentence. If you find nothing usable, return
-      {"facts": []}.
+      {"facts": [], "persona": "unknown"}.
 
   - name: save
     step_type: function
