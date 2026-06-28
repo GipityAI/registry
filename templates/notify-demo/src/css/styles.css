@@ -1,0 +1,47 @@
+/* notify-demo styles — layered over Water.css + the Gipity theme. */
+
+.lede {
+  text-wrap: balance;
+  opacity: 0.9;
+}
+
+.card {
+  border: 1px solid var(--border, #2a2a2e);
+  border-radius: var(--radius, 10px);
+  padding: var(--space-lg, 1.25rem);
+  margin: 1rem 0;
+}
+
+.card h2 {
+  margin-top: 0;
+  font-size: var(--text-lg, 1.25rem);
+  text-wrap: balance;
+}
+
+.row {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid var(--primary, #f26522);
+}
+
+#message {
+  width: 100%;
+  margin-bottom: 0.6rem;
+}
+
+.status {
+  min-height: 1.4em;
+  margin: 0.6rem 0 0;
+  font-size: var(--text-sm, 0.9rem);
+}
+
+.hint {
+  font-size: var(--text-sm, 0.9rem);
+  opacity: 0.75;
+  text-wrap: pretty;
+}

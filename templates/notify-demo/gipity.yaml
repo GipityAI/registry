@@ -1,0 +1,24 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# A working web-push demo built on Gipity Notify. No database needed — push
+# subscriptions live on the platform. Enable notifications with the button, then
+# send one with the send-ping function (or `gipity notify test`).
+
+deploy:
+  phases:
+    # Static frontend (src/) → CDN
+    - name: files
+      type: static
+      source: src
+
+    # Serverless functions. send-ping declares services: ['notify'] — that's all
+    # it takes to send a notification; the platform owns the keys + delivery.
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: send-ping
+          auth: user
+          services: ['notify']
