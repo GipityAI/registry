@@ -13,7 +13,7 @@
  * filter only narrows log_errors rows; function/service failures always show
  * regardless.
  */
-import { fmtTime, truncate, escapeHtml } from '../format.js';
+import { fmtTime, truncate, escapeHtml, consoleLogsHtml } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -52,6 +52,7 @@ function renderError(d) {
   if (d.correlated_function_log) {
     const c = d.correlated_function_log;
     out.push(`<div class="activity-corr">└─ server function <code>${escapeHtml(c.function_name)}</code> → <span class="status-${escapeHtml(c.status)}">${escapeHtml(c.status)}</span>${c.error_message ? ` — ${escapeHtml(truncate(c.error_message, 200))}` : ''}</div>`);
+    out.push(consoleLogsHtml(c.logs));
   }
   if (d.stack && !d.network_url) {
     out.push(`<details class="activity-extra"><summary>Stack</summary><pre class="mono">${escapeHtml(truncate(d.stack, 2000))}</pre></details>`);
@@ -71,6 +72,7 @@ function renderFunction(d) {
       <span class="muted">${escapeHtml(d.trigger_type || '?')} • ${escapeHtml(dur)}</span>
     </div>
     ${d.error_message ? `<div class="activity-msg mono">${escapeHtml(truncate(d.error_message, 400))}</div>` : ''}
+    ${consoleLogsHtml(d.logs)}
   `;
 }
 

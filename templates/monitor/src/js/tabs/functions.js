@@ -1,4 +1,4 @@
-import { fmtNum, fmtExact, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries, fmtDelta } from '../format.js';
+import { fmtNum, fmtExact, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries, fmtDelta, consoleLogsHtml } from '../format.js';
 import { groupFor } from '../chart-helpers.js';
 
 let chart = null;
@@ -48,15 +48,21 @@ export async function renderFunctionsTab(api, { range, appGuid, projectId }) {
     </tr>
   `).join('');
 
-  // Recent invocations table
+  // Recent invocations table. Each call that printed console output gets a
+  // second, full-width row holding a collapsible console panel (WT-363).
   const recBody = $('table-fn-recent').querySelector('tbody');
   if (!recent.data.length) recBody.innerHTML = emptyRow(4);
-  else recBody.innerHTML = recent.data.map((r) => `
+  else recBody.innerHTML = recent.data.map((r) => {
+    const main = `
     <tr>
       <td class="muted">${fmtTime(r.created_at)}</td>
       <td class="mono">${escapeHtml(truncate(r.function_name || 'unknown', 40))}</td>
       <td>${statusPill(r.status)}</td>
       <td class="num muted">${fmtMs(r.duration_ms)}</td>
-    </tr>
-  `).join('');
+    </tr>`;
+    const consoleHtml = consoleLogsHtml(r.logs);
+    return consoleHtml
+      ? `${main}\n    <tr class="fn-logs-row"><td colspan="4">${consoleHtml}</td></tr>`
+      : main;
+  }).join('');
 }

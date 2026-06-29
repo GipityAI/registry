@@ -348,6 +348,16 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 .activity-extra summary { cursor: pointer; color: var(--text-muted); font-size: 0.8rem; }
 .activity-extra pre { background: var(--bg); padding: 0.4rem 0.6rem; border-radius: 3px; max-height: 24rem; overflow: auto; font-size: 0.75rem; }
 
+/* Captured function console output (console.log/warn/error) — collapsible panel
+   shared by the Activity timeline and the Functions tab's recent-calls table. */
+.fn-logs { margin-top: 0.3rem; }
+.fn-logs summary { cursor: pointer; color: var(--text-muted); font-size: 0.78rem; }
+.fn-logs-body { background: var(--bg); padding: 0.4rem 0.6rem; border-radius: 3px; margin-top: 0.3rem; max-height: 24rem; overflow: auto; font-size: 0.75rem; }
+.fn-log-line { white-space: pre-wrap; word-break: break-word; padding: 0.05rem 0; color: var(--text-muted); }
+.fn-log-warn { color: var(--warning); }
+.fn-log-error { color: var(--error); }
+.fn-logs-row > td { padding-top: 0; border-top: none; }
+
 .activity-crumbs {
   display: flex; flex-wrap: wrap; gap: 0.25rem; align-items: baseline;
   margin-top: 0.4rem; font-size: 0.75rem; color: var(--text-muted);

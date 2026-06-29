@@ -112,6 +112,18 @@ export function emptyRow(cols, msg = 'No data in this window.') {
   return `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
 }
 
+// Captured function console output (console.log/warn/error) as a collapsible
+// <details> block, level-colored. Returns '' when the invocation logged nothing,
+// so callers can append it unconditionally.
+export function consoleLogsHtml(logs) {
+  if (!Array.isArray(logs) || logs.length === 0) return '';
+  const lines = logs.map((l) => {
+    const lvl = l && (l.level === 'error' || l.level === 'warn') ? l.level : 'log';
+    return `<div class="fn-log-line fn-log-${lvl}">${escapeHtml(truncate(String((l && l.message) ?? ''), 2000))}</div>`;
+  }).join('');
+  return `<details class="fn-logs"><summary>console output (${logs.length})</summary><div class="fn-logs-body mono">${lines}</div></details>`;
+}
+
 // ─── Chart bucket helpers ─────────────────────────────────────
 
 const RANGE_TO_MS = { '1h': 3_600_000, '24h': 86_400_000, '7d': 604_800_000, '30d': 2_592_000_000, '1y': 31_536_000_000 };
