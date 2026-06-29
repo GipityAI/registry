@@ -1,6 +1,6 @@
 {
   "name": "@gipity/notify",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "main": "index.js",
   "description": "Web push notifications (Gipity Notify) for any web app, including iOS home-screen web apps. The platform owns the VAPID keys, encryption, and delivery; this kit is the browser layer — a <gipity-notify-button>, the service worker, and a PWA manifest. Send from a function with the injected notify() service. No keys, no crypto, no server.",
