@@ -99,6 +99,15 @@ export const api = {
   updateAlert: (id, body) => send('PATCH', `/account/alerts/${encodeURIComponent(id)}`, body),
   deleteAlert: (id) => send('DELETE', `/account/alerts/${encodeURIComponent(id)}`),
 
+  // Secrets — encrypted app/account secrets (names + masked previews only,
+  // never values). scope is 'project' (needs appGuid) or 'account'.
+  listSecrets: (scope, appGuid) =>
+    getJson(`/secrets${qs({ scope, app_guid: scope === 'project' ? appGuid : undefined })}`),
+  setSecret: (scope, appGuid, name, value) =>
+    send('PUT', `/secrets${qs({ scope, app_guid: scope === 'project' ? appGuid : undefined })}`, { name, value }),
+  deleteSecret: (scope, appGuid, name) =>
+    send('DELETE', `/secrets/${encodeURIComponent(name)}${qs({ scope, app_guid: scope === 'project' ? appGuid : undefined })}`),
+
   // Digest email preferences
   getDigestPref: () => getJson('/account/alerts/digest'),
   setDigestPref: (cadence, email) => send('PUT', '/account/alerts/digest', { cadence, email }),

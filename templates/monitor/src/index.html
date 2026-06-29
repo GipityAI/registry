@@ -78,6 +78,7 @@
         <button data-tab="spend" role="tab">Usage</button>
         <button data-tab="devices" role="tab">Devices</button>
         <button data-tab="alerts" role="tab">Alerts</button>
+        <button data-tab="secrets" role="tab">Secrets</button>
       </div>
     </nav>
     <div class="v-splitter" id="sidebar-splitter" aria-hidden="true"></div>
@@ -738,6 +739,51 @@
           </label>
           <div class="dialog-actions">
             <button type="button" id="alert-cancel">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- ── Secrets tab ──────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="secrets" hidden>
+      <p class="tab-desc">Encrypted API keys, tokens, and passwords for your apps — stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <span class="try-it">Never hardcode a key in source — store it here instead.</span></p>
+      <div class="sub-tabs">
+        <button data-secret-scope="project" class="active">This project</button>
+        <button data-secret-scope="account">Account-wide</button>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3 id="secrets-scope-title">Project secrets</h3>
+          <button id="new-secret-btn" class="primary-btn">+ New secret</button>
+        </div>
+        <p class="muted small" id="secrets-scope-hint"></p>
+        <table class="data-table" id="table-secrets">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Value</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <dialog id="secret-form-dialog" class="alert-dialog">
+        <form id="secret-form" method="dialog">
+          <h3 id="secret-form-title">New secret</h3>
+          <label>Name
+            <input type="text" id="secret-name" required maxlength="100" placeholder="OPENAI_API_KEY" />
+            <span class="hint">UPPER_SNAKE_CASE (letters, digits, underscores)</span>
+          </label>
+          <label>Value
+            <input type="text" id="secret-value" required autocomplete="off" placeholder="sk-…" />
+            <span class="hint">Stored encrypted; never shown again after saving</span>
+          </label>
+          <div class="dialog-actions">
+            <button type="button" id="secret-cancel">Cancel</button>
             <button type="submit" class="primary-btn">Save</button>
           </div>
         </form>

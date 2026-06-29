@@ -17,6 +17,7 @@ import { renderServicesTab } from './tabs/services.js';
 import { renderChatsTab } from './tabs/chats.js';
 import { renderAuditTab } from './tabs/audit.js';
 import { renderAlertsTab } from './tabs/alerts.js';
+import { renderSecretsTab } from './tabs/secrets.js';
 import { renderComputeTab } from './tabs/compute.js';
 import { renderDataTab } from './tabs/data.js';
 import { renderHostingTab } from './tabs/hosting.js';
@@ -106,6 +107,7 @@ async function renderActiveTab() {
       case 'devices':   return await renderDevicesTab(api, filters);
       case 'audit':     return await renderAuditTab(api, { ...filters, type: currentAuditType });
       case 'alerts':    return await renderAlertsTab(api, filters);
+      case 'secrets':   return await renderSecretsTab(api, filters);
     }
   } catch (err) {
     if (err.message === 'UNAUTHENTICATED') showAuthGate();
