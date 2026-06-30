@@ -122,6 +122,52 @@ progress::-moz-progress-bar {
 meter::-webkit-meter-bar, meter::-webkit-meter-optimum-value {
   border-radius: 999px;
 }
+/* Range sliders. Water's dark.css paints the track with --background (#202020)
+   and the thumb with --border (#333) — both near-black on the #0d0d0d page, so
+   the control reads as invisible and (being explicitly styled) never picks up the
+   orange accent-color either. Re-assert a visible track + a Gipity-orange thumb,
+   same reason progress/meter above must re-declare their fill. */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -6px; /* center the 18px thumb on the 6px track */
+  background: var(--primary);
+  border: 2px solid var(--background-body);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+}
+input[type="range"]:hover::-webkit-slider-thumb,
+input[type="range"]:focus::-webkit-slider-thumb {
+  background: var(--primary-hover);
+}
+input[type="range"]::-moz-range-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 999px;
+}
+input[type="range"]::-moz-range-progress {
+  height: 6px;
+  background: var(--primary);
+  border-radius: 999px;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--primary);
+  border: 2px solid var(--background-body);
+  border-radius: 50%;
+  box-shadow: var(--shadow);
+}
+input[type="range"]:hover::-moz-range-thumb,
+input[type="range"]:focus::-moz-range-thumb {
+  background: var(--primary-hover);
+}
 h1, h2 {
   letter-spacing: -0.02em; /* subtle modern tightening on large headings */
 }
