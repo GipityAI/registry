@@ -21,6 +21,6 @@ export default async function draftSave(ctx, { db, guid }) {
         `INSERT INTO messages
             (short_guid, contact_guid, direction, status, seq_step, subject, body, body_original, rationale, model, scheduled_send_at)
          VALUES ($1,$2,'outbound','pending_approval',$3,$4,$5,$5,$6,$7,$8)`,
-        [id, contactGuid, contact.seq_step || 0, subject, body, rationale, s.model || 'claude-sonnet-4-6', contact.next_contact_at]);
+        [id, contactGuid, contact.seq_step || 0, subject, body, rationale, s.model || 'claude-sonnet-5', contact.next_contact_at]);
     return { message_guid: id, contact_guid: contactGuid, subject };
 }

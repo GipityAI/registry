@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS settings (
     product_url     VARCHAR(500) DEFAULT 'https://gipity.ai',
     sender_name     VARCHAR(120),
     signature       TEXT,
-    model           VARCHAR(60)  DEFAULT 'claude-sonnet-4-6',
+    model           VARCHAR(60)  DEFAULT 'claude-sonnet-5',
     default_cadence VARCHAR(20)  DEFAULT 'every3',
     draft_lead_days SMALLINT     DEFAULT 1,                -- draft this many days before the send mark
     daily_send_cap  INT          DEFAULT 10,              -- max emails per send run (platform limit is 10/hr)

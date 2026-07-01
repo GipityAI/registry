@@ -62,6 +62,6 @@ export default async function draftLoad(ctx, { db }) {
         product_url: s.product_url || 'https://gipity.ai',
         sender_name: s.sender_name || 'me',
         signature: s.signature || s.sender_name || 'me',
-        model: s.model || 'claude-sonnet-4-6',
+        model: s.model || 'claude-sonnet-5',
     };
 }

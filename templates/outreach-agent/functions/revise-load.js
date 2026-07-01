@@ -36,6 +36,6 @@ export default async function reviseLoad(ctx, { db }) {
         product_name: s.product_name || 'Gipity',
         product_url: s.product_url || 'https://gipity.ai',
         signature: s.signature || s.sender_name || 'me',
-        model: s.model || 'claude-sonnet-4-6',
+        model: s.model || 'claude-sonnet-5',
     };
 }
