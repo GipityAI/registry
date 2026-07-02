@@ -16,16 +16,58 @@ function fmtBytes(n) {
   return `${n} B`;
 }
 
-// Light formatter for plan_limits keys — these are camelCase + bytes/seconds units.
+// Friendly labels for the known plan-limit keys; anything unmapped falls back
+// to a camelCase split so new limits still render (just less prettily).
+const LIMIT_LABELS = {
+  maxProjects: 'Projects',
+  maxDatabases: 'Databases',
+  storageQuotaBytes: 'Storage',
+  maxWorkflows: 'Workflows',
+  minCronIntervalHours: 'Cron frequency',
+  maxConcurrentChats: 'Concurrent chats',
+  deployRatePerMinute: 'Deploys/min',
+  testFileConcurrency: 'Parallel tests',
+};
+// Nested serviceLimits (media generation entitlements). Convention:
+// -1 = unlimited, 0 = Pro-only (blocked on free), N = N free uses/month.
+const SERVICE_LABELS = {
+  video: 'Video generation',
+  music: 'Music generation',
+  image: 'Image generation',
+  audio: 'Speech & sound FX',
+};
+
 function prettyLimitKey(k) {
-  return k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
+  return LIMIT_LABELS[k] || k.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
 }
 function prettyLimitValue(k, v) {
   if (v == null) return '—';
-  if (k.endsWith('Bytes')) return fmtBytes(Number(v));
+  if (k === 'storageQuotaBytes' || k.endsWith('Bytes')) return fmtBytes(Number(v));
+  if (k === 'minCronIntervalHours') return Number(v) === 0 ? 'no minimum' : `${fmtExact(Number(v))}h minimum`;
   if (typeof v === 'boolean') return v ? 'yes' : 'no';
   if (typeof v === 'number') return fmtExact(v);
   return String(v);
+}
+function fmtServiceLimit(v) {
+  if (v === -1) return 'unlimited';
+  if (v === 0) return 'Pro only';
+  if (typeof v === 'number') return `${fmtExact(v)}/mo free`;
+  return String(v);
+}
+// Flatten limits into [label, value] rows, expanding the nested serviceLimits
+// object into one row per media service so nothing renders as "[object Object]".
+function limitRowsFor(limits) {
+  const rows = [];
+  for (const [k, v] of Object.entries(limits)) {
+    if (k === 'serviceLimits' && v && typeof v === 'object') {
+      for (const sk of Object.keys(SERVICE_LABELS)) {
+        if (v[sk] !== undefined) rows.push([SERVICE_LABELS[sk], fmtServiceLimit(v[sk])]);
+      }
+    } else {
+      rows.push([prettyLimitKey(k), prettyLimitValue(k, v)]);
+    }
+  }
+  return rows;
 }
 
 export async function renderPlanTab(api) {
@@ -53,10 +95,10 @@ export async function renderPlanTab(api) {
   // plan's published limits if the user has none yet.
   const limits = Object.keys(effective_limits || {}).length ? effective_limits : (plan?.limits || {});
   const limitsBody = $('table-plan-limits').querySelector('tbody');
-  const limitRows = Object.entries(limits);
+  const limitRows = limitRowsFor(limits);
   if (!limitRows.length) limitsBody.innerHTML = emptyRow(2, 'No plan limits set.');
-  else limitsBody.innerHTML = limitRows.map(([k, v]) => `
-    <tr><td class="muted">${escapeHtml(prettyLimitKey(k))}</td><td class="num">${escapeHtml(prettyLimitValue(k, v))}</td></tr>
+  else limitsBody.innerHTML = limitRows.map(([label, value]) => `
+    <tr><td class="muted">${escapeHtml(label)}</td><td class="num">${escapeHtml(value)}</td></tr>
   `).join('');
 
   const balBody = $('table-plan-balance').querySelector('tbody');
