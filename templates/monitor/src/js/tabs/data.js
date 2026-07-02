@@ -47,6 +47,61 @@ function fmtBytes(n) {
   return `${n} B`;
 }
 
+// ── File-version retention (Data › Files) ─────────────────────────────────
+// The plan sets the MAX days/copies of history Gipity keeps + bills for; the
+// user may lower it to store/pay less, never raise it above the cap. Source:
+// GET /users/me → data.stats.versionRetention { days, count, maxDays, maxCount }.
+function setRetentionStatus(msg, isError) {
+  const el = $('retention-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.classList.toggle('error', !!isError);
+}
+
+function applyRetention(r) {
+  if (!r) return;
+  const { days, count, maxDays, maxCount } = r;
+  $('retention-summary').textContent =
+    `Keeping ${days} days / ${count} copies (whichever comes first). ` +
+    `Your plan allows up to ${maxDays} days / ${maxCount} copies.`;
+  const daysInput = $('retention-days');
+  const countInput = $('retention-count');
+  daysInput.value = days;
+  daysInput.max = maxDays;
+  countInput.value = count;
+  countInput.max = maxCount;
+}
+
+async function loadRetention(api) {
+  const r = (await api.me())?.data?.stats?.versionRetention;
+  applyRetention(r);
+}
+
+async function saveRetention(api, ev) {
+  if (ev) ev.preventDefault();
+  const days = Number($('retention-days').value);
+  const count = Number($('retention-count').value);
+  setRetentionStatus('Saving…', false);
+  try {
+    const res = await api.setRetention({ days, count });
+    applyRetention(res?.data);
+    setRetentionStatus('Saved.', false);
+  } catch (err) {
+    setRetentionStatus(err.message || 'Save failed', true);
+  }
+}
+
+async function resetRetention(api) {
+  setRetentionStatus('Resetting…', false);
+  try {
+    const res = await api.setRetention({ days: null, count: null });
+    applyRetention(res?.data);
+    setRetentionStatus('Reset to plan default.', false);
+  } catch (err) {
+    setRetentionStatus(err.message || 'Reset failed', true);
+  }
+}
+
 function subFromHash() {
   const after = location.hash.slice(1).split('/')[1];
   return ['files', 'db'].includes(after) ? after : 'files';
@@ -71,8 +126,14 @@ async function renderFilesSubtab(api, { range, projectId }) {
     api.credits({ range, operations: 'storage_daily', limit: 30, ...filter }),
   ]);
 
-  $('files-size').textContent = fmtBytes(live.data.vfs_bytes);
-  $('files-count').textContent = fmtExact(live.data.vfs_file_count);
+  // Storage breakdown: billed (physical, dedup-counted-once, incl. versions),
+  // live (what you have now), total-with-versions, and dedup savings.
+  const s = live.data.storage || {};
+  $('files-size').textContent = fmtBytes(s.physicalBytes ?? live.data.vfs_bytes);
+  $('files-live').textContent = fmtBytes(s.liveBytes ?? live.data.vfs_bytes);
+  $('files-count').textContent = fmtExact(s.liveFiles ?? live.data.vfs_file_count);
+  $('files-versioned').textContent = fmtBytes(s.versionedBytes ?? live.data.vfs_bytes);
+  $('files-dedup').textContent = fmtBytes(s.dedupSavedBytes ?? 0);
   $('files-cost-30d').textContent = fmtCredits(toCredits(ledger.data.totals?.usd ?? 0));
 
   // Credits chart
@@ -95,6 +156,13 @@ async function renderFilesSubtab(api, { range, projectId }) {
       <td class="num">${fmtBytes(p.bytes)}</td>
     </tr>
   `).join('');
+
+  // Version-retention policy — loaded independently so a /users/me hiccup
+  // never blocks the storage cards/tables above.
+  loadRetention(api).catch((err) => {
+    if (err.message !== 'UNAUTHENTICATED') console.error('[data] retention load failed', err);
+    setRetentionStatus('Could not load retention policy.', true);
+  });
 
   const chargesBody = $('table-storage-charges').querySelector('tbody');
   const days = aggregateByDay(recentCharges.data.items);
@@ -154,6 +222,8 @@ export async function renderDataTab(api, filters) {
         renderDataTab(api, filters).catch((err) => console.error('[data] sub render failed', err));
       });
     });
+    $('retention-form').addEventListener('submit', (ev) => saveRetention(api, ev));
+    $('retention-reset').addEventListener('click', () => resetRetention(api));
     currentSub = subFromHash();
     showSubTab(currentSub);
   }

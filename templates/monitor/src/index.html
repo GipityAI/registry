@@ -444,9 +444,30 @@
       <div class="data-panel" data-data-panel="files">
         <p class="tab-desc small">Gipity Storage — your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p>
         <div class="cards">
-          <div class="card" title="Total bytes of your files in Gipity Storage."><span class="card-label">Total size</span><span class="card-value" id="files-size">—</span></div>
-          <div class="card" title="Total file count across all your projects."><span class="card-label">Files</span><span class="card-value" id="files-count">—</span></div>
+          <div class="card" title="Physical bytes actually stored in Gipity Storage — this is what you're billed for. Retained file versions are included; a blob shared by copies or identical files is counted once."><span class="card-label">Billed (stored)</span><span class="card-value" id="files-size">—</span></div>
+          <div class="card" title="What you have right now: the current version of every live file."><span class="card-label">Live size</span><span class="card-value" id="files-live">—</span></div>
+          <div class="card" title="Total file count across all your projects (live files)."><span class="card-label">Files</span><span class="card-value" id="files-count">—</span></div>
+          <div class="card" title="Total across every retained version, before dedup. Old versions are kept so you can always roll back."><span class="card-label">With versions</span><span class="card-value" id="files-versioned">—</span></div>
+          <div class="card" title="Bytes saved because copies and identical files share a single object in storage."><span class="card-label">Dedup saved</span><span class="card-value" id="files-dedup">—</span></div>
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="files-cost-30d">—</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Version retention</h3>
+          </div>
+          <p class="muted small retention-lede" id="retention-summary">Loading version retention policy…</p>
+          <p class="muted small retention-lede">Lowering these keeps less version history and reduces your storage bill. The current version of every file is always kept.</p>
+          <form id="retention-form" class="retention-form">
+            <label>Days
+              <input type="number" id="retention-days" min="1" step="1" />
+            </label>
+            <label>Copies
+              <input type="number" id="retention-count" min="1" step="1" />
+            </label>
+            <button type="submit" class="primary-btn" id="retention-save">Save</button>
+            <button type="button" class="link-btn" id="retention-reset">Reset to plan default</button>
+            <span id="retention-status" class="muted small"></span>
+          </form>
         </div>
         <div class="panel chart-panel">
           <h3>Credits used over time</h3>

@@ -87,6 +87,14 @@ export const api = {
   workflows: (range, appGuid) =>
     getJson(`/account/logs/workflows${qs({ range, app_guid: appGuid })}`),
 
+  // Account profile — includes stats.versionRetention { days, count, maxDays,
+  // maxCount } (effective file-version retention + plan caps).
+  me: () => getJson('/users/me'),
+  // Lower (or reset) the file-version retention policy. A number sets it
+  // (1..cap); null resets that dimension to the plan default. Returns
+  // { data: { days, count, maxDays, maxCount, customDays, customCount } }.
+  setRetention: (body) => send('PATCH', '/users/me/retention', body),
+
   // Plan + balance + custom domains + remote-control surfaces.
   plan: () => getJson('/account/logs/plan'),
   domains: () => getJson('/account/logs/data/domains'),

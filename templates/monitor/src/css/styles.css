@@ -215,6 +215,14 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 .digest-form label { display: flex; flex-direction: column; font-size: 0.8em; color: var(--text-muted); }
 .digest-form select, .digest-form input { padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 0.9em; min-width: 180px; }
 
+/* Version-retention editor (Data › Files) — mirrors the digest form, but the
+   number inputs are narrow and the explanatory ledes balance-wrap. */
+.retention-form { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
+.retention-form label { display: flex; flex-direction: column; font-size: 0.8em; color: var(--text-muted); }
+.retention-form input { width: 96px; padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: white; border-radius: 4px; font-size: 0.9em; }
+.retention-lede { text-wrap: balance; }
+#retention-status.error { color: var(--error); }
+
 /* Alert form dialog */
 .alert-dialog { background: var(--bg-card); color: white; border: 1px solid var(--border); border-radius: 8px; padding: 1.25rem 1.5rem; max-width: 460px; width: 100%; }
 .alert-dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
