@@ -39,6 +39,7 @@ let PITCH_MAX = 1.5;
 let MOUSE_SENSITIVITY = 0.003;
 let SCROLL_SPEED = 3;
 let SHOW_CROSSHAIR = true;
+let INVERT_Y = false;  // invert vertical mouse-look (pitch). Persisted per-browser; toggle with I or setInvertY().
 let PLAYER_HALF_HEIGHT = 2.5;  // half of 5u tall model
 let PLAYER_HALF_WIDTH = 1.0;   // half of 2u body width
 let PLAYER_FOOT_OFFSET = 2.4;  // distance from mesh origin (y=0) to shoe bottom (y=-2.4)
@@ -335,7 +336,17 @@ function initPlayer(config = {}) {
   if (cam.maxDistance !== undefined) CAM_MAX_DIST = cam.maxDistance;
   if (cam.heightOffset !== undefined) CAM_HEIGHT_OFFSET = cam.heightOffset;
   if (cam.sensitivity !== undefined) MOUSE_SENSITIVITY = cam.sensitivity;
+  if (cam.invertY !== undefined) INVERT_Y = !!cam.invertY;
   if (cam.scrollSpeed !== undefined) SCROLL_SPEED = cam.scrollSpeed;
+
+  // Look preferences persist per-browser and win over config defaults, so a
+  // player's Invert-Y / sensitivity choice survives reloads.
+  try {
+    const inv = localStorage.getItem('gip3dw_invert_y');
+    if (inv !== null) INVERT_Y = inv === '1';
+    const sens = parseFloat(localStorage.getItem('gip3dw_sensitivity'));
+    if (!Number.isNaN(sens) && sens > 0) MOUSE_SENSITIVITY = sens;
+  } catch {}
   if (cam.mode !== undefined) cameraMode = cam.mode;
   if (cam.topDownHeight !== undefined) TOP_DOWN_HEIGHT = cam.topDownHeight;
 
@@ -609,6 +620,10 @@ function setupKeyboard() {
     if (e.code === 'Space') { inputState.jump = true; e.preventDefault(); }
     if (e.code === 'KeyE') inputState.action = true;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') inputState.sprint = true;
+    if (e.code === 'KeyI') {
+      setInvertY(!INVERT_Y);
+      console.log(`[Player] Invert look: ${INVERT_Y ? 'ON' : 'OFF'}`);
+    }
     if (e.code === 'KeyY') {
       debugCollidersVisible = !debugCollidersVisible;
       if (debugBodyWire) debugBodyWire.visible = debugCollidersVisible;
@@ -667,7 +682,7 @@ function setupMouse() {
   document.addEventListener('mousemove', (e) => {
     if (rightDown && pointerLocked) {
       yaw -= e.movementX * MOUSE_SENSITIVITY;
-      pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - e.movementY * MOUSE_SENSITIVITY));
+      pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - (INVERT_Y ? -1 : 1) * e.movementY * MOUSE_SENSITIVITY));
     }
   });
 
@@ -718,7 +733,7 @@ function setupTouch() {
     for (const t of e.changedTouches) {
       if (t.identifier === touchCamId) {
         yaw -= (t.clientX - touchCamLast.x) * MOUSE_SENSITIVITY * 2;
-        pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - (t.clientY - touchCamLast.y) * MOUSE_SENSITIVITY * 2));
+        pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - (INVERT_Y ? -1 : 1) * (t.clientY - touchCamLast.y) * MOUSE_SENSITIVITY * 2));
         touchCamLast = { x: t.clientX, y: t.clientY };
       }
     }
@@ -802,9 +817,31 @@ const cameraControl = {
   setFixedLookAt(pos) { fixedCamLookAt = { ...pos }; },
 };
 
+// --- Look preferences (Invert-Y + sensitivity) -------------------------------
+// Exposed so app UI can wire a visible toggle button / sensitivity slider.
+// (I toggles invert at runtime; both prefs persist in localStorage.)
+function setInvertY(on) {
+  INVERT_Y = !!on;
+  try { localStorage.setItem('gip3dw_invert_y', INVERT_Y ? '1' : '0'); } catch {}
+  return INVERT_Y;
+}
+function getInvertY() { return INVERT_Y; }
+function setSensitivity(v) {
+  if (typeof v === 'number' && v > 0) {
+    MOUSE_SENSITIVITY = v;
+    try { localStorage.setItem('gip3dw_sensitivity', String(v)); } catch {}
+  }
+  return MOUSE_SENSITIVITY;
+}
+function getSensitivity() { return MOUSE_SENSITIVITY; }
+
 export {
   initPlayer,
   updatePlayer,
+  setInvertY,
+  getInvertY,
+  setSensitivity,
+  getSensitivity,
   getPosition,
   setPosition,
   getAimDirection,
