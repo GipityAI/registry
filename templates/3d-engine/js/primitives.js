@@ -85,6 +85,8 @@ function createPart(props = {}) {
   if (preset) {
     part.friction = preset.friction;
     part.elasticity = preset.elasticity;
+  } else if (materialName) {
+    console.warn(`[engine] Unknown material "${materialName}" - falling back to plastic. Valid: ${Object.keys(MATERIAL_PRESETS).join(', ')}`);
   }
   Object.assign(part, props);
 

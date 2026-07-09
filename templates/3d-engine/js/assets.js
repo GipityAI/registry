@@ -221,6 +221,7 @@ const MATERIAL_PRESETS = {
   ice:      { friction: 0.05, elasticity: 0.1,  type: 'phong',   shininess: 100 },
   grass:    { friction: 0.7,  elasticity: 0.1,  type: 'lambert', shininess: 0 },
   sand:     { friction: 0.8,  elasticity: 0.05, type: 'lambert', shininess: 0 },
+  concrete: { friction: 0.8,  elasticity: 0.1,  type: 'lambert', shininess: 0 },
 };
 
 /**
