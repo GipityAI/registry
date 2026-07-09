@@ -26,4 +26,9 @@ const config = {
   },
 };
 
-new Phaser.Game(config);
+// Exported, not just constructed: `gipity page eval` can reach the live instance
+// with `(await import('./js/config.js')).game` — index.html loads this as a
+// module, so the import resolves from the module cache and returns THIS game
+// rather than booting a second one. That means you can drive and assert on real
+// game state headlessly without attaching a debug handle to `window`.
+export const game = new Phaser.Game(config);
