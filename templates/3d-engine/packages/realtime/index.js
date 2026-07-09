@@ -31,6 +31,8 @@ import { createTransport } from './lib/transport.js';
 import { createObservability } from './lib/observability.js';
 import { createChannelRegistry } from './lib/channels.js';
 import { createDirectory } from './lib/directory.js';
+import { createParty } from './lib/party.js';
+import { RealtimeJoinError, toJoinError } from './lib/errors.js';
 import { applySettings, getSettings } from './lib/settings.js';
 import {
   quantize, quantizeVec3, quantizeQuat,
@@ -64,9 +66,11 @@ function createRoomHandle(client, baseConfig = {}) {
     },
     disconnect: transport.disconnect,
     isConnected: transport.isConnected,
+    isSynced: transport.isSynced,
     peers: transport.getPeers,
     getSessionId: transport.getSessionId,
     getRoomId: transport.getRoomId,
+    getLastError: transport.getLastError,
 
     channel: registry.channel,
     channels: registry.all,
@@ -89,9 +93,14 @@ function createRoomHandle(client, baseConfig = {}) {
   };
 }
 
-async function openRoom(client, spec) {
+// Multi-room opens fail LOUDLY: a null room here means the join failed (or
+// there is no app GUID), and callers of join/create/joinById are exactly the
+// ones that need to branch on why - full table, dead invite, bad code. The
+// default room's connect() keeps its old null-on-failure contract.
+async function openRoom(client, spec, context) {
   const handle = createRoomHandle(client, {});
-  await handle.connect(spec);
+  const room = await handle.connect(spec);
+  if (!room) throw toJoinError(handle.getLastError(), context);
   return handle;
 }
 
@@ -103,6 +112,12 @@ async function openRoom(client, spec) {
  *
  * @param {Object} config
  * @param {string} [config.room]       Default room name.
+ * @param {string} [config.scope]      Instance partition key for the default
+ *                                     room - same (room, scope) lands in the
+ *                                     same instance, a different scope gets a
+ *                                     separate instance of the same provisioned
+ *                                     room. Feed it a URL param to give every
+ *                                     team/session its own space.
  * @param {number} [config.maxClients] Max clients per room.
  * @param {string} [config.apiBase]    Token API base URL.
  * @param {string} [config.wsUrl]      Realtime WebSocket URL.
@@ -122,21 +137,28 @@ export function createRealtime(config = {}) {
     ...defaultRoom,
 
     // ── Multi-room ──────────────────────────────────────────────────────
+    // All of these throw a RealtimeJoinError (err.code: 'full' | 'gone' |
+    // 'not-found' | 'auth' | 'offline' | 'failed') when the join fails.
     /** Join (or create) a shared room - the lobby / directory pattern. */
     join(name, opts = {}) {
-      return openRoom(client, { ...opts, room: name, mode: 'joinOrCreate' });
+      return openRoom(client, { ...opts, room: name, mode: 'joinOrCreate' }, `join '${name}' failed`);
+    },
+    /** Join an EXISTING instance only - never creates. err.code 'not-found'
+     *  when nothing matches (e.g. an invite code no live host is behind). */
+    joinExisting(name, opts = {}) {
+      return openRoom(client, { ...opts, room: name, mode: 'join' }, `join '${name}' failed`);
     },
     /** Create a fresh room instance - e.g. host a match. */
     create(name, opts = {}) {
-      return openRoom(client, { ...opts, room: name, mode: 'create' });
+      return openRoom(client, { ...opts, room: name, mode: 'create' }, `create '${name}' failed`);
     },
     /** Join a specific room instance by id - e.g. join an advertised match. */
     joinById(roomId, name, opts = {}) {
-      return openRoom(client, { ...opts, roomId, room: name, mode: 'joinById' });
+      return openRoom(client, { ...opts, roomId, room: name, mode: 'joinById' }, `join room ${roomId} failed`);
     },
     /** Discover live room instances - used by lobby / directory code. */
-    listRooms(name) {
-      return client.listRooms(name);
+    listRooms(name, scope) {
+      return client.listRooms(name, scope);
     },
     /** Pre-warm the app token. Resolves to the token, or null on failure. */
     ensureToken() {
@@ -149,6 +171,13 @@ export default createRealtime;
 
 // The lobby-as-directory helper (a heartbeat'd store channel).
 export { createDirectory };
+
+// The lobby-game harness: host / invite link / join-by-code / browse /
+// quick-match, with cancel and typed failures. See lib/party.js.
+export { createParty };
+
+// Typed join failure - catch it and switch on err.code.
+export { RealtimeJoinError };
 
 // Static, engine-free helpers - adapters import these (e.g. to share the
 // kit's quantization precision).

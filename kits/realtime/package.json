@@ -1,9 +1,9 @@
 {
   "name": "@gipity/realtime",
-  "version": "3.0.4",
+  "version": "3.1.0",
   "type": "module",
   "main": "index.js",
-  "description": "Engine-agnostic realtime kit for Gipity apps: channels (messages/presence/entities), host election, server-persisted entity sync, observability.",
+  "description": "Engine-agnostic realtime kit for Gipity apps: channels (messages/presence/entities/store), party (host/invite-link/join-by-code/browse/quick-match), host election, server-persisted entity sync, observability.",
   "gipity": {
     "kit": true,
     "engineAgnostic": true,
@@ -25,7 +25,11 @@
       "deployPhase": {
         "name": "realtime",
         "type": "realtime",
-        "rooms": [{ "room_type": "state", "auth_level": "public" }]
+        "rooms": [
+          { "room_type": "state", "auth_level": "public" },
+          { "name": "lobby", "room_type": "state", "auth_level": "public" },
+          { "name": "match", "room_type": "state", "auth_level": "public" }
+        ]
       }
     }
   }

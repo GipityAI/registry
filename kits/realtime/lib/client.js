@@ -85,12 +85,14 @@ export function createClient() {
   }
 
   /** List live room instances - the lobby/directory uses this to discover matches. */
-  async function listRooms(roomName) {
+  async function listRooms(roomName, scope) {
     let token;
     try { token = await acquireToken(); } catch { return []; }
     try {
       const rtBase = wsUrl.replace('wss://', 'https://').replace('ws://', 'http://');
-      const url = `${rtBase}/rooms?token=${token}${roomName ? '&room=' + encodeURIComponent(roomName) : ''}`;
+      const url = `${rtBase}/rooms?token=${token}`
+        + (roomName ? '&room=' + encodeURIComponent(roomName) : '')
+        + (scope !== undefined ? '&scope=' + encodeURIComponent(scope) : '');
       const res = await fetch(url);
       if (!res.ok) return [];
       const data = await res.json();

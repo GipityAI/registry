@@ -36,6 +36,7 @@ export function createTransport({ client, observability }) {
   let joinKind = null;       // 'create' | 'join' | 'reconnect'
   let awaitingSync = false;  // emit 'synced' on the next data-bearing patch
   let hasSynced = false;     // true once the room's first data patch has landed
+  let lastError = null;      // why the most recent connect() returned null
 
   const peers = new Map();            // sid -> { lastSeen }
   const msgHandlers = new Map();      // type -> Set<cb>
@@ -75,16 +76,29 @@ export function createTransport({ client, observability }) {
    * Join a room.
    * @param {Object} config
    * @param {string} [config.room]    Room name (default 'realtime-room').
+   * @param {string} [config.scope]   Instance partition key. Same (room, scope)
+   *                                  -> same instance; different scope -> a
+   *                                  separate instance of the same provisioned
+   *                                  room. Use for URL/invite-code partitioning
+   *                                  without provisioning a room per value.
    * @param {string} [config.roomId]  Instance id - required for mode 'joinById'.
-   * @param {'joinOrCreate'|'create'|'joinById'} [config.mode]  Default 'joinOrCreate'.
+   * @param {'joinOrCreate'|'join'|'create'|'joinById'} [config.mode]
+   *                                  Default 'joinOrCreate'. 'join' never
+   *                                  creates - it fails with 'not-found' when
+   *                                  no matching instance is live.
    * @param {number} [config.maxClients]
+   * @returns {Promise<Object|null>}  The Colyseus room, or null on failure
+   *                                  (inspect getLastError() / the 'error'
+   *                                  observability event for the cause).
    */
   async function connect(config = {}) {
     applySettings(config.settings);
     client.configure(config);
     intentionalLeave = false;
+    lastError = null;
     const mode = config.mode || 'joinOrCreate';
     const roomName = config.room || 'realtime-room';
+    const scope = String(config.scope ?? '');
 
     try {
       const guid = client.getAppGuid();
@@ -94,10 +108,11 @@ export function createTransport({ client, observability }) {
       }
       const token = await client.acquireToken();
       const colyseus = await client.colyseusClient();
-      const opts = { app: guid, room: roomName, token, maxClients: config.maxClients || 50 };
+      const opts = { app: guid, room: roomName, scope, token, maxClients: config.maxClients || 50 };
 
       room = await joinWithRetry(() => {
         if (mode === 'create') return colyseus.create('state', opts);
+        if (mode === 'join') return colyseus.join('state', opts);
         if (mode === 'joinById') return colyseus.joinById(config.roomId, opts);
         return colyseus.joinOrCreate('state', opts);
       });
@@ -111,7 +126,9 @@ export function createTransport({ client, observability }) {
       wireRoom();
       return room;
     } catch (err) {
+      lastError = err;
       console.warn('[realtime] Connection failed:', err.message);
+      observability.emit('error', { phase: 'connect', message: err.message, error: err });
       return null;
     }
   }
@@ -343,9 +360,10 @@ export function createTransport({ client, observability }) {
   function getRoomId() { return room?.roomId || null; }
   function getSessionId() { return room?.sessionId || null; }
   function getPeers() { return peers; }
+  function getLastError() { return lastError; }
 
   return {
-    connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers,
+    connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers, getLastError,
     send, on,
     setData, deleteData, onData,
     onPeerJoin, onPeerLeave, onDisconnect,
