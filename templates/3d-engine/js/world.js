@@ -41,12 +41,15 @@ sunLight.shadow.bias = 0;
 sunLight.shadow.normalBias = 0;
 scene.add(sunLight);
 
-// Hemisphere light (sky + ground bounce)
-const hemiLight = new THREE.HemisphereLight(SKY_COLOR, GROUND_COLOR, 0.6);
+// Hemisphere light (sky + ground bounce). Fill is deliberately generous:
+// with only the directional sun, every face pointing away from it renders
+// near-black (the classic "my blocks are black against a bright sky" trap).
+// These defaults keep unlit faces readable; tune via world.lighting.
+const hemiLight = new THREE.HemisphereLight(SKY_COLOR, GROUND_COLOR, 0.85);
 scene.add(hemiLight);
 
-// Subtle ambient fill
-const ambientLight = new THREE.AmbientLight(0x404060, 0.3);
+// Ambient fill
+const ambientLight = new THREE.AmbientLight(0x404060, 0.55);
 scene.add(ambientLight);
 
 // --- Camera ---
@@ -74,8 +77,8 @@ window.addEventListener('resize', () => {
 const _lightingState = {
   sunIntensity: 2.0,
   sunColor: 0xfff5e6,
-  ambientIntensity: 0.3,
-  hemisphereIntensity: 0.6,
+  ambientIntensity: 0.55,
+  hemisphereIntensity: 0.85,
   skyColor: SKY_COLOR,
   groundColor: GROUND_COLOR,
   fogEnabled: true,

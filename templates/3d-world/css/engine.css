@@ -92,10 +92,18 @@ html, body {
   z-index: 100;
 }
 
+/* Slots are layout boxes, not click targets: they pass pointer events through
+   (so a click on a slot's padding reaches the 3D canvas - critical for
+   click-to-interact games), while their CONTENT opts back in so HUD buttons
+   and inputs still work. */
 .hud-slot {
   position: absolute;
-  pointer-events: auto;
+  pointer-events: none;
   padding: var(--hud-padding);
+}
+
+.hud-slot > * {
+  pointer-events: auto;
 }
 
 #hud-top-left { top: 0; left: 0; }
