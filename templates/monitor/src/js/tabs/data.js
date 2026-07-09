@@ -148,14 +148,28 @@ async function renderFilesSubtab(api, { range, projectId }) {
   });
 
   const projBody = $('table-storage-projects').querySelector('tbody');
-  if (!live.data.top_projects.length) projBody.innerHTML = emptyRow(3, 'No file storage yet.');
-  else projBody.innerHTML = live.data.top_projects.map((p) => `
+  const shown = live.data.top_projects;
+  if (!shown.length) projBody.innerHTML = emptyRow(3, 'No file storage yet.');
+  else {
+    // The endpoint returns only the biggest projects. Add a row for the rest so
+    // the table never reads as the full list when it isn't.
+    const hidden = live.data.project_count - shown.length;
+    const hiddenBytes = live.data.project_total_bytes - shown.reduce((n, p) => n + p.bytes, 0);
+    const hiddenFiles = live.data.project_total_files - shown.reduce((n, p) => n + p.files, 0);
+    projBody.innerHTML = shown.map((p) => `
     <tr>
       <td>${escapeHtml(p.project_name || p.project_short_guid || '—')}</td>
       <td class="num">${fmtNum(p.files)}</td>
       <td class="num">${fmtBytes(p.bytes)}</td>
     </tr>
-  `).join('');
+  `).join('') + (hidden > 0 ? `
+    <tr>
+      <td class="muted">…and ${fmtNum(hidden)} more</td>
+      <td class="num muted">${fmtNum(hiddenFiles)}</td>
+      <td class="num muted">${fmtBytes(hiddenBytes)}</td>
+    </tr>
+  ` : '');
+  }
 
   // Version-retention policy — loaded independently so a /users/me hiccup
   // never blocks the storage cards/tables above.
