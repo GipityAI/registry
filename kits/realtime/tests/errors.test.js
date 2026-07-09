@@ -44,6 +44,16 @@ test('anything else is failed', () => {
   assert.equal(classifyJoinError(err('socket hang up')), 'failed');
 });
 
+test('an unprovisioned room name gets its own code', () => {
+  assert.equal(classifyJoinError(err("Room 'standup' not found for this project")), 'unprovisioned');
+});
+
+test('server messages echoing tricky room names do not misclassify', () => {
+  // The name contains "locked" but the condition is unprovisioned / gone.
+  assert.equal(classifyJoinError(err("Room 'locked-door' not found for this project")), 'unprovisioned');
+  assert.equal(classifyJoinError(err('room "locked-door" has been disposed.')), 'gone');
+});
+
 test('toJoinError wraps with context and is idempotent', () => {
   const wrapped = toJoinError(err('room "abc" is locked', 4212), 'joining table Q7 failed');
   assert.ok(wrapped instanceof RealtimeJoinError);

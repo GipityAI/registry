@@ -95,15 +95,21 @@ const t4 = await party.quickMatch({ host: name }); // join oldest open, else hos
 ```
 
 Every failed join **throws a `RealtimeJoinError`** — `err.code` is
-`'not-found'` (bad/expired code), `'full'` (seats taken), `'gone'` (host
-left), `'auth'`, `'offline'`, or `'failed'`. Switch on it and show the right
-message; never leave a spinner on "Joining…".
+`'not-found'` (bad/expired code), `'full'` (seats taken / already playing),
+`'gone'` (host left), `'unprovisioned'` (the room NAME has no config — a
+deploy/provisioning mistake, not a game state), `'auth'`, `'offline'`, or
+`'failed'`. Switch on it and show the right message; never leave a spinner on
+"Joining…".
 
 The table handle: `isHost`, `code`, `roomId`, `inviteUrl`, `room` (a full room
-handle), `channel()`, `players()`, `onFull(cb)`, `onPeerJoin/onPeerLeave`,
-`setListing(patch)`, `cancel()`, `leave()`. When the table fills, its lobby
-listing flips to `status: 'playing'` automatically so browsers stop steering
-joiners into it.
+handle), `channel()`, `players()`, `onFull(cb)` (fires immediately when
+already full), `onPeerJoin/onPeerLeave`, `setListing(patch)`, `cancel()`,
+`leave()`. When the table fills, its lobby listing flips to
+`status: 'playing'` automatically — browsers stop steering joiners into it and
+a late `joinByCode` rejects as `'full'` (`seats` is enforced client-side;
+provision `match` with a matching `max_clients` for a server-side cap too).
+Hosting again while a table is still waiting **replaces** it — the old table
+is canceled, never orphaned.
 
 ## Rooms (the primitives under all of that)
 
@@ -304,6 +310,12 @@ the app token is refreshed before it expires (~15 min TTL — long sessions are
 covered). All timings tunable via `createRealtime({ settings })` — the full
 list with defaults is `DEFAULT_SETTINGS` in `lib/settings.js` (join attempts,
 reconnect window/backoff, presence rate, heartbeat, token TTL, quantization).
+
+The flip side of the reconnection hold: when the **page itself dies**
+(navigation, tab close), waiting 30 s for a reconnect that can never come
+would leave a ghost seat — so the kit listens for `pagehide` and leaves
+**consented**, freeing the seat (and disposing an empty match room)
+immediately. Next joiners never hit "full" because of a closed tab.
 
 ## Verifying multiplayer actually works
 

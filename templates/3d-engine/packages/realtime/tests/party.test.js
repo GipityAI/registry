@@ -68,6 +68,7 @@ function fakeRt() {
       return {
         channel: (chName) => createStoreChannel({ name: chName, transport: lobbyTransport, observability: { bump: () => {} } }),
         disconnect: () => {},
+        on: () => () => {},
       };
     },
     async create() {
@@ -87,8 +88,9 @@ function fakeRt() {
   };
 }
 
-// heartbeatMs large (but 32-bit safe) so the interval never fires mid-test.
-const newParty = (rt, opts) => createParty(rt, { heartbeatMs: 2 ** 30, ...opts });
+// heartbeatMs large (but 32-bit safe) so the interval never fires mid-test;
+// syncWaitMs 0 because the mock lobby never emits a sync event.
+const newParty = (rt, opts) => createParty(rt, { heartbeatMs: 2 ** 30, syncWaitMs: 0, ...opts });
 
 test('host publishes an open listing with a code and roomId', async () => {
   const rt = fakeRt();
@@ -204,6 +206,76 @@ test('lobby failure propagates as a typed error (no silent null)', async () => {
   await assert.rejects(
     newParty(rt).tables(),
     (err) => err instanceof RealtimeJoinError,
+  );
+});
+
+test('joining a table whose listing is not open rejects as full (client-side seat gate)', async () => {
+  const rt = fakeRt();
+  const host = newParty(rt, { seats: 2 });
+  const hosted = await host.host({ host: 'Sam' });
+  rt._joinable.get(hosted.roomId)._addPeer('guest-1');   // fills -> listing 'playing'
+  const joiner = newParty(rt);
+  await assert.rejects(
+    joiner.joinByCode(hosted.code, { timeoutMs: 3000 }),
+    (err) => err.code === 'full',
+  );
+  const [entry] = (await joiner.tables());
+  assert.equal(entry, undefined, 'playing tables are not browsable');
+});
+
+test('hosting again replaces the previous waiting table (no orphaned listing)', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt);
+  const t1 = await party.host({ host: 'Sam', code: 'AAAA' });
+  const t2 = await party.host({ host: 'Sam', code: 'BBBB' });
+  const codes = (await party.tables()).map((e) => e.code);
+  assert.deepEqual(codes, ['BBBB']);
+  assert.ok(rt._joinable.get(t1.roomId)._disconnected, 'first room was disconnected');
+  // The new table's listing is intact and independently cancelable.
+  t2.cancel();
+  assert.equal((await party.tables()).length, 0);
+});
+
+test('an old table handle cannot clobber the new table listing', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt);
+  const t1 = await party.host({ host: 'Sam', code: 'AAAA' });
+  const t2 = await party.host({ host: 'Sam', code: 'BBBB' });
+  t1.cancel();      // already canceled by the re-host; must be a no-op
+  t1.setListing({ status: 'zombie' });
+  const [entry] = await party.tables();
+  assert.equal(entry.code, 'BBBB');
+  assert.equal(entry.status, 'open');
+  assert.ok(t2.isHost);
+});
+
+test('onFull fires immediately when the table is already full at registration', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt, { seats: 2 });
+  const table = await party.host({ host: 'Sam' });
+  rt._joinable.get(table.roomId)._addPeer('guest-1');
+  let fired = 0;
+  table.onFull(() => { fired += 1; });
+  await Promise.resolve();  // onFull's immediate path fires on a microtask
+  await Promise.resolve();
+  assert.equal(fired, 1);
+});
+
+test('close() cancels a waiting hosted table and leaves the lobby', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt);
+  const table = await party.host({ host: 'Sam' });
+  party.close();
+  assert.ok(rt._joinable.get(table.roomId)._disconnected);
+  assert.equal(party.lobbyRoom(), null);
+});
+
+test('unprovisioned room name classifies distinctly, not as a gone game', async () => {
+  const rt = fakeRt();
+  rt.join = async () => { throw new RealtimeJoinError('unprovisioned', "Room 'lobby' not found for this project"); };
+  await assert.rejects(
+    newParty(rt).tables(),
+    (err) => err.code === 'unprovisioned',
   );
 });
 

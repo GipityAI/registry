@@ -20,12 +20,13 @@ export function reconnectDelay(attempt, opts = {}) {
 }
 
 /**
- * True when a join/reconnect failure means the room is permanently gone, so
- * retrying is pointless - as opposed to a transient network error, which is
- * worth another attempt within the window.
+ * True when a join/reconnect failure is definitive - retrying the same call
+ * cannot succeed - as opposed to a transient network error, which is worth
+ * another attempt within the window.
  */
 export function isRoomGoneError(err) {
   if (!err) return false;
-  if (err.code === 4212) return true; // Colyseus: seat reservation expired
+  if (err.code === 4212) return true; // Colyseus: invalid room id (gone or locked)
+  if (err.code === 4211) return true; // Colyseus: no rooms matched (join-only miss)
   return /not found|not available|locked|disposed|reservation/i.test(String(err.message || ''));
 }

@@ -124,6 +124,7 @@ export function createTransport({ client, observability }) {
       console.log(`[realtime] ✓ Connected - sessionId=${room.sessionId} roomId=${room.roomId}`);
       observability.emit('connect', { sessionId: room.sessionId, roomId: room.roomId, room: roomName });
       wireRoom();
+      bindPagehide();
       return room;
     } catch (err) {
       lastError = err;
@@ -162,6 +163,19 @@ export function createTransport({ client, observability }) {
     connected = false;
     peers.clear();
     dataMirror.clear();
+  }
+
+  // When the page dies (navigation, tab close), leave CONSENTED so the server
+  // frees this seat immediately. A raw WebSocket drop reads as unclean and the
+  // server holds the seat 30 s for a reconnection that can never come - which
+  // shows up as "table is full" for the next joiner and as ghost peers in
+  // rosters. (A bfcache-restored page comes back disconnected - acceptable for
+  // a realtime session that was dead the moment the page was hidden.)
+  let pagehideBound = false;
+  function bindPagehide() {
+    if (pagehideBound || typeof window === 'undefined') return;
+    pagehideBound = true;
+    window.addEventListener('pagehide', () => { if (connected) disconnect(); });
   }
 
   // --- room wiring (players + data map + message relay) ---

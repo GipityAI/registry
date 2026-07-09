@@ -8,7 +8,7 @@
  * right message: "table is full", "that game is gone", "bad invite code".
  */
 
-/** @typedef {'offline'|'auth'|'full'|'gone'|'not-found'|'failed'} JoinErrorCode */
+/** @typedef {'offline'|'auth'|'full'|'gone'|'not-found'|'unprovisioned'|'failed'} JoinErrorCode */
 
 export class RealtimeJoinError extends Error {
   /**
@@ -30,20 +30,28 @@ export class RealtimeJoinError extends Error {
  *   4212 "room X is locked"      -> the instance is at max_clients -> 'full'
  *   4212 "room X not found"      -> the instance is gone            -> 'gone'
  *   4211 "no rooms found ..."    -> join-only found nothing         -> 'not-found'
+ * A room NAME the server has no config for ("Room 'x' not found for this
+ * project") is a provisioning mistake, not a live-room condition — it gets its
+ * own 'unprovisioned' code so apps don't render it as "game over"/"try again".
  * Token/auth problems and everything else fall through to 'auth' / 'failed'.
+ *
+ * The message-text fallbacks run LAST and gone-before-full: server messages
+ * echo caller-supplied names, so a name like "locked-door" must not
+ * misclassify a not-found as 'full'.
  * @param {Error|null|undefined} err  null/undefined = no app GUID (offline mode)
  * @returns {JoinErrorCode}
  */
 export function classifyJoinError(err) {
   if (!err) return 'offline';
   const msg = String(err.message || '');
+  if (/not found for this project/i.test(msg)) return 'unprovisioned';
   if (err.code === 4212 || /reservation/i.test(msg)) {
     if (/locked/i.test(msg)) return 'full';
     return 'gone';
   }
   if (err.code === 4211 || /no rooms found/i.test(msg)) return 'not-found';
-  if (/locked|max ?clients|is full/i.test(msg)) return 'full';
   if (/disposed|not found|not available/i.test(msg)) return 'gone';
+  if (/locked|max ?clients|is full/i.test(msg)) return 'full';
   if (/token|auth/i.test(msg)) return 'auth';
   return 'failed';
 }

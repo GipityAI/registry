@@ -94,5 +94,43 @@ test('onChange fires when the directory changes', () => {
   dir.unpublish();
 });
 
+test('publish returns a per-key handle; two entries never clobber each other', () => {
+  const dir = newDir();
+  const p1 = dir.publish('m1', { host: 'Sam', status: 'open' });
+  const p2 = dir.publish('m2', { host: 'Sam', status: 'open' });
+  p1.update({ status: 'playing' });        // touches only m1
+  assert.equal(dir.list().find((e) => e._key === 'm2').status, 'open');
+  p1.unpublish();                          // removes only m1
+  const keys = dir.list().map((e) => e._key);
+  assert.deepEqual(keys, ['m2']);
+  p2.update({ status: 'playing' });        // p2 still works after p1 is gone
+  assert.equal(dir.list()[0].status, 'playing');
+  p2.unpublish();
+  assert.equal(dir.list().length, 0);
+});
+
+test('top-level update/unpublish track the most recent publish', () => {
+  const dir = newDir();
+  dir.publish('a', { host: 'A' });
+  dir.publish('b', { host: 'B' });
+  dir.update({ status: 'playing' });
+  assert.equal(dir.list().find((e) => e._key === 'b').status, 'playing');
+  assert.equal(dir.list().find((e) => e._key === 'a').status, undefined);
+  dir.unpublish();                         // removes b
+  assert.deepEqual(dir.list().map((e) => e._key), ['a']);
+  dir.unpublish();                         // then a
+  assert.equal(dir.list().length, 0);
+});
+
+test('close() stops heart-beating without deleting live entries', () => {
+  const dir = newDir();
+  dir.publish('m', { host: 'Sam' });
+  dir.close();
+  // The entry is still in the store (it ages out for readers); no timer left.
+  assert.equal(dir.store.has('m'), true);
+  dir.update({ status: 'x' });             // no-op after close
+  assert.equal(dir.list()[0].status, undefined);
+});
+
 console.log(`\ndirectory.test.js: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
