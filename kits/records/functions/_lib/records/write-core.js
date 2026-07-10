@@ -6,10 +6,18 @@
 import { validateValues } from './validate.js';
 import { emitEvent, diffChanges } from './events.js';
 
-export async function performWrite({ db, guid, object, actor, action, id, values, rows, expectUpdatedAt }) {
+export async function performWrite({ db, guid, object, actor, ensureActor, action, id, values, rows, expectUpdatedAt }) {
+  // Entries supply either a ready ACTOR (agent-write: an API key, already a row)
+  // or an `ensureActor(tx)` that may have to CREATE the actor's backing row
+  // (record-write: a first-time member). Resolving on the transaction, as late
+  // as possible, is what keeps a rejected write from committing that row - see
+  // record-write/membership.js. Everything that can throw before the mutation
+  // (validation, staleness, missing record) therefore runs first.
+  const resolveActor = ensureActor ?? (async () => actor);
+
   if (action === 'create') {
     const clean = validateValues(object, values, { isCreate: true });
-    const record = await db.tx((tx) => insertRecord(tx, guid, object, actor, clean));
+    const record = await db.tx(async (tx) => insertRecord(tx, guid, object, await resolveActor(tx), clean));
     return { record: strip(record) };
   }
 
@@ -28,7 +36,7 @@ export async function performWrite({ db, guid, object, actor, action, id, values
     for (const raw of rows) {
       try {
         const clean = validateValues(object, raw, { isCreate: true });
-        const record = await db.tx((tx) => insertRecord(tx, guid, object, actor, clean));
+        const record = await db.tx(async (tx) => insertRecord(tx, guid, object, await resolveActor(tx), clean));
         results.push({ ok: true, record: strip(record) });
       } catch (err) {
         results.push({ ok: false, error: err.message });
@@ -44,18 +52,20 @@ export async function performWrite({ db, guid, object, actor, action, id, values
       assertNotStale(object, before, expectUpdatedAt);
       await resolveRelations(tx, object, clean);
       const changes = diffChanges(object, before, clean);
+      // A no-op update writes nothing, so it must not mint an actor row either.
       if (!Object.keys(changes).length) return { record: before, unchanged: true };
 
+      const writeActor = await resolveActor(tx);
       const sets = Object.keys(changes).map((k, i) => `${k} = $${i + 1}`);
       const params = Object.keys(changes).map(k => changes[k].to);
-      params.push(actor, id);
+      params.push(writeActor, id);
       const { rows: [row] } = await tx.query(
         `UPDATE ${object.table_name} SET ${sets.join(', ')}, updated_by = $${params.length - 1}, updated_at = NOW()
          WHERE id = $${params.length} RETURNING *`,
         params
       );
       await emitEvent(tx, guid, {
-        object, recordId: id, action: 'update', actor, changes, title: titleOf(object, row),
+        object, recordId: id, action: 'update', actor: writeActor, changes, title: titleOf(object, row),
       });
       if (changes[object.title_field]) {
         await refreshRelationLabels(tx, object, id, row[object.title_field]);
@@ -70,12 +80,13 @@ export async function performWrite({ db, guid, object, actor, action, id, values
   if (action === 'delete') {
     await db.tx(async (tx) => {
       const before = await lockRecord(tx, object, id);
+      const writeActor = await resolveActor(tx);
       await tx.query(
         `UPDATE ${object.table_name} SET deleted_at = NOW(), updated_by = $1 WHERE id = $2`,
-        [actor, id]
+        [writeActor, id]
       );
       await emitEvent(tx, guid, {
-        object, recordId: id, action: 'delete', actor, title: titleOf(object, before),
+        object, recordId: id, action: 'delete', actor: writeActor, title: titleOf(object, before),
       });
     });
     return { ok: true };
@@ -103,13 +114,18 @@ async function insertRecord(tx, guid, object, actor, clean) {
 }
 
 // Largest create_many batch that stays under the function query budget (50).
-// Per row: insert(1) + event(1) + 2 per relation field (object lookup +
-// existence check, worst case all relations present). 45 leaves headroom for
-// the entry's own loadObject/ensureMember. The client (e.g. CSV import) sizes
-// its chunks from the same object shape, so the cap is never actually hit.
+// Per row: actor(1) + insert(1) + event(1) + 2 per relation field (object lookup
+// + existence check, worst case all relations present). The actor query is the
+// first-time member's claim, which re-runs on every row's transaction rather
+// than memoizing: a row whose tx rolls back after the claim would leave a
+// memoized member id pointing at a row that was never committed. It is an
+// idempotent upsert, so re-running is cheap and correct - we just budget for it.
+// 45 leaves headroom for the entry's own loadObject/resolveMember. The client
+// (e.g. CSV import) sizes its chunks from the same object shape, so the cap is
+// never actually hit.
 function maxBatch(object) {
   const relCount = object.fields.filter(f => f.type === 'relation').length;
-  return Math.max(1, Math.floor(45 / (2 + 2 * relCount)));
+  return Math.max(1, Math.floor(45 / (3 + 2 * relCount)));
 }
 
 // Relation values arrive as { id }; verify the target exists and denormalize its
