@@ -5,7 +5,7 @@
  * Game code imports from this file:
  *   import { world, assets, physics, player, network, ui, THREE } from './core.js';
  */
-const TEMPLATE_VERSION = 116;
+const TEMPLATE_VERSION = 117;
 
 // Re-export all modules
 import { scene, camera, renderer, clock, THREE, lighting } from './world.js';
@@ -35,6 +35,12 @@ let statsTimer = 0;
 // Boot readiness - resolved when game.js registers its hooks
 let resolveGameReady;
 const gameReady = new Promise((r) => { resolveGameReady = r; });
+
+// Run readiness - resolved once boot finished and the frame loop is running.
+// `whenReady()` hands this to verification code so it can await the real boot
+// instead of guessing at a sleep.
+let resolveRunning;
+const running = new Promise((r) => { resolveRunning = r; });
 
 /** Register game initialization function. Called after template is ready. */
 function onInit(fn) {
@@ -109,6 +115,7 @@ async function boot() {
     setTimeout(() => {
       ui.hideLoading();
       requestAnimationFrame(loop);
+      resolveRunning();
     }, 300);
 
   } catch (err) {
@@ -147,17 +154,55 @@ function connectPlatformEvents() {
   }
 }
 
-function loop() {
-  requestAnimationFrame(loop);
-  clock.update();
-  const dt = Math.min(clock.getDelta(), 0.05); // Cap delta to avoid spiraling
-
+/** One step of world time: everything the frame advances except rendering and
+ *  the debug HUD. `loop()` and `advance()` both go through here, so stepping
+ *  the world headlessly exercises the same code path a real frame does -
+ *  physics, part sync, player, game logic, features. */
+function simulate(dt) {
   physics.step(dt);
   primitives.updateParts(dt); // sync physics → meshes, run snap detection
   playerModule.updatePlayer(dt);
 
   if (gameUpdate) gameUpdate(dt);
   features.updateFeatures(dt);
+}
+
+/** Advance the world by `seconds` at a fixed step, without rendering. Returns
+ *  the number of steps taken.
+ *
+ *  Use this to verify time-dependent behavior (a collision, a fall, an
+ *  animation settling) instead of waiting on wall-clock time. A headless
+ *  browser software-renders this scene at ~2-3 fps, and `loop()` caps dt at
+ *  1/30s to keep physics stable, so world time there crawls at roughly a
+ *  twelfth of real time: sleeping 3s and asserting on the result reports that
+ *  the collision never happened. Stepping directly costs ~0.6ms per step
+ *  rather than ~385ms, and is deterministic - the same `seconds` gives the
+ *  same outcome on any machine, headless or not.
+ *
+ *      const core = await import('./js/core.js');
+ *      await core.whenReady();
+ *      core.advance(3);            // 3 seconds of world time, ~110ms real
+ *
+ *  Synchronous on purpose: a run of steps that never yields cannot be
+ *  interleaved by requestAnimationFrame, so `loop()` can't slip a
+ *  variable-dt frame into the middle of an advance. */
+function advance(seconds, { dt = 1 / 60 } = {}) {
+  if (!(seconds > 0)) return 0;
+  const steps = Math.round(seconds / dt);
+  for (let i = 0; i < steps; i++) simulate(dt);
+  // Absorb the wall-clock time those steps burned. Without this the next real
+  // frame sees a large delta and steps the world a second time for the same
+  // span (capped, but still a visible jump).
+  clock.update();
+  return steps;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  clock.update();
+  const dt = Math.min(clock.getDelta(), 0.05); // Cap delta to avoid spiraling
+
+  simulate(dt);
 
   ui.updateDebugFps(dt);
   // Update part count in debug panel (piggyback on FPS timer - once per second)
@@ -199,6 +244,10 @@ Promise.race([
 // Re-export workspace at top level for convenience
 const { workspace } = primitives;
 
+/** Resolves once boot has finished and the frame loop is running. Await this
+ *  before driving the world from a `gipity page eval` script. */
+function whenReady() { return running; }
+
 export {
   world,
   assets,
@@ -210,6 +259,9 @@ export {
   onInit,
   onUpdate,
   setConfig,
+  // Deterministic, render-free stepping for headless verification
+  advance,
+  whenReady,
   // v13+ World Primitives
   primitives,
   constraints,

@@ -14,6 +14,9 @@ deploy:
     - name: realtime
       type: realtime
       rooms:
-        - name: {{ROOM_SLUG}}
+        # Quoted: bare {{ROOM_SLUG}} is a YAML flow mapping, so an install that
+        # failed to substitute it yields a confusing "expected string, received
+        # object" instead of a plain bad-room-name error.
+        - name: "{{ROOM_SLUG}}"
           room_type: state
           auth_level: public
