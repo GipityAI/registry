@@ -60,28 +60,42 @@ export const api = {
     },
 
     topics: {
-        list: () => fn('topics', { op: 'list' }),
+        list: (stage_guid) => fn('topics', stage_guid ? { op: 'list', stage_guid } : { op: 'list' }),
         save: (t) => fn('topics', { op: 'save', ...t }),
         toggle: (short_guid) => fn('topics', { op: 'toggle', short_guid }),
         remove: (short_guid) => fn('topics', { op: 'delete', short_guid }),
     },
 
+    // Funnels + their ordered stages (each stage: goal, ask, topics, recipients).
+    funnels: {
+        list: () => fn('funnels', { op: 'list' }),
+        saveFunnel: (f) => fn('funnels', { op: 'save_funnel', ...f }),
+        setDefault: (short_guid) => fn('funnels', { op: 'set_default', short_guid }),
+        removeFunnel: (short_guid) => fn('funnels', { op: 'delete_funnel', short_guid }),
+        saveStage: (s) => fn('funnels', { op: 'save_stage', ...s }),
+        removeStage: (short_guid) => fn('funnels', { op: 'delete_stage', short_guid }),
+        reorder: (funnel_guid, order) => fn('funnels', { op: 'reorder_stages', funnel_guid, order }),
+    },
+
     linkedinImport: (rows) => fn('linkedin-import', { rows }),
     signupsImport: (rows) => fn('signups-import', { rows }),
 
-    // Platform bridge - admin-only export of Gipity signups (the audience). The same
-    // Sign-in-with-Gipity session cookie authorizes it; only an admin account gets data.
+    // Platform bridge - admin-only export of Gipity signups + the waitlist (the full
+    // audience). The same Sign-in-with-Gipity session cookie authorizes it; only an
+    // admin account gets data.
     accounts: {
         list: (params = {}) => {
             const qs = new URLSearchParams(params).toString();
             return bridge('GET', `/account/accounts${qs ? `?${qs}` : ''}`);
         },
+        waitlist: () => bridge('GET', '/account/accounts/waitlist'),
     },
 
     // Platform bridge - the agent's playbook + learning.
     rules: {
         list: (agentGuid) => bridge('GET', `/account/agents/${agentGuid}/rules`),
         seed: (agentGuid, rules) => bridge('POST', `/account/agents/${agentGuid}/rules`, { rules }),
+        remove: (agentGuid, ruleGuid) => bridge('DELETE', `/account/agents/${agentGuid}/rules/${ruleGuid}`),
         learn: (agentGuid, original, comment) => bridge('POST', `/account/agents/${agentGuid}/learn`, { original, comment }),
     },
 };

@@ -103,6 +103,15 @@ button, input[type="submit"], input[type="button"], input[type="reset"] {
   padding-left: 18px;
   padding-right: 18px;
 }
+/* Water's dark build HARDCODES button:hover to near-black (#040a0f) instead of
+   honoring its own --button-hover variable, so the orange rebrand above vanishes on
+   hover (buttons flip orange -> black). Re-assert the brand hover so it applies. */
+button:hover,
+input[type="submit"]:hover,
+input[type="button"]:hover,
+input[type="reset"]:hover {
+  background: var(--button-hover);
+}
 pre {
   border-radius: var(--radius);
 }

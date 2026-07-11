@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Unsubscribe</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center;
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: #0f1115; color: #e8eaed; }
+    .card { max-width: 30rem; margin: 1.5rem; padding: 2rem; border-radius: 14px;
+      background: #191c22; box-shadow: 0 10px 30px rgba(0,0,0,.3); text-wrap: balance; }
+    h1 { font-size: 1.3rem; margin: 0 0 .5rem; }
+    p { margin: .4rem 0; color: #b7bcc4; }
+    .ok { color: #7ee2a8; }
+    .err { color: #ff9b9b; }
+    a { color: #8ab4ff; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1 id="title">Unsubscribing...</h1>
+    <p id="msg">One moment.</p>
+    <p><a href="https://gipity.ai">gipity.ai</a></p>
+  </main>
+  <script defer crossorigin="anonymous" src="https://media.gipity.ai/client/v1/gipity.js" data-app="{{PROJECT_GUID}}"></script>
+  <script>
+    function render(title, msg, cls) {
+      var t = document.getElementById('title'), m = document.getElementById('msg');
+      t.textContent = title; m.textContent = msg; m.className = cls || '';
+    }
+    function run() {
+      var t = new URLSearchParams(location.search).get('t');
+      if (!t) { render('Nothing to do', 'This link is missing its unsubscribe code.', 'err'); return; }
+      window.Gipity.fn('unsubscribe', { t: t })
+        .then(function () {
+          render("You're unsubscribed", "You won't get any more emails from this list. Sorry for the noise - and thanks for giving Gipity a look.", 'ok');
+        })
+        .catch(function () {
+          render('Something went wrong', 'Please try the link again, or just reply to the email and ask to be removed.', 'err');
+        });
+    }
+    // Wait for the Gipity SDK to attach before calling a function.
+    if (window.Gipity && window.Gipity.fn) run();
+    else window.addEventListener('gipity:ready', run, { once: true });
+    // Fallback in case the ready event has already fired / name differs.
+    window.addEventListener('load', function () {
+      setTimeout(function () { if (window.Gipity && window.Gipity.fn && document.getElementById('title').textContent === 'Unsubscribing...') run(); }, 800);
+    });
+  </script>
+</body>
+</html>

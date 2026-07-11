@@ -77,25 +77,35 @@ async function saveContact(ctx, db, guid) {
     const notes = b.notes || null;
     const source = b.source || 'manual';
     const fit = b.fit_score != null ? clampScore(b.fit_score) : null;
-    // Stage/persona are funnel segmentation; null leaves the stored value untouched.
-    const STAGES = ['cold', 'signed_up', 'active'];
-    const PERSONAS = ['investor', 'developer', 'designer', 'games', 'enterprise', 'unknown'];
-    const stage = STAGES.includes(b.stage) ? b.stage : null;
-    const persona = PERSONAS.includes(b.persona) ? b.persona : null;
 
     if (b.short_guid) {
         const existing = await db.findOne('contacts', { short_guid: b.short_guid });
         if (!existing) return { error: 'Contact not found' };
-        // Restart the sequence if they were re-activated from a non-sending state.
-        const restart = isDormantStatus(existing.status) && !isDormantStatus(status);
+
+        // A manual funnel/stage move (stage_guid) behaves like a real advancement:
+        // sync the stage key, stamp the change, and restart the touch sequence so the
+        // next email speaks to the new stage.
+        let stageGuid = null;
+        let stageKey = null;
+        if (b.stage_guid && b.stage_guid !== existing.stage_guid) {
+            const st = await db.findOne('funnel_stages', { short_guid: b.stage_guid });
+            if (!st) return { error: 'Unknown funnel stage.' };
+            stageGuid = st.short_guid;
+            stageKey = st.key;
+        }
+        // Restart the sequence if re-activated from a dormant state, or stage moved.
+        const restart = (isDormantStatus(existing.status) && !isDormantStatus(status)) || Boolean(stageGuid);
         const next = nextOnSave(status, cadence, restart, existing.next_contact_at);
         const seqStep = restart ? 0 : existing.seq_step;
         const { rows } = await db.query(
             `UPDATE contacts SET email=$2, name=$3, company=$4, title=$5, status=$6, cadence=$7,
                     notes=$8, next_contact_at=$9, seq_step=$10, fit_score=COALESCE($11, fit_score),
-                    stage=COALESCE($12, stage), persona=COALESCE($13, persona), updated_at=NOW()
+                    stage=COALESCE($12, stage), stage_guid=COALESCE($13, stage_guid),
+                    funnel_guid=COALESCE((SELECT funnel_guid FROM funnel_stages WHERE short_guid=$13), funnel_guid),
+                    stage_changed_at=CASE WHEN $13 IS NOT NULL THEN NOW() ELSE stage_changed_at END,
+                    updated_at=NOW()
              WHERE short_guid=$1 RETURNING *`,
-            [b.short_guid, email, name, company, title, status, cadence, notes, next, seqStep, fit, stage, persona]);
+            [b.short_guid, email, name, company, title, status, cadence, notes, next, seqStep, fit, stageKey, stageGuid]);
         return { contact: rows[0] };
     }
 

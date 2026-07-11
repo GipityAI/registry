@@ -22,6 +22,7 @@ export default async function settings(ctx, { db }) {
                 notify_email=COALESCE($11, notify_email),
                 agent_name=COALESCE($12, agent_name),
                 agent_guid=COALESCE($13, agent_guid),
+                app_url=COALESCE($14, app_url),
                 updated_at=NOW()
              WHERE id=1 RETURNING *`,
             [b.base_ask ?? null, b.product_name ?? null, b.product_url ?? null,
@@ -30,7 +31,8 @@ export default async function settings(ctx, { db }) {
              b.draft_lead_days != null ? Number(b.draft_lead_days) : null,
              b.daily_send_cap != null ? Number(b.daily_send_cap) : null,
              b.draft_cap != null ? Number(b.draft_cap) : null,
-             b.notify_email ?? null, b.agent_name ?? null, b.agent_guid ?? null]);
+             b.notify_email ?? null, b.agent_name ?? null, b.agent_guid ?? null,
+             b.app_url ?? null]);
         return { settings: rows[0] };
     }
     return { error: `Unknown op: ${op}` };

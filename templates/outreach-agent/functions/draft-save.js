@@ -9,7 +9,10 @@ export default async function draftSave(ctx, { db, guid }) {
     const contact = await db.findOne('contacts', { short_guid: contactGuid });
     if (!contact) return { error: 'Contact not found' };
 
-    const parsed = extractJson(ctx.body?.draft) || {};
+    let parsed = extractJson(ctx.body?.draft) || {};
+    // The llm step's output can arrive wrapped as { result: {subject, body, ...} };
+    // unwrap it so we read the fields whether or not the envelope is present.
+    if ((!parsed.subject || !parsed.body) && parsed.result) parsed = extractJson(parsed.result) || parsed;
     const subject = typeof parsed.subject === 'string' ? parsed.subject.trim() : '';
     const body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
     const rationale = typeof parsed.rationale === 'string' ? parsed.rationale.trim() : '';
@@ -21,6 +24,6 @@ export default async function draftSave(ctx, { db, guid }) {
         `INSERT INTO messages
             (short_guid, contact_guid, direction, status, seq_step, subject, body, body_original, rationale, model, scheduled_send_at)
          VALUES ($1,$2,'outbound','pending_approval',$3,$4,$5,$5,$6,$7,$8)`,
-        [id, contactGuid, contact.seq_step || 0, subject, body, rationale, s.model || 'claude-sonnet-5', contact.next_contact_at]);
+        [id, contactGuid, contact.seq_step || 0, subject, body, rationale, s.model || 'claude-sonnet-4-6', contact.next_contact_at]);
     return { message_guid: id, contact_guid: contactGuid, subject };
 }

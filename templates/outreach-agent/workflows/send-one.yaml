@@ -1,0 +1,30 @@
+# Child workflow: send ONE already-approved, already-reviewed email from Steve's Gmail,
+# VERBATIM. Called per-item by send-approved. The body was written by the drafting
+# agent and approved by a human in the dashboard - this step only transmits it, so it
+# must not rewrite or embellish anything. Uses the Outreach agent's gmail_send tool,
+# which sends from the agent owner's connected Google account (write_requires_approval
+# must be off for this to go out unattended).
+name: send-one
+description: Send one approved outreach email from Steve's Gmail, exactly as written.
+trigger: manual
+agent: Outreach
+steps:
+  - name: deliver
+    step_type: llm
+    tool_filter: [gmail_send]
+    prompt: |
+      Send exactly ONE email from my Gmail using the gmail_send tool. This email was
+      already written and approved by a human - your ONLY job is to transmit it exactly
+      as given. Do NOT rewrite, summarize, translate, reformat, shorten, or add or
+      remove anything. Do not add a signature or a subject of your own.
+
+      Call gmail_send once with:
+        to:      {{trigger.payload.to}}
+        subject: {{trigger.payload.subject}}
+        body:    the exact text between the markers below, with the marker lines removed.
+
+      -----BEGIN BODY-----
+      {{trigger.payload.body}}
+      -----END BODY-----
+
+      After gmail_send returns, reply with just the word: sent

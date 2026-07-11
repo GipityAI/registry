@@ -50,13 +50,13 @@ function toRows(csv) {
 
 export function renderImport(view) {
     view.innerHTML = '';
-    view.appendChild(el('h1', {}, 'Import contacts'));
+    view.appendChild(el('h1', {}, '1 · Import contacts'));
 
-    // --- Import Gipity signups (the primary audience) ------------------------
+    // --- Import Gipity signups + waitlist (the primary audience) -------------
     const acctCard = el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, 'Import Gipity signups'));
+        el('div', { class: 'card-title' }, 'Import Gipity signups & waitlist'));
     acctCard.appendChild(el('p', { class: 'muted small' },
-        'Pull people who signed up for Gipity straight from the platform (admin only). Each lands as a candidate with a funnel stage (signed up / active) and a starter knowledge base built from their account - apps they built, where they are, what they asked the agent to build.'));
+        'Pull the full audience straight from the platform (admin only): everyone who signed up AND everyone still on the waitlist. Each lands as a candidate at the right funnel stage - no account / signed up / created a project / deployed / paid - with a starter knowledge base from their account: apps they built, whether they shipped, where they are, what they asked the agent to build. Re-importing is safe: it refreshes stages, and anyone who advanced gets a fresh, stage-appropriate next email.'));
 
     const createdAfter = el('input', { type: 'date', style: 'width:170px' });
     const limit = el('input', { type: 'number', value: 100, min: 1, max: 500, style: 'width:100px' });
@@ -65,12 +65,22 @@ export function renderImport(view) {
         el('label', { class: 'small muted' }, 'Signed up after'), createdAfter,
         el('label', { class: 'small muted' }, 'Max'), limit,
         el('button', { onclick: async () => {
-            acctStatus.textContent = 'Fetching accounts...';
+            acctStatus.textContent = 'Fetching accounts + waitlist...';
             let rows;
             try {
                 const params = { limit: Number(limit.value) || 100 };
                 if (createdAfter.value) params.created_after = new Date(createdAfter.value).toISOString();
                 rows = (await api.accounts.list(params)).data || [];
+                // The waitlist rides along: map each entry onto the importer's row
+                // shape with waitlist:true so they land at the "No account" stage.
+                // (Older servers don't have the endpoint - skip quietly.)
+                try {
+                    const wl = (await api.accounts.waitlist()).data || [];
+                    rows = rows.concat(wl.map((w) => ({
+                        email: w.email, waitlist: true,
+                        created_at: w.first_seen_at, last_login_at: w.last_seen_at,
+                    })));
+                } catch { /* waitlist bridge unavailable - import signups only */ }
             } catch (e) {
                 acctStatus.textContent = e.message === 'UNAUTHENTICATED'
                     ? 'Sign in again to fetch accounts.'
@@ -78,15 +88,16 @@ export function renderImport(view) {
                 return;
             }
             if (!rows.length) { acctStatus.textContent = 'No accounts matched.'; return; }
-            acctStatus.textContent = `Importing ${rows.length} signup(s)...`;
-            let added = 0, updated = 0;
+            acctStatus.textContent = `Importing ${rows.length} people...`;
+            let added = 0, updated = 0, advanced = 0;
             try {
                 for (let i = 0; i < rows.length; i += 100) {
                     const r = await api.signupsImport(rows.slice(i, i + 100));
-                    added += r.added || 0; updated += r.updated || 0;
+                    added += r.added || 0; updated += r.updated || 0; advanced += r.advanced || 0;
                 }
-                acctStatus.textContent = `Imported: ${added} new, ${updated} updated. Go qualify them.`;
-                toast(`Imported ${added} new signups.`);
+                acctStatus.textContent = `Imported: ${added} new, ${updated} updated`
+                    + (advanced ? `, ${advanced} advanced a stage (their sequence restarted)` : '') + '. Go qualify them.';
+                toast(`Imported ${added} new, ${updated} refreshed.`);
             } catch (e) { acctStatus.textContent = `Failed: ${e.message}`; }
         } }, 'Fetch & import'),
         el('a', { href: '#/candidates', class: 'pill' }, 'Go qualify'),

@@ -2,6 +2,7 @@
 import {
     CADENCE_DAYS, isValidCadence, intervalDays, nextContactDate, addDays,
     isSendableStatus, isDormantStatus, advanceStep, clampScore,
+    intervalForStep, FAST_TOUCHES, FAST_DAYS, BACKOFF_DAYS,
 } from '../../functions/_lib/cadence.js';
 
 test('isValidCadence accepts known cadences and rejects junk', () => {
@@ -45,6 +46,22 @@ test('advanceStep walks the sequence then signals done', () => {
     assert.deepEqual(advanceStep(3, 1), { seq_step: 2, done: false });
     assert.deepEqual(advanceStep(3, 2), { seq_step: 2, done: true });  // past the last touch
     assert.deepEqual(advanceStep(0, 0), { seq_step: 0, done: true });
+});
+
+test('intervalForStep: fast for the first FAST_TOUCHES, then backs off, never null unless paused', () => {
+    // First FAST_TOUCHES intervals (indices 0..FAST_TOUCHES-1) are the fast cadence.
+    for (let i = 0; i < FAST_TOUCHES; i++) {
+        assert.equal(intervalForStep(i, 'every3'), FAST_DAYS);
+    }
+    // Everything past the fast phase backs off to monthly - and keeps going forever
+    // (the sequence never self-terminates; only reply/unsubscribe stops it).
+    assert.equal(intervalForStep(FAST_TOUCHES, 'every3'), BACKOFF_DAYS);
+    assert.equal(intervalForStep(FAST_TOUCHES + 50, 'every3'), BACKOFF_DAYS);
+    // An explicit paused cadence is the only thing that returns null (stop sending).
+    assert.equal(intervalForStep(0, 'paused'), null);
+    assert.equal(intervalForStep(99, 'paused'), null);
+    // Defensive: junk step index is treated as 0.
+    assert.equal(intervalForStep(undefined, 'every3'), FAST_DAYS);
 });
 
 test('clampScore clamps to 0-100 and rounds', () => {

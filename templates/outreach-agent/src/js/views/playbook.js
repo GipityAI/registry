@@ -9,6 +9,7 @@ const STARTER_RULES = [
     'Write like one human to another - never a mass blast. Use only facts from the contact knowledge; never invent details.',
     'Plain ASCII punctuation only. No em dashes, en dashes, smart quotes, or ellipsis characters.',
 ];
+const norm = (s) => String(s || '').trim().toLowerCase();
 
 export async function renderPlaybook(view) {
     setStatus(view, 'Loading playbook...');
@@ -17,7 +18,7 @@ export async function renderPlaybook(view) {
     view.innerHTML = '';
     view.appendChild(el('h1', {}, 'Playbook'));
     view.appendChild(el('p', { class: 'muted' },
-        'The agent\'s living rulebook. Manual rules you set the tone with; learned rules accrete from your approval-queue comments. Both inject into every draft automatically.'));
+        'The agent\'s living rulebook. Manual rules set the tone; learned rules accrete from your approval-queue comments. Both inject into every draft.'));
 
     if (!s.agent_guid) {
         view.appendChild(el('div', { class: 'card' },
@@ -35,12 +36,21 @@ export async function renderPlaybook(view) {
     const manual = rules.filter((r) => r.source === 'manual');
     const learned = rules.filter((r) => r.source === 'learned');
 
+    // Duplicate detection (same text, case-insensitive) so we can offer a one-click tidy.
+    const seen = new Set();
+    const dupes = [];
+    for (const r of rules) { const k = `${r.source}::${norm(r.text)}`; if (seen.has(k)) dupes.push(r); else seen.add(k); }
+    const missingStarters = STARTER_RULES.filter((t) => !manual.some((r) => norm(r.text) === norm(t)));
+
+    const remove = (r) => act(view, () => api.rules.remove(s.agent_guid, r.short_guid), 'Rule removed.');
+
     const list = (title, arr, cls) => {
         const card = el('div', { class: 'card', style: 'margin-bottom:var(--space-md)' }, el('div', { class: 'card-title' }, `${title} (${arr.length})`));
-        if (!arr.length) card.appendChild(el('p', { class: 'muted small' }, title === 'Learned' ? 'None yet - comment on a draft to teach the agent its first rule.' : 'None yet - seed a few below.'));
+        if (!arr.length) card.appendChild(el('p', { class: 'muted small' }, title === 'Learned' ? 'None yet - comment on a draft to teach the agent its first rule.' : 'None yet - restore the starters or add your own below.'));
         for (const r of arr) {
-            card.appendChild(el('div', { class: 'knowledge-fact' },
-                el('span', {}, el('span', { class: `pill ${cls}` }, r.source), ' ', esc(r.text)),
+            card.appendChild(el('div', { class: 'knowledge-fact', style: 'display:flex;gap:var(--space-sm);align-items:flex-start' },
+                el('span', { style: 'flex:1' }, el('span', { class: `pill ${cls}` }, r.source), ' ', esc(r.text)),
+                el('button', { class: 'small ghost', title: 'Delete rule', onclick: () => remove(r) }, 'x'),
             ));
         }
         return card;
@@ -48,23 +58,41 @@ export async function renderPlaybook(view) {
     view.appendChild(list('Manual', manual, 'manual'));
     view.appendChild(list('Learned', learned, 'learned'));
 
-    // Seed manual rules.
+    // Maintenance: restore missing starters (idempotent) + tidy duplicates.
+    const maint = el('div', { class: 'card' }, el('div', { class: 'card-title' }, 'Starter rules'));
+    if (missingStarters.length) {
+        maint.appendChild(el('p', { class: 'muted small' }, `${missingStarters.length} of the 5 starter rules ${missingStarters.length === 1 ? 'is' : 'are'} missing.`));
+        maint.appendChild(el('button', { class: 'small', onclick: () =>
+            act(view, () => api.rules.seed(s.agent_guid, missingStarters), 'Starter rules restored.') }, `Restore ${missingStarters.length} starter rule(s)`));
+    } else {
+        maint.appendChild(el('p', { class: 'muted small' }, 'All 5 starter rules are in place. Delete any with the x above.'));
+    }
+    if (dupes.length) {
+        maint.appendChild(el('div', { style: 'margin-top:var(--space-sm)' },
+            el('button', { class: 'small ghost', onclick: async () => {
+                try { for (const d of dupes) await api.rules.remove(s.agent_guid, d.short_guid); toast(`Removed ${dupes.length} duplicate(s).`); renderPlaybook(view); }
+                catch (e) { toast(e.message); }
+            } }, `Remove ${dupes.length} duplicate rule(s)`)));
+    }
+    view.appendChild(maint);
+
+    // Add your own manual rules.
     const ta = el('textarea', { placeholder: 'One rule per line...', style: 'width:100%;min-height:90px' });
-    const seedBox = el('div', { class: 'card' },
+    view.appendChild(el('div', { class: 'card' },
         el('div', { class: 'card-title' }, 'Add manual rules'),
         ta,
         el('div', { class: 'actions' },
-            el('button', { onclick: async () => {
-                const lines = ta.value.split('\n').map((x) => x.trim()).filter(Boolean);
-                if (!lines.length) { toast('Type at least one rule.'); return; }
-                try { await api.rules.seed(s.agent_guid, lines); toast('Rules added.'); renderPlaybook(view); }
-                catch (e) { toast(e.message); }
+            el('button', { onclick: () => {
+                const lines = ta.value.split('\n').map((x) => x.trim()).filter(Boolean)
+                    .filter((t) => !manual.some((r) => norm(r.text) === norm(t))); // skip ones already present
+                if (!lines.length) { toast('Nothing new to add.'); return; }
+                act(view, () => api.rules.seed(s.agent_guid, lines), 'Rules added.');
             } }, 'Add rules'),
-            el('button', { class: 'ghost', onclick: async () => {
-                try { await api.rules.seed(s.agent_guid, STARTER_RULES); toast('Starter rules added.'); renderPlaybook(view); }
-                catch (e) { toast(e.message); }
-            } }, 'Add the 5 starter rules'),
         ),
-    );
-    view.appendChild(seedBox);
+    ));
+}
+
+async function act(view, thunk, okMsg) {
+    try { const r = await thunk(); if (r && r.error) { toast(r.error); return; } toast(okMsg); renderPlaybook(view); }
+    catch (e) { toast(e.message); }
 }

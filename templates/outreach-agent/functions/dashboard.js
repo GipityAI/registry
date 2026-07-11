@@ -23,10 +23,23 @@ export default async function dashboard(ctx, { db }) {
     const statusCounts = (await db.query(
         'SELECT status, COUNT(*)::int AS n FROM contacts GROUP BY status')).rows;
 
+    // The funnel pipeline: the default funnel's stages in order, each with how many
+    // recipients sit there (and how many of those are actively being dripped).
+    const funnelStages = (await db.query(
+        `SELECT s.short_guid, s.order_index, s.key, s.label, s.goal,
+                COUNT(c.short_guid)::int AS recipients,
+                COUNT(c.short_guid) FILTER (WHERE c.status IN ('new','in_sequence'))::int AS in_drip,
+                COUNT(c.short_guid) FILTER (WHERE c.status = 'replied')::int AS replied
+         FROM funnel_stages s
+         JOIN funnels f ON f.short_guid = s.funnel_guid AND f.is_default
+         LEFT JOIN contacts c ON c.stage_guid = s.short_guid
+         GROUP BY s.short_guid, s.order_index, s.key, s.label, s.goal
+         ORDER BY s.order_index`)).rows;
+
     const recent = (await db.query(
         `SELECT m.direction, m.status, m.subject, m.created_at, c.name, c.email
          FROM messages m JOIN contacts c ON c.short_guid = m.contact_guid
          ORDER BY m.created_at DESC LIMIT 12`)).rows;
 
-    return { totalContacts, candidates, toDraft, pending, scheduled, sent7, replied, statusCounts, recent };
+    return { totalContacts, candidates, toDraft, pending, scheduled, sent7, replied, statusCounts, funnelStages, recent };
 }

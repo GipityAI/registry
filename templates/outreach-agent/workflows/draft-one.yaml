@@ -29,26 +29,25 @@ steps:
       - title: {{load.result.title}}
       - my notes: {{load.result.notes}}
 
-      WHERE THEY ARE WITH GIPITY (write in the matching register):
-      - stage: {{load.result.stage}}
-      - persona: {{load.result.persona}}
-      - cold: they have not signed up. Explain plainly what this is and why THEY in
-        particular would care; make the first ask once. No assumed familiarity.
-      - signed_up: they signed up but have not built yet. Warm, low-friction; point at
-        the single easiest first thing they could build. Do not pitch from scratch.
-      - active: they have built on Gipity. Talk like a peer - "how's it going" plus a
-        concrete next thing, tied to the apps they have already made (see knowledge).
+      WHERE THEY ARE IN THE FUNNEL (write in the register that fits this stage):
+      - stage: {{load.result.stage_label}}
+      - my goal for them at this stage: {{load.result.stage_goal}}
+      - recent movement: {{load.result.stage_note}}
+      Match the register to the stage: if they have no account, explain plainly what this
+      is and why THEY would care; if they signed up but have not built, be warm and
+      low-friction and point at the single easiest first thing; if they are already
+      building, talk like a peer with a concrete next step tied to what they made.
 
       WHAT I KNOW ABOUT THEM (their knowledge base - use ONLY these facts, do not invent
       more; if this is thin, stay general and warm rather than fabricating specifics):
       {{load.result.knowledge}}
 
-      THE TOPIC for this email (what to make it about, chosen for their stage + persona):
+      THE TOPIC for this email (what to make it about, chosen for their stage):
       - {{load.result.topic_title}}
       - {{load.result.topic_body}}
 
-      THE ASK (what every email in this campaign is ultimately for):
-      {{load.result.base_ask}}
+      THE ASK for this stage (what this email should get them to do):
+      {{load.result.ask}}
       Product: {{load.result.product_name}} ({{load.result.product_url}})
 
       THIS TOUCH - write exactly this one, do not repeat earlier touches:

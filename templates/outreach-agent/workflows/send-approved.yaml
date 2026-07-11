@@ -1,33 +1,31 @@
 # The send window. Claims approved emails whose scheduled_send_at has arrived, sends
-# them from gipity@gipity.ai, marks them sent, and advances each contact to the next
-# touch on its cadence. Runs hourly so an approval lands at (or just after) its mark.
-# Batched to respect the platform's 10-emails-per-hour limit (settings.daily_send_cap).
+# each from Steve's personal Gmail (via the Outreach agent's gmail_send tool - the
+# send-one child), marks them sent, and advances each contact to the next touch.
+# Runs hourly so an approval lands at (or just after) its mark. Batched via
+# settings.daily_send_cap; the real ceiling is Gmail's own daily quota.
+#
+# Unattended Gmail send requires the owner's google/gmail permission to have
+# write_requires_approval = false (otherwise every send silently pends for approval).
 name: send-approved
-description: Send approved outreach emails (batched) and advance each contact's cadence.
+description: Send approved outreach emails from Steve's Gmail (batched) and advance each cadence.
 trigger: schedule
 cron: "0 * * * *"
 timezone: America/New_York
 steps:
-  - name: cfg
-    step_type: function
-    config:
-      name: settings
-      body:
-        op: get
   - name: list
     step_type: function
     config:
       name: send-list
   - name: send
-    step_type: notify
+    step_type: workflow
     foreach: "{{list.result.items}}"
     on_failure: continue
     config:
-      channel: email
-      to: "{{item.to}}"
-      subject: "{{item.subject}}"
-      body: "{{item.body}}"
-      reply_to: "{{cfg.result.settings.notify_email}}"
+      name: send-one
+      body:
+        to: "{{item.to}}"
+        subject: "{{item.subject}}"
+        body: "{{item.body}}"
   - name: commit
     step_type: function
     config:

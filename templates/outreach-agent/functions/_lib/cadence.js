@@ -17,6 +17,20 @@ export function intervalDays(cadence) {
     return isValidCadence(cadence) ? CADENCE_DAYS[cadence] : CADENCE_DAYS.every3;
 }
 
+// Re-engagement cadence: pester every FAST_DAYS for the first FAST_TOUCHES touches,
+// then back off to BACKOFF_DAYS forever. The sequence never self-terminates - only a
+// reply or an unsubscribe stops it (an explicit cadence='paused' also halts sending).
+export const FAST_TOUCHES = 3;   // number of fast (3-day) intervals before backing off
+export const FAST_DAYS = 3;
+export const BACKOFF_DAYS = 30;  // ongoing monthly keep-warm after the fast phase
+
+// Days until the NEXT touch, given the 0-based index of the touch just sent and the
+// contact's cadence. Returns null only when the contact is explicitly paused.
+export function intervalForStep(sentStep, cadence) {
+    if (cadence === 'paused') return null;
+    return (Number(sentStep) || 0) < FAST_TOUCHES ? FAST_DAYS : BACKOFF_DAYS;
+}
+
 // `from` may be a Date or ISO string; defaults to now.
 export function addDays(from, days) {
     const base = from ? new Date(from) : new Date();

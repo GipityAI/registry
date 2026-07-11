@@ -10,7 +10,7 @@ export async function renderDashboard(view) {
 
     view.innerHTML = '';
     view.appendChild(el('div', { class: 'spread' },
-        el('h1', {}, 'Funnel'),
+        el('h1', {}, 'Overview'),
         el('a', { href: '#/approvals', class: 'pill learned' }, `${d.pending || 0} awaiting approval`),
     ));
 
@@ -28,25 +28,46 @@ export async function renderDashboard(view) {
         ),
     ));
 
-    // The five-stage feedback funnel.
+    // THE FUNNEL - recipients by stage, in order. This is the product: watch people
+    // move right. Each column links to the funnel builder.
+    const stages = d.funnelStages || [];
+    if (stages.length) {
+        view.appendChild(el('div', { class: 'card-title', style: 'margin-top:var(--space-lg)' }, 'The funnel'));
+        const board = el('div', { class: 'board', style: `grid-template-columns:repeat(${stages.length}, 1fr)` });
+        for (const s of stages) {
+            board.appendChild(el('a', { href: '#/funnel', class: 'col', style: 'text-decoration:none', title: s.goal || '' },
+                el('span', { class: 'n' }, String(s.recipients || 0)),
+                el('span', { class: 'label' }, s.label),
+                el('span', { class: 'muted small' },
+                    (s.in_drip ? `${s.in_drip} in drip` : ''),
+                    (s.in_drip && s.replied ? ' · ' : ''),
+                    (s.replied ? `${s.replied} replied` : ''),
+                    (!s.in_drip && !s.replied ? ' ' : '')),
+            ));
+        }
+        view.appendChild(board);
+    }
+
+    // The work queue - what needs attention now.
     const cols = [
+        ['Candidates to qualify', d.candidates || 0, '#/candidates'],
         ['To draft', d.toDraft || 0, '#/contacts'],
         ['Pending approval', d.pending || 0, '#/approvals'],
         ['Scheduled', d.scheduled || 0, '#/contacts'],
         ['Sent (7d)', d.sent7 || 0, '#/contacts'],
         ['Replied', d.replied || 0, '#/contacts'],
     ];
-    const board = el('div', { class: 'board' });
+    view.appendChild(el('div', { class: 'card-title', style: 'margin-top:var(--space-lg)' }, 'Work queue'));
+    const queue = el('div', { class: 'board', style: `grid-template-columns:repeat(${cols.length}, 1fr)` });
     for (const [label, n, href] of cols) {
-        board.appendChild(el('a', { href, class: 'col', style: 'text-decoration:none' },
+        queue.appendChild(el('a', { href, class: 'col', style: 'text-decoration:none' },
             el('span', { class: 'n' }, String(n)),
             el('span', { class: 'label' }, label),
         ));
     }
-    view.appendChild(board);
+    view.appendChild(queue);
 
-    view.appendChild(el('div', { class: 'row' },
-        el('a', { href: '#/candidates', class: 'pill' }, `${d.candidates || 0} candidates to qualify`),
+    view.appendChild(el('div', { class: 'row', style: 'margin-top:var(--space-sm)' },
         el('span', { class: 'pill' }, `${d.totalContacts || 0} contacts total`),
     ));
 

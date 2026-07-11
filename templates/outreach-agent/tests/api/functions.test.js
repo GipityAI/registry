@@ -1,6 +1,6 @@
 // Function-level tests. ctx.fn.call is unauthenticated, so it confirms every
-// function is locked to the signed-in owner (auth: member) - this app has no public
-// endpoint, so anonymous calls to any function must be rejected.
+// member function is locked to the signed-in owner (auth: member). The only public
+// endpoint is `unsubscribe` (tested separately below); every other call must reject.
 const MEMBER_FUNCTIONS = [
     ['dashboard', {}],
     ['contacts', { op: 'list' }],
@@ -11,6 +11,7 @@ const MEMBER_FUNCTIONS = [
     ['linkedin-import', { rows: [{ email: 'a@b.co' }] }],
     ['signups-import', { rows: [{ email: 'a@b.co', short_guid: 'u_x' }] }],
     ['topics', { op: 'list' }],
+    ['funnels', { op: 'list' }],
     ['draft-list', {}],
     ['draft-load', { contact_guid: 'x' }],
     ['draft-save', { contact_guid: 'x', draft: '{}' }],
@@ -30,3 +31,11 @@ for (const [name, body] of MEMBER_FUNCTIONS) {
         await assert.rejects(() => ctx.fn.call(name, body), `${name} should require auth`);
     });
 }
+
+// unsubscribe is public: an anonymous call must succeed, and an unknown token must be
+// handled without leaking whether it exists (ok:true, unsubscribed:false).
+test('unsubscribe is public and safe for unknown tokens', async (ctx) => {
+    const r = await ctx.fn.call('unsubscribe', { t: 'definitely-not-a-real-token' });
+    assert.equal(r.ok, true);
+    assert.equal(r.unsubscribed, false);
+});

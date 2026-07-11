@@ -1,45 +1,41 @@
 import { api } from '../api.js';
-import { el, esc, fmtDate, setStatus, toast } from '../util.js';
+import { el, esc, fmtDate, fmtDay, setStatus, toast, sortableTable, stageLabels, stageLabelFor } from '../util.js';
 
 const CADENCES = ['every3', 'weekly', 'biweekly', 'monthly', 'paused'];
-const STATUSES = ['new', 'in_sequence', 'replied', 'done', 'paused', 'to_qualify', 'disqualified', 'no_email'];
-const STAGES = ['cold', 'signed_up', 'active'];
-const PERSONAS = ['investor', 'developer', 'designer', 'games', 'enterprise', 'unknown'];
+const STATUSES = ['new', 'in_sequence', 'replied', 'done', 'paused', 'to_qualify', 'disqualified', 'no_email', 'unsubscribed'];
 
 export async function renderContacts(view) {
     setStatus(view, 'Loading contacts...');
-    let contacts;
-    try { contacts = (await api.contacts.list()).contacts || []; }
-    catch (e) { setStatus(view, `Could not load: ${e.message}`); return; }
+    let contacts, labels;
+    try {
+        [contacts, labels] = await Promise.all([
+            api.contacts.list().then((r) => r.contacts || []), stageLabels()]);
+    } catch (e) { setStatus(view, `Could not load: ${e.message}`); return; }
 
     view.innerHTML = '';
-    view.appendChild(el('div', { class: 'spread' }, el('h1', {}, 'Contacts'), el('a', { href: '#/candidates', class: 'pill' }, 'Qualify candidates')));
-    if (!contacts.length) { view.appendChild(el('p', { class: 'muted' }, 'No contacts yet. Import some, then qualify your five.')); return; }
+    view.appendChild(el('div', { class: 'spread' }, el('h1', {}, '2 · Contacts'), el('a', { href: '#/candidates', class: 'pill' }, 'Qualify candidates')));
+    if (!contacts.length) { view.appendChild(el('p', { class: 'muted' }, 'No contacts yet. Import some, then qualify the ones you want to reach.')); return; }
 
-    const table = el('table', {}, el('thead', {}, el('tr', {},
-        el('th', {}, 'Name'), el('th', {}, 'Stage'), el('th', {}, 'Persona'), el('th', {}, 'Status'),
-        el('th', {}, 'Cadence'), el('th', {}, 'Next'), el('th', {}, 'Fit'))));
-    const tbody = el('tbody', {});
-    for (const c of contacts) {
-        tbody.appendChild(el('tr', {},
-            el('td', {}, el('a', { href: `#/contacts/${encodeURIComponent(c.short_guid)}` }, esc(c.name || c.email || c.short_guid))),
-            el('td', {}, el('span', { class: 'pill' }, c.stage || 'cold')),
-            el('td', { class: 'muted small' }, c.persona && c.persona !== 'unknown' ? c.persona : '-'),
-            el('td', {}, el('span', { class: 'pill' }, c.status)),
-            el('td', {}, c.cadence),
-            el('td', { class: 'muted small' }, c.next_contact_at ? fmtDate(c.next_contact_at) : '-'),
-            el('td', { class: 'muted small' }, String((c.fit_score || 0) + (c.engagement_score || 0))),
-        ));
-    }
-    table.appendChild(tbody);
-    view.appendChild(table);
+    const ms = (iso) => (iso ? new Date(iso).getTime() : null);
+    view.appendChild(el('p', { class: 'muted small' }, `${contacts.length} contact(s). Click a header to sort.`));
+    view.appendChild(sortableTable([
+        { label: 'Name', cell: (c) => el('a', { href: `#/contacts/${encodeURIComponent(c.short_guid)}` }, esc(c.name || c.email || c.short_guid)), sort: (c) => (c.name || c.email || '').toLowerCase() },
+        { label: 'Stage', cell: (c) => el('span', { class: 'pill' }, stageLabelFor(c, labels)), sort: (c) => stageLabelFor(c, labels) },
+        { label: 'Status', cell: (c) => el('span', { class: 'pill' }, c.status), sort: (c) => c.status || '' },
+        { label: 'Cadence', cell: (c) => c.cadence, sort: (c) => c.cadence || '' },
+        { label: 'Signed up', th: { class: 'muted small' }, cell: (c) => fmtDay(c.signup_at), sort: (c) => ms(c.signup_at), initial: 'desc' },
+        { label: 'Next', th: { class: 'muted small' }, cell: (c) => (c.next_contact_at ? fmtDate(c.next_contact_at) : '-'), sort: (c) => ms(c.next_contact_at), initial: 'asc' },
+        { label: 'Fit', th: { class: 'muted small' }, cell: (c) => String((c.fit_score || 0) + (c.engagement_score || 0)), sort: (c) => (c.fit_score || 0) + (c.engagement_score || 0), initial: 'desc' },
+    ], contacts, 0, 'asc'));
 }
 
 export async function renderContactDetail(view, guid) {
     setStatus(view, 'Loading contact...');
-    let data;
-    try { data = await api.contacts.get(guid); }
-    catch (e) { setStatus(view, `Could not load: ${e.message}`); return; }
+    let data, funnels;
+    try {
+        [data, funnels] = await Promise.all([
+            api.contacts.get(guid), api.funnels.list().then((r) => r.funnels || [])]);
+    } catch (e) { setStatus(view, `Could not load: ${e.message}`); return; }
     if (data.error) { setStatus(view, data.error); return; }
     const { contact: c, knowledge, messages } = data;
 
@@ -47,29 +43,38 @@ export async function renderContactDetail(view, guid) {
     view.appendChild(el('div', { class: 'spread' },
         el('h1', {}, esc(c.name || c.email || 'Contact')),
         el('a', { href: '#/contacts', class: 'muted small' }, '< all contacts')));
-    view.appendChild(el('p', { class: 'muted' }, esc(c.email || ''), c.company ? ` - ${esc(c.company)}` : '', c.title ? ` - ${esc(c.title)}` : ''));
+    view.appendChild(el('p', { class: 'muted' },
+        esc(c.email || ''), c.company ? ` - ${esc(c.company)}` : '', c.title ? ` - ${esc(c.title)}` : '',
+        c.signup_at ? ` - signed up ${fmtDay(c.signup_at)}` : ''));
 
-    // Stage + persona + status + cadence controls.
-    const stageSel = el('select', {}, ...STAGES.map((x) => el('option', { value: x, selected: x === (c.stage || 'cold') }, x)));
-    const personaSel = el('select', {}, ...PERSONAS.map((x) => el('option', { value: x, selected: x === (c.persona || 'unknown') }, x)));
+    // Funnel stage + status + cadence controls. Stage options come from the funnel
+    // data; moving a contact restarts their sequence for the new stage.
+    const stageOptions = funnels.flatMap((f) => (f.stages || []).map((s) =>
+        el('option', { value: s.short_guid, selected: s.short_guid === c.stage_guid },
+            funnels.length > 1 ? `${f.name}: ${s.label}` : s.label)));
+    const stageSel = el('select', {}, ...stageOptions);
     const statusSel = el('select', {}, ...STATUSES.map((x) => el('option', { value: x, selected: x === c.status }, x)));
     const cadenceSel = el('select', {}, ...CADENCES.map((x) => el('option', { value: x, selected: x === c.cadence }, x)));
     view.appendChild(el('div', { class: 'card' },
-        el('div', { class: 'card-title' }, 'Stage, persona & cadence'),
+        el('div', { class: 'card-title' }, 'Funnel stage & cadence'),
         el('div', { class: 'row' },
             el('label', { class: 'small muted' }, 'Stage'), stageSel,
-            el('label', { class: 'small muted' }, 'Persona'), personaSel,
             el('label', { class: 'small muted' }, 'Status'), statusSel,
             el('label', { class: 'small muted' }, 'Cadence'), cadenceSel,
             el('button', { class: 'small', onclick: async () => {
-                try { await api.contacts.save({ short_guid: c.short_guid, email: c.email, name: c.name, company: c.company, title: c.title, notes: c.notes, status: statusSel.value, cadence: cadenceSel.value, stage: stageSel.value, persona: personaSel.value }); toast('Saved.'); renderContactDetail(view, guid); }
-                catch (e) { toast(e.message); }
+                try {
+                    const r = await api.contacts.save({ short_guid: c.short_guid, email: c.email, name: c.name, company: c.company, title: c.title, notes: c.notes, status: statusSel.value, cadence: cadenceSel.value, stage_guid: stageSel.value });
+                    if (r && r.error) { toast(r.error); return; }
+                    toast('Saved.'); renderContactDetail(view, guid);
+                } catch (e) { toast(e.message); }
             } }, 'Save'),
             el('button', { class: 'small ghost', onclick: async () => {
                 try { await api.contacts.dueNow(c.short_guid); toast('Marked due - the next draft run will pick them up.'); }
                 catch (e) { toast(e.message); }
             } }, 'Draft now'),
         ),
+        el('p', { class: 'muted small', style: 'margin:var(--space-xs) 0 0' },
+            'Moving the stage restarts their touch sequence with the new stage\'s ask.'),
     ));
 
     // Knowledge base - hand-editable.

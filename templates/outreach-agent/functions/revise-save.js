@@ -9,7 +9,9 @@ export default async function reviseSave(ctx, { db }) {
     const msg = await db.findOne('messages', { short_guid: mid });
     if (!msg) return { error: 'Message not found' };
 
-    const parsed = extractJson(ctx.body?.draft) || {};
+    let parsed = extractJson(ctx.body?.draft) || {};
+    // The llm step's output can arrive wrapped as { result: {subject, body, ...} }.
+    if ((!parsed.subject || !parsed.body) && parsed.result) parsed = extractJson(parsed.result) || parsed;
     const subject = typeof parsed.subject === 'string' ? parsed.subject.trim() : '';
     const body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
     const rationale = typeof parsed.rationale === 'string' ? parsed.rationale.trim() : '';

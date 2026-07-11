@@ -31,7 +31,7 @@ deploy:
     - name: database
       type: sql
       source: migrations
-      database: {{DATABASE}}
+      database: outreach_agent
 
     # Serverless functions - all owner-only (member). These are the data plane the
     # dashboard and workflows read/write. None call the LLM: all drafting/enrichment
@@ -43,7 +43,7 @@ deploy:
         # --- Dashboard / management ---
         - name: contacts
           auth: member
-          tables: [contacts, contact_knowledge, messages]
+          tables: [contacts, contact_knowledge, messages, funnel_stages]
         - name: settings
           auth: member
           tables: [settings]
@@ -57,13 +57,17 @@ deploy:
         # the topics library the drafts pick from.
         - name: signups-import
           auth: member
-          tables: [contacts, contact_knowledge]
+          tables: [contacts, contact_knowledge, funnels, funnel_stages]
         - name: topics
           auth: member
           tables: [topics]
+        # Funnels + stages builder (data-defined stages, goals, asks).
+        - name: funnels
+          auth: member
+          tables: [funnels, funnel_stages, contacts, topics]
         - name: dashboard
           auth: member
-          tables: [contacts, messages]
+          tables: [contacts, messages, funnels, funnel_stages]
         - name: knowledge
           auth: member
           tables: [contacts, contact_knowledge]
@@ -76,7 +80,7 @@ deploy:
           tables: [contacts, messages, settings]
         - name: draft-load
           auth: member
-          tables: [contacts, contact_knowledge, sequence_steps, messages, settings, topics]
+          tables: [contacts, contact_knowledge, sequence_steps, messages, settings, topics, funnel_stages]
         - name: draft-save
           auth: member
           tables: [contacts, messages, settings]
@@ -87,6 +91,10 @@ deploy:
         - name: send-commit
           auth: member
           tables: [messages, contacts, sequence_steps]
+        # Public one-click unsubscribe (called by unsubscribe.html, no login).
+        - name: unsubscribe
+          auth: public
+          tables: [contacts, messages]
         # --- Revise pipeline (revise-due + revise-one child) ---
         - name: revise-list
           auth: member
