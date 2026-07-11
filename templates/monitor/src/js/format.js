@@ -49,6 +49,34 @@ export function fmtMs(n) {
   return `${(n / 1000).toFixed(2)}s`;
 }
 
+// Compact token count for the chats table: "—" for 0/empty, bare under 1k,
+// then k/M/B with one decimal (trailing ".0" dropped). Coerces strings, since
+// the BIGINT counters arrive from the API as strings.
+export function fmtTokens(n) {
+  const v = Number(n ?? 0);
+  if (!v) return '—';
+  for (const [scale, suffix] of [[1e9, 'B'], [1e6, 'M'], [1e3, 'k']]) {
+    if (v >= scale) {
+      const s = v / scale;
+      return (s >= 100 ? Math.round(s).toString() : s.toFixed(1).replace(/\.0$/, '')) + suffix;
+    }
+  }
+  return String(v);
+}
+
+// Agent working time (NOT wall-clock): "—" for 0, then "45s" / "18m 34s" /
+// "1h 2m". Used for the chats table's Time column.
+export function fmtDuration(ms) {
+  const total = Math.floor(Number(ms ?? 0) / 1000);
+  if (total <= 0) return '—';
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  const s = total % 60;
+  if (h > 0) return `${h}h ${m}m`;
+  if (m > 0) return `${m}m ${s}s`;
+  return `${s}s`;
+}
+
 export function fmtPct(n) {
   if (n == null || isNaN(n)) return '—';
   return `${n.toFixed(1)}%`;

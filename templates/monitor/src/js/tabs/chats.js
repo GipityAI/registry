@@ -7,7 +7,7 @@
  * directly underneath the clicked row. Re-clicking collapses without
  * re-fetching (messages are cached on the row's dataset).
  */
-import { fmtExact, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow } from '../format.js';
+import { fmtExact, fmtTime, fmtFullTime, fmtTokens, fmtDuration, escapeHtml, truncate, emptyRow } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -65,7 +65,7 @@ async function toggleRow(api, headerRow, guid) {
   const tr = document.createElement('tr');
   tr.className = 'chat-thread-row';
   const td = document.createElement('td');
-  td.colSpan = 3;
+  td.colSpan = 5;
   td.innerHTML = '<div class="muted small">Loading messages…</div>';
   tr.appendChild(td);
   headerRow.after(tr);
@@ -84,16 +84,28 @@ export async function renderChatsTab(api, { range, appGuid }) {
 
   const tbody = $('table-chats').querySelector('tbody');
   if (!res.data.length) {
-    tbody.innerHTML = emptyRow(3, 'No chats yet.');
+    tbody.innerHTML = emptyRow(5, 'No chats yet.');
     return;
   }
-  tbody.innerHTML = res.data.map((c) => `
+  tbody.innerHTML = res.data.map((c) => {
+    // Token + working-time counters (relay chats; 0 → "—"). BIGINTs arrive as
+    // strings, so coerce before summing. Hover breaks tokens into in/out/total.
+    const tin = Number(c.tokens_in ?? 0);
+    const tout = Number(c.tokens_out ?? 0);
+    const total = tin + tout;
+    const tokTitle = total > 0 ? `In ${fmtExact(tin)} · Out ${fmtExact(tout)} · Total ${fmtExact(total)}` : '';
+    const activeMs = Number(c.active_ms ?? 0);
+    const timeTitle = activeMs > 0 ? `${fmtDuration(activeMs)} of agent working time (not wall-clock)` : '';
+    return `
     <tr class="chat-row" data-guid="${escapeHtml(c.short_guid)}">
       <td title="${escapeHtml(c.short_guid)}">${escapeHtml(truncate(c.title || c.short_guid, 80))}</td>
       <td class="muted">${escapeHtml(c.project_name || '—')}</td>
+      <td class="num" title="${escapeHtml(tokTitle)}">${fmtTokens(total)}</td>
+      <td class="num" title="${escapeHtml(timeTitle)}">${fmtDuration(activeMs)}</td>
       <td class="muted">${fmtTime(c.updated_at || c.created_at)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 
   // Delegated click handler — bound once per Monitor session, then ignored on
   // subsequent renders so we don't pile up listeners on tab refresh.
