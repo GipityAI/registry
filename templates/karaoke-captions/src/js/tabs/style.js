@@ -88,19 +88,38 @@ function fitPreviewFont(boxW, boxH, pad) {
   return best;
 }
 
+/**
+ * Write a style only when it actually changes.
+ *
+ * applyPreview runs from a ResizeObserver on #style-preview, and it writes
+ * geometry-affecting styles (padding / aspect-ratio / font-size) back onto that
+ * same element. An unconditional write resizes the observed box, which re-fires
+ * the observer → applyPreview → write → … Every pass also runs fitPreviewFont's
+ * binary search (a dozen forced reflows), so the churn is expensive even where
+ * it converges, and it can trip the browser's "ResizeObserver loop completed
+ * with undelivered notifications" error. Writing only on a real change makes the
+ * callback a fixed point: once settled it mutates nothing, so the observer has
+ * no reason to fire again.
+ */
+function setStyle(el, prop, value) {
+  if (el.style[prop] !== value) el.style[prop] = value;
+}
+
 function applyPreview() {
   const opts = readOptions();
   const preview = $('style-preview');
   if (preview) {
-    preview.style.background = opts.bg_color;
-    preview.style.aspectRatio = opts.aspect.replace(':', ' / ');
+    setStyle(preview, 'background', opts.bg_color);
+    setStyle(preview, 'aspectRatio', opts.aspect.replace(':', ' / '));
+    // clientWidth/clientHeight are integers, so the values below are a stable
+    // function of the box - they settle instead of jittering subpixel.
     const boxW = preview.clientWidth || 0;
     const boxH = preview.clientHeight || 0;
     if (boxW > 0 && boxH > 0) {
       const shortSide = Math.min(boxW, boxH);
       // Scale the authored pad (720-ref) to the preview's short side, like render.
       const pad = opts.pad_px * (shortSide / 720);
-      preview.style.padding = pad + 'px';
+      setStyle(preview, 'padding', pad + 'px');
       let px;
       if (opts.font_mode === 'max') {
         px = fitPreviewFont(boxW, boxH, pad);
@@ -109,7 +128,7 @@ function applyPreview() {
         const fit = fitPreviewFont(boxW, boxH, pad);
         px = Math.min(want, fit); // crop-safe, matches renderer
       }
-      preview.style.fontSize = px + 'px';
+      setStyle(preview, 'fontSize', px + 'px');
     }
   }
   const a = preview?.querySelector('.style-preview-active');
