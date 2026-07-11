@@ -83,7 +83,7 @@ export async function renderSpendTab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   chart = new Chart($('chart-spend'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: '#f26522' }] },
+    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: '#fea60b' }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 

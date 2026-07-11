@@ -10,7 +10,7 @@
   --text-muted: #a8a29e;
   --text-faint: #6f6f78;
   --border: #333;
-  --primary: #f26522;
+  --primary: #fea60b;
   --error: #ef4444;
   --warning: #f59e0b;
   --success: #22c55e;
@@ -264,7 +264,7 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 .tab-desc.small { font-size: 0.8em; }
 .tab-desc code { background: var(--bg-card); padding: 0.05rem 0.3rem; border-radius: 3px; font-size: 0.95em; color: white; font-family: ui-monospace, monospace; }
 .tab-desc .try-it { display: inline-block; margin-left: 0.4rem; padding-left: 0.6rem; border-left: 2px solid var(--border); color: white; }
-.tab-desc .try-it code { background: rgba(242, 101, 34, 0.12); color: var(--primary); }
+.tab-desc .try-it code { background: rgba(254, 166, 11, 0.12); color: var(--primary); }
 
 /* ── Services sub-panels (LLMs / Speech / Media / Realtime / Browser / Search) */
 .svc-panel { display: none; }

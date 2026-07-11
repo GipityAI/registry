@@ -3,7 +3,7 @@
 :root {
   --hud-bg: rgba(0, 0, 0, 0.6);
   --hud-text: #ffffff;
-  --hud-accent: #f26522;
+  --hud-accent: #fea60b;
   --hud-radius: 8px;
   --hud-padding: 12px;
   --hud-font: 'Segoe UI', system-ui, -apple-system, sans-serif;
@@ -179,7 +179,7 @@ html, body {
 }
 
 .mobile-btn:active {
-  background: rgba(242, 101, 34, 0.5);
+  background: rgba(254, 166, 11, 0.5);
   border-color: var(--hud-accent);
 }
 

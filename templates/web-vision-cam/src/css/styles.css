@@ -1,7 +1,7 @@
 /* Design tokens - customize these instead of hardcoding values */
 :root {
-  --primary: #f26522;
-  --primary-hover: #d9541a;
+  --primary: #fea60b;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
   --ink: #ffffff;
   --bg: #0c0c10;
   --chip-bg: rgba(12, 12, 16, 0.72);

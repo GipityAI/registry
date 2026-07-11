@@ -139,7 +139,7 @@ function connectPlatformEvents() {
       console.log('[3D World] New version deployed, reloading...');
       const toast = document.createElement('div');
       toast.textContent = 'Updating\u2026';
-      toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#f26522;padding:16px 32px;border-radius:8px;font:16px monospace;z-index:99999;pointer-events:none;';
+      toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.85);color:#fea60b;padding:16px 32px;border-radius:8px;font:16px monospace;z-index:99999;pointer-events:none;';
       document.body.appendChild(toast);
       setTimeout(() => location.reload(), 800);
     });

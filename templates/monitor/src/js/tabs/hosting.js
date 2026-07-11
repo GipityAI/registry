@@ -58,7 +58,7 @@ async function renderDeploysSubtab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   deployChart = new Chart($('chart-hosting-deploys'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Deploys', data: values, backgroundColor: '#f26522' }] },
+    data: { labels, datasets: [{ label: 'Deploys', data: values, backgroundColor: '#fea60b' }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 

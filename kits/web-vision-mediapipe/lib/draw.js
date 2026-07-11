@@ -15,7 +15,7 @@
 
 import { DrawingUtils, GestureRecognizer, PoseLandmarker } from '@mediapipe/tasks-vision';
 
-const ACCENT = '#f26522'; // Gipity orange
+const ACCENT = '#fea60b'; // Gipity orange
 const INK = '#ffffff';
 
 /** Match the canvas backing store to the video's real frame size. */

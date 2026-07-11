@@ -110,7 +110,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // eslint-disable-next-line no-undef
   charts[`${key}Cost`] = new Chart($(ids.chartCost), {
     type: 'bar',
-    data: { labels: cost.labels, datasets: [{ label: 'Credits', data: costInCredits, backgroundColor: '#f26522' }] },
+    data: { labels: cost.labels, datasets: [{ label: 'Credits', data: costInCredits, backgroundColor: '#fea60b' }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
   // eslint-disable-next-line no-undef

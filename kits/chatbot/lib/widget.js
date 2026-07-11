@@ -14,7 +14,7 @@ import { createChatbot } from './engine.js';
 
 const STYLES = `
   :host {
-    --gc-primary: var(--primary, #f26522);
+    --gc-primary: var(--primary, #fea60b);
     --gc-bg: var(--gc-bg-override, #1a1c24);
     --gc-bg-elev: #232631;
     --gc-text: #e6e8ee;

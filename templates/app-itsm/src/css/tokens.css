@@ -1,10 +1,10 @@
 /* tokens.css - Design tokens for GipITSM */
 
 :root {
-    /* Brand */
-    --primary: #f26522;
-    --primary-hover: #e0551a;
-    --primary-muted: rgba(242, 101, 34, 0.15);
+    /* Brand — ONE knob: hover + muted derive from --primary. */
+    --primary: #fea60b;
+    --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+    --primary-muted: color-mix(in srgb, var(--primary) 15%, transparent);
 
     /* Dark backgrounds */
     --bg-root: #0d0d0d;

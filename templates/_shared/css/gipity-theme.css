@@ -12,11 +12,11 @@
    To rebrand the accent, change --primary in one place. */
 :root {
   color-scheme: dark;
-  accent-color: #f26522; /* native checkboxes, radios, range, progress */
+  accent-color: var(--primary); /* native checkboxes, radios, range, progress */
 
-  /* Gipity brand palette */
-  --primary: #f26522;
-  --primary-hover: #fa8c46;
+  /* Gipity brand palette — ONE knob: every orange below derives from --primary. */
+  --primary: #fea60b;
+  --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
 
   /* Surface colors (custom components + Water's panels/inputs/code) */
   --surface: #202020;
@@ -30,14 +30,14 @@
   --text-main: #e6e6f0;                 /* body text (Gipity cream) */
   --text-bright: #fffeff;               /* headings, button text */
   --links: var(--primary);              /* links */
-  --focus: rgba(242, 101, 34, 0.6);     /* focus ring */
+  --focus: color-mix(in srgb, var(--primary) 60%, transparent); /* focus ring */
   --border: #333333;
   --button-base: var(--primary);        /* buttons → orange */
   --button-hover: var(--primary-hover);
   --form-text: #e6e6f0;
   --form-placeholder: #6f6f78;
-  --selection: rgba(242, 101, 34, 0.4); /* text selection */
-  --code: #f6b88a;                      /* inline / preformatted code */
+  --selection: color-mix(in srgb, var(--primary) 40%, transparent); /* text selection */
+  --code: color-mix(in srgb, var(--primary) 55%, white); /* inline / preformatted code */
   --scrollbar-thumb: #333333;
   --scrollbar-thumb-hover: #444444;
 
@@ -71,7 +71,7 @@
 
 /* Brand the two native elements Water's vars + accent-color don't reach. */
 mark {
-  background-color: #f7b27a; /* pale Gipity orange highlighter */
+  background-color: color-mix(in srgb, var(--primary) 55%, white); /* pale Gipity orange highlighter */
   color: #1a1a1a; /* dark text for contrast on the highlight */
 }
 meter::-webkit-meter-bar {

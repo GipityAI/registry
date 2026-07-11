@@ -19,7 +19,7 @@ Template key stays `monitor` and the deployed slug stays `monitor` so existing U
 ```
 src/
   index.html        - layout + cards/panels markup
-  css/styles.css    - theme matching Gipity Signal Orange
+  css/styles.css    - theme matching Gipity orange (#fea60b)
   js/
     main.js         - orchestrator (sign-in gate, filters, refresh)
     api.js          - thin /account/logs/* client (cookie auth)
