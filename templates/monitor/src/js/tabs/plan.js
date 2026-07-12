@@ -3,18 +3,10 @@
  * and days-to-empty projection, plus the last grants/top-ups. Single endpoint
  * (`/account/logs/plan`) backs everything here.
  */
-import { fmtExact, fmtUsd, fmtTime, escapeHtml, emptyRow } from '../format.js';
+import { fmtExact, fmtUsd, fmtTime, escapeHtml, emptyRow, fmtBytes } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
-function fmtBytes(n) {
-  if (n == null || isNaN(n)) return '—';
-  const KB = 1024, MB = KB * 1024, GB = MB * 1024;
-  if (n >= GB) return (n / GB).toFixed(2) + ' GB';
-  if (n >= MB) return (n / MB).toFixed(2) + ' MB';
-  if (n >= KB) return (n / KB).toFixed(1) + ' KB';
-  return `${n} B`;
-}
 
 // Friendly labels for the known plan-limit keys; anything unmapped falls back
 // to a camelCase split so new limits still render (just less prettily).

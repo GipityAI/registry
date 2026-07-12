@@ -5,7 +5,7 @@
  * this same ledger. (Internal tab key remains `spend` so URL hashes and the
  * data-tab attribute don't churn for users who already bookmarked it.)
  */
-import { fmtExact, fmtCredits, fmtTime, escapeHtml, emptyRow } from '../format.js';
+import { fmtExact, fmtCredits, fmtTime, escapeHtml, emptyRow, toCredits } from '../format.js';
 import { chartColor } from '../chart-helpers.js';
 
 let chart = null;
@@ -73,10 +73,7 @@ export async function renderSpendTab(api, { range, projectId }) {
   $('spend-top-cat').textContent = byOp.data.items[0] ? opLabel(byOp.data.items[0].operation) : '—';
 
   // Credits over time — derive from `usd` until the endpoint adds a credits
-  // series. 1 credit = $0.001, so credits = usd × 1000. This matches what we
-  // already do for the top-line cards (totals.credits == round(usd / 0.001)).
-  const USD_PER_CREDIT = 0.001;
-  const toCredits = (usd) => Number(usd) / USD_PER_CREDIT;
+  // series (credits = usd / USD_PER_CREDIT, same rate the top-line cards use).
 
   const labels = (daily.data.series || []).map((r) => new Date(r.bucket).toISOString().slice(0, 10));
   const values = (daily.data.series || []).map((r) => toCredits(r.usd));

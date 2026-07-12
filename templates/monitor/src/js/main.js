@@ -26,7 +26,7 @@ import { renderPlanTab } from './tabs/plan.js';
 import { renderDevicesTab } from './tabs/devices.js';
 import { deployAnnotationPlugin, applyChartTheme } from './chart-helpers.js';
 import { initThemePicker } from './theme.js';
-import { setRenderer, beginTabLoad, endTabLoad, showTabError } from './ui.js';
+import { setRenderer, beginTabLoad, endTabLoad, showTabError, hashPath, setHashPath } from './ui.js';
 
 // Globally register the deploy-annotation overlay so each tab just needs to
 // set `chart.$annotations` from the timeseries response, and apply the Monitor
@@ -68,10 +68,49 @@ function showTab(name) {
   $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
   $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== name; });
   // Preserve `#services/<sub>` when re-clicking Services — only clobber the
-  // hash when actually switching to a different top-level tab.
-  const baseHash = location.hash.slice(1).split('/')[0];
-  if (baseHash !== name) location.hash = name;
+  // hash when actually switching to a different top-level tab. setHashPath
+  // keeps the `?project=…&range=…` filter params either way.
+  const baseHash = hashPath().split('/')[0];
+  if (baseHash !== name) setHashPath(name);
   renderActiveTab();
+}
+
+// ── Deep-linkable filters ────────────────────────────────────────────────────
+// The hash carries the filters too: `#<tab>[/<sub>]?project=<slug|guid>&range=<r>`.
+// Reads accept a project slug, short_guid, or name; writes prefer the slug
+// (readable URLs). Filter writes use history.replaceState so dragging the
+// selects around doesn't pollute history or re-fire hashchange.
+
+/** slug → guid + name lookups, filled by populateProjectFilter. */
+let projectLookup = [];
+
+/** The ?query params currently in the hash. */
+function hashParams() {
+  const raw = location.hash.slice(1);
+  const q = raw.indexOf('?');
+  return new URLSearchParams(q === -1 ? '' : raw.slice(q + 1));
+}
+
+/** Resolve a `project=` param (slug, short_guid, or name) to a picker guid. */
+function resolveProjectParam(value) {
+  if (!value) return '';
+  const v = value.toLowerCase();
+  const hit = projectLookup.find(
+    (p) => p.short_guid === value || p.slug?.toLowerCase() === v || p.name?.toLowerCase() === v,
+  );
+  return hit?.short_guid ?? '';
+}
+
+/** Mirror the current Range + Project selection into the hash query. */
+function syncHashFilters() {
+  const params = hashParams();
+  const guid = $('project-filter').value;
+  const slug = projectLookup.find((p) => p.short_guid === guid)?.slug;
+  if (guid) params.set('project', slug || guid);
+  else params.delete('project');
+  params.set('range', $('range').value);
+  const query = params.toString();
+  history.replaceState(null, '', `#${hashPath()}${query ? `?${query}` : ''}`);
 }
 
 // CSV export per tab — only tabs that surface a flat list endpoint where
@@ -184,6 +223,7 @@ async function populateProjectFilter() {
     // Use /account/logs/projects (lists every project the user owns) rather
     // than /apps (which only returns projects with telemetry rows).
     const res = await api.projects();
+    projectLookup = res.data;
     const sel = $('project-filter');
     const current = sel.value;
     sel.innerHTML = '<option value="">All projects</option>';
@@ -193,9 +233,11 @@ async function populateProjectFilter() {
       opt.textContent = p.name;
       sel.appendChild(opt);
     }
-    // Prefer the in-page selection, else the persisted one — but only when
-    // that project still exists in the list.
-    const want = current || localStorage.getItem(KEY_PROJECT) || '';
+    // Precedence: a `?project=` deep-link param (resolvable only now that the
+    // options exist), else the in-page selection, else the persisted one — and
+    // only when that project still exists in the list.
+    const fromHash = resolveProjectParam(hashParams().get('project'));
+    const want = fromHash || current || localStorage.getItem(KEY_PROJECT) || '';
     if (want && Array.from(sel.options).some((o) => o.value === want)) sel.value = want;
   } catch (err) {
     if (err.message === 'UNAUTHENTICATED') showAuthGate();
@@ -259,18 +301,20 @@ async function init() {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 
-  // Restore persisted Range (Project restores in populateProjectFilter once
-  // the options exist).
-  const savedRange = localStorage.getItem(KEY_RANGE);
+  // Restore Range: a `?range=` deep-link param wins, else the persisted one.
+  // (Project restores in populateProjectFilter once the options exist.)
+  const rangeParam = hashParams().get('range');
+  const savedRange = rangeParam || localStorage.getItem(KEY_RANGE);
   if (savedRange && $('range').querySelector(`option[value="${savedRange}"]`)) {
     $('range').value = savedRange;
   }
 
   // Hash routing
-  const initialTab = location.hash.slice(1);
   // Initial tab from URL hash. `<tab>/<sub>` deep-links into a sub-tab —
   // services/compute/data/hosting handle their own sub part; audit's is here.
-  const [baseTab, subPart] = initialTab.split('/');
+  // Filter params (`?project=…&range=…`) ride behind the path — see
+  // hashParams()/syncHashFilters().
+  const [baseTab, subPart] = hashPath().split('/');
   if (['traffic', 'activity', 'errors', 'services', 'compute', 'data', 'hosting', 'spend', 'plan', 'chats', 'devices', 'audit', 'alerts', 'secrets'].includes(baseTab)) {
     currentTab = baseTab;
     $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === baseTab));
@@ -281,7 +325,7 @@ async function init() {
     $$('[data-audit]').forEach((b) => b.classList.toggle('active', b.dataset.audit === subPart));
   }
   window.addEventListener('hashchange', () => {
-    const name = location.hash.slice(1).split('/')[0];
+    const name = hashPath().split('/')[0];
     if (name && name !== currentTab) showTab(name);
   });
 
@@ -292,7 +336,7 @@ async function init() {
       $$('[data-audit]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentAuditType = btn.dataset.audit;
-      if (location.hash.slice(1).split('/')[0] === 'audit') location.hash = `audit/${currentAuditType}`;
+      if (hashPath().split('/')[0] === 'audit') setHashPath(`audit/${currentAuditType}`);
       if (currentTab === 'audit') renderActiveTab();
     });
   });
@@ -308,10 +352,12 @@ async function init() {
   $('refresh').addEventListener('click', () => renderActiveTab());
   $('range').addEventListener('change', () => {
     localStorage.setItem(KEY_RANGE, $('range').value);
+    syncHashFilters();
     renderActiveTab();
   });
   $('project-filter').addEventListener('change', () => {
     localStorage.setItem(KEY_PROJECT, $('project-filter').value);
+    syncHashFilters();
     renderActiveTab();
   });
 

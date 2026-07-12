@@ -79,8 +79,8 @@ export const api = {
 
   // Credit ledger backbone — used by Spend, Storage, Compute, Browser, Search.
   credits: (opts = {}) => getJson(`/account/logs/credits${qs(opts)}`),
-  storage: () => getJson('/account/logs/storage'),
-  dataDb: () => getJson('/account/logs/data/db'),
+  storage: (appGuid) => getJson(`/account/logs/storage${qs({ app_guid: appGuid })}`),
+  dataDb: (appGuid) => getJson(`/account/logs/data/db${qs({ app_guid: appGuid })}`),
   dataCdn: () => getJson('/account/logs/data/cdn'),
   jobs: (range, appGuid) =>
     getJson(`/account/logs/jobs${qs({ range, app_guid: appGuid })}`),

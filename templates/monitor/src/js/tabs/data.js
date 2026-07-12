@@ -7,14 +7,9 @@
  * CDN + Domains used to live here too but moved to the Hosting tab — they're
  * about delivery, not persistence.
  */
-import { fmtNum, fmtExact, fmtCredits, escapeHtml, emptyRow } from '../format.js';
+import { fmtNum, fmtExact, fmtCredits, fmtBytes, toCredits, escapeHtml, emptyRow } from '../format.js';
 import { chartColor } from '../chart-helpers.js';
-import { requestRender } from '../ui.js';
-
-// Same conversion the Usage tab uses — keeps the dashboard in one consistent
-// unit (credits) instead of mixing USD and credit cards.
-const USD_PER_CREDIT = 0.001;
-const toCredits = (usd) => Number(usd) / USD_PER_CREDIT;
+import { requestRender, subTabs } from '../ui.js';
 
 /**
  * Roll up multiple per-reading ledger rows into one entry per UTC day.
@@ -40,14 +35,6 @@ const $ = (id) => document.getElementById(id);
 let bound = false;
 let currentSub = 'files';
 
-function fmtBytes(n) {
-  if (n == null || isNaN(n)) return '—';
-  const KB = 1024, MB = KB * 1024, GB = MB * 1024;
-  if (n >= GB) return (n / GB).toFixed(2) + ' GB';
-  if (n >= MB) return (n / MB).toFixed(2) + ' MB';
-  if (n >= KB) return (n / KB).toFixed(1) + ' KB';
-  return `${n} B`;
-}
 
 // ── File-version retention (Data › Files) ─────────────────────────────────
 // The plan sets the MAX days/copies of history Gipity keeps + bills for; the
@@ -104,16 +91,11 @@ async function resetRetention(api) {
   }
 }
 
-function subFromHash() {
-  const after = location.hash.slice(1).split('/')[1];
-  return ['files', 'db'].includes(after) ? after : 'files';
-}
+const tabs = subTabs('data', 'data', ['files', 'db']);
 
 function showSubTab(name) {
   currentSub = name;
-  document.querySelectorAll('[data-data-tab]').forEach((b) => b.classList.toggle('active', b.dataset.dataTab === name));
-  document.querySelectorAll('[data-data-panel]').forEach((p) => { p.hidden = p.dataset.dataPanel !== name; });
-  if (location.hash.slice(1).split('/')[0] === 'data') location.hash = `data/${name}`;
+  tabs.show(name);
 }
 
 async function renderFilesSubtab(api, { range, projectId }) {
@@ -122,7 +104,7 @@ async function renderFilesSubtab(api, { range, projectId }) {
   // was hard-coded to 30d and account-wide regardless of the picker.)
   const filter = projectId ? { app_guid: projectId } : {};
   const [live, ledger, costSeries, recentCharges] = await Promise.all([
-    api.storage(),
+    api.storage(projectId),
     api.credits({ range, operations: 'storage_daily', ...filter }),
     api.credits({ range, operations: 'storage_daily', group_by: 'day', ...filter }),
     api.credits({ range, operations: 'storage_daily', limit: 30, ...filter }),
@@ -195,7 +177,7 @@ async function renderFilesSubtab(api, { range, projectId }) {
 async function renderDbSubtab(api, { range, projectId }) {
   const filter = projectId ? { app_guid: projectId } : {};
   const [schemas, ledger, recentCharges] = await Promise.all([
-    api.dataDb(),
+    api.dataDb(projectId),
     api.credits({ range, operations: 'db_storage_daily', ...filter }),
     api.credits({ range, operations: 'db_storage_daily', limit: 30, ...filter }),
   ]);
@@ -241,7 +223,7 @@ export async function renderDataTab(api, filters) {
     });
     $('retention-form').addEventListener('submit', (ev) => saveRetention(api, ev));
     $('retention-reset').addEventListener('click', () => resetRetention(api));
-    currentSub = subFromHash();
+    currentSub = tabs.fromHash();
     showSubTab(currentSub);
   }
   switch (currentSub) {

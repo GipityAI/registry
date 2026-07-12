@@ -8,34 +8,21 @@
  * Migrated here from Audit (Deploys) and Data (Domains, CDN) so that
  * "publishing your app" is one umbrella instead of three.
  */
-import { fmtNum, fmtExact, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
+import { fmtNum, fmtExact, fmtBytes, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
 import { groupFor, chartColor } from '../chart-helpers.js';
-import { requestRender } from '../ui.js';
+import { requestRender, subTabs } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
 let currentSub = 'deploys';
 let deployChart = null;
 
-function fmtBytes(n) {
-  if (n == null || isNaN(n)) return '—';
-  const KB = 1024, MB = KB * 1024, GB = MB * 1024;
-  if (n >= GB) return (n / GB).toFixed(2) + ' GB';
-  if (n >= MB) return (n / MB).toFixed(2) + ' MB';
-  if (n >= KB) return (n / KB).toFixed(1) + ' KB';
-  return `${n} B`;
-}
 
-function subFromHash() {
-  const after = location.hash.slice(1).split('/')[1];
-  return ['deploys', 'domains', 'cdn'].includes(after) ? after : 'deploys';
-}
+const tabs = subTabs('hosting', 'hosting', ['deploys', 'domains', 'cdn']);
 
 function showSubTab(name) {
   currentSub = name;
-  document.querySelectorAll('[data-hosting-tab]').forEach((b) => b.classList.toggle('active', b.dataset.hostingTab === name));
-  document.querySelectorAll('[data-hosting-panel]').forEach((p) => { p.hidden = p.dataset.hostingPanel !== name; });
-  if (location.hash.slice(1).split('/')[0] === 'hosting') location.hash = `hosting/${name}`;
+  tabs.show(name);
 }
 
 async function renderDeploysSubtab(api, { range, projectId }) {
@@ -112,18 +99,26 @@ async function renderDomainsSubtab(api) {
   }).join('');
 }
 
-async function renderCdnSubtab(api) {
+async function renderCdnSubtab(api, { projectId } = {}) {
   const cdn = await api.dataCdn();
-  $('cdn-size').textContent = fmtBytes(cdn.data.total_bytes);
-  $('cdn-objects').textContent = fmtExact(cdn.data.object_count);
-  $('cdn-projects').textContent = fmtExact(cdn.data.projects.length);
+  // The endpoint is an account-wide S3 listing (Redis-cached), but each row
+  // carries the project guid — honor the project picker by filtering
+  // client-side and recomputing the cards from the filtered rows.
+  const projects = projectId
+    ? cdn.data.projects.filter((p) => p.project_short_guid === projectId)
+    : cdn.data.projects;
+  const totalBytes = projectId ? projects.reduce((n, p) => n + p.bytes_total, 0) : cdn.data.total_bytes;
+  const totalObjects = projectId ? projects.reduce((n, p) => n + p.objects_total, 0) : cdn.data.object_count;
+  $('cdn-size').textContent = fmtBytes(totalBytes);
+  $('cdn-objects').textContent = fmtExact(totalObjects);
+  $('cdn-projects').textContent = fmtExact(projects.length);
 
   const body = $('table-cdn-projects').querySelector('tbody');
-  if (!cdn.data.projects.length) {
+  if (!projects.length) {
     body.innerHTML = emptyRow(5, 'No apps deployed yet — run <code>gipity deploy dev</code> or <code>gipity deploy prod</code>.');
     return;
   }
-  body.innerHTML = cdn.data.projects.map((p) => `
+  body.innerHTML = projects.map((p) => `
     <tr>
       <td>${escapeHtml(p.project_name || p.project_slug)}</td>
       <td class="num">${fmtBytes(p.bytes_prod)}</td>
@@ -144,13 +139,13 @@ export async function renderHostingTab(api, filters) {
         requestRender();
       });
     });
-    currentSub = subFromHash();
+    currentSub = tabs.fromHash();
     showSubTab(currentSub);
   }
   switch (currentSub) {
     case 'deploys': return renderDeploysSubtab(api, filters);
     case 'domains': return renderDomainsSubtab(api);
-    case 'cdn':     return renderCdnSubtab(api);
+    case 'cdn':     return renderCdnSubtab(api, filters);
     default:        return renderDeploysSubtab(api, filters);
   }
 }

@@ -224,3 +224,20 @@ export function fmtBucket(input, range, group) {
   }
   return `${month} ${day}`;
 }
+
+// Byte sizes for storage / CDN / plan cards and tables. Two decimals at
+// GB/MB where the magnitude matters, one at KB.
+export function fmtBytes(n) {
+  if (n == null || isNaN(n)) return '—';
+  const KB = 1024, MB = KB * 1024, GB = MB * 1024;
+  if (n >= GB) return (n / GB).toFixed(2) + ' GB';
+  if (n >= MB) return (n / MB).toFixed(2) + ' MB';
+  if (n >= KB) return (n / KB).toFixed(1) + ' KB';
+  return `${n} B`;
+}
+
+// USD → credits (1 credit = $0.001). The Monitor surfaces credits everywhere
+// user-facing so users never have to translate between $ and credits; every
+// tab converts ledger USD with this one rate.
+export const USD_PER_CREDIT = 0.001;
+export const toCredits = (usd) => Number(usd) / USD_PER_CREDIT;

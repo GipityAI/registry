@@ -7,23 +7,18 @@
 import { renderFunctionsTab } from './functions.js';
 import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtTime, escapeHtml, statusPill, emptyRow, padSeries } from '../format.js';
 import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
-import { requestRender } from '../ui.js';
+import { requestRender, subTabs } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
 let currentSub = 'functions';
 let sandboxChart = null;
 
-function subFromHash() {
-  const after = location.hash.slice(1).split('/')[1];
-  return ['functions', 'jobs', 'sandbox', 'workflows'].includes(after) ? after : 'functions';
-}
+const tabs = subTabs('compute', 'cmp', ['functions', 'jobs', 'sandbox', 'workflows']);
 
 function showSubTab(name) {
   currentSub = name;
-  document.querySelectorAll('[data-cmp-tab]').forEach((b) => b.classList.toggle('active', b.dataset.cmpTab === name));
-  document.querySelectorAll('[data-cmp-panel]').forEach((p) => { p.hidden = p.dataset.cmpPanel !== name; });
-  if (location.hash.slice(1).split('/')[0] === 'compute') location.hash = `compute/${name}`;
+  tabs.show(name);
 }
 
 async function renderJobsSubtab(api, { range, projectId }) {
@@ -138,7 +133,7 @@ export async function renderComputeTab(api, filters) {
         requestRender();
       });
     });
-    currentSub = subFromHash();
+    currentSub = tabs.fromHash();
     showSubTab(currentSub);
   }
   switch (currentSub) {

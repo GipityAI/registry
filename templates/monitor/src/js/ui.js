@@ -18,6 +18,49 @@ export function setRenderer(fn) { renderer = fn; }
 /** Re-render the active tab with current filters (no-op until registered). */
 export function requestRender() { if (renderer) renderer(); }
 
+// ── Hash helpers ────────────────────────────────────────────────────────────
+// Deep-linkable hash grammar: `#<tab>[/<sub>][?project=<slug|guid>&range=<r>]`.
+// Every module that reads or writes the tab/sub part must go through these two
+// so the `?project=…&range=…` filter params survive tab and sub-tab switches.
+
+/** The `<tab>[/<sub>]` part of the hash, without `#` or `?query`. */
+export function hashPath() {
+  const raw = location.hash.slice(1);
+  const q = raw.indexOf('?');
+  return q === -1 ? raw : raw.slice(0, q);
+}
+
+/** Replace the path part of the hash, preserving any `?query` (filters). */
+export function setHashPath(path) {
+  const raw = location.hash.slice(1);
+  const q = raw.indexOf('?');
+  location.hash = path + (q === -1 ? '' : raw.slice(q));
+}
+
+/**
+ * Shared sub-tab strip wiring for tabs with `[data-<attr>-tab]` buttons and
+ * `[data-<attr>-panel]` panels (Data, Services, Hosting, Compute). `fromHash`
+ * reads `#<tab>/<sub>` (first value is the fallback); `show` toggles the
+ * strip + panels and reflects the selection into the hash. The caller keeps
+ * its own `currentSub` - this owns only the DOM + hash mechanics.
+ */
+export function subTabs(tab, attr, values) {
+  return {
+    fromHash() {
+      const after = hashPath().split('/')[1];
+      return values.includes(after) ? after : values[0];
+    },
+    show(name) {
+      document.querySelectorAll(`[data-${attr}-tab]`).forEach((b) =>
+        b.classList.toggle('active', b.getAttribute(`data-${attr}-tab`) === name));
+      document.querySelectorAll(`[data-${attr}-panel]`).forEach((p) => {
+        p.hidden = p.getAttribute(`data-${attr}-panel`) !== name;
+      });
+      if (hashPath().split('/')[0] === tab) setHashPath(`${tab}/${name}`);
+    },
+  };
+}
+
 // ── Loading states ──────────────────────────────────────────────────────────
 // First visit to a (sub-)panel → skeleton shimmer over the empty cards, chart
 // areas, and table bodies. Re-render of a panel that already has data → keep

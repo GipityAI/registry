@@ -10,16 +10,10 @@
  * Sub-tab state persists in the URL hash as `#services/<sub>` so reloads
  * keep the user where they were.
  */
-import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries } from '../format.js';
+import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtPct, fmtTime, toCredits, escapeHtml, statusPill, truncate, emptyRow, padSeries } from '../format.js';
 import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
-import { requestRender } from '../ui.js';
+import { requestRender, subTabs } from '../ui.js';
 import { renderRealtimePanel } from './realtime.js';
-
-// USD → credits conversion (1 credit = $0.001). The Monitor surfaces credits
-// everywhere user-facing — keeping a single unit so users don't have to
-// translate between $ and credits when scanning cards / tables.
-const USD_PER_CREDIT = 0.001;
-const toCredits = (usd) => Number(usd) / USD_PER_CREDIT;
 
 const $ = (id) => document.getElementById(id);
 let currentSub = 'llm';
@@ -27,17 +21,11 @@ let bound = false;
 const charts = {};
 function destroy(key) { if (charts[key]) { charts[key].destroy(); delete charts[key]; } }
 
-/** Read the sub-tab name from the URL hash (`#services/media` → `media`). */
-function subFromHash() {
-  const after = location.hash.slice(1).split('/')[1];
-  return ['llm', 'tts', 'media', 'realtime', 'browser', 'search'].includes(after) ? after : 'llm';
-}
+const tabs = subTabs('services', 'svc', ['llm', 'tts', 'media', 'realtime', 'browser', 'search']);
 
 function showSubTab(name) {
   currentSub = name;
-  document.querySelectorAll('[data-svc-tab]').forEach((b) => b.classList.toggle('active', b.dataset.svcTab === name));
-  document.querySelectorAll('[data-svc-panel]').forEach((p) => { p.hidden = p.dataset.svcPanel !== name; });
-  if (location.hash.slice(1).split('/')[0] === 'services') location.hash = `services/${name}`;
+  tabs.show(name);
 }
 
 /** Render the "paid services" view (LLMs / Speech / Media) — same structure, just a different service filter. */
@@ -53,11 +41,13 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // gets a narrow view (e.g. Speech shows only `service=tts`).
   // For 'media' we need an OR across image/audio/video; the API supports a
   // single value, so we fetch all three and merge client-side.
+  // The recent-calls list follows the project picker too (projectId holds the
+  // picker's short_guid, sent on the wire as app_guid).
   const fetchPaidServices = async () => {
     if (filterSet.length === 1) {
-      return api.services(undefined, filterSet[0], 50);
+      return api.services(projectId, filterSet[0], 50);
     }
-    const results = await Promise.all(filterSet.map((s) => api.services(undefined, s, 50)));
+    const results = await Promise.all(filterSet.map((s) => api.services(projectId, s, 50)));
     const merged = results.flatMap((r) => r.data || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 50);
     return { data: merged };
   };
@@ -203,7 +193,7 @@ export async function renderServicesTab(api, filters) {
       });
     });
     // Honour deep-link sub-tab on first render.
-    currentSub = subFromHash();
+    currentSub = tabs.fromHash();
     showSubTab(currentSub);
   }
 
@@ -228,10 +218,13 @@ export async function renderServicesTab(api, filters) {
 /** Render a credit-ledger-backed sub-tab (Browser / Search). No log_services
  *  rows for these — everything comes from credit_ledger via /credits. */
 async function renderCreditSubtab(api, key, { group, ids }, { range, projectId }) {
+  // /credits honors the project picker via app_guid (projectId holds the
+  // picker's short_guid — see currentFilters()).
+  const filter = projectId ? { app_guid: projectId } : {};
   const [totals, daily, recent] = await Promise.all([
-    api.credits({ range, group }),
-    api.credits({ range, group, group_by: 'day' }),
-    api.credits({ range, group, limit: 50 }),
+    api.credits({ range, group, ...filter }),
+    api.credits({ range, group, group_by: 'day', ...filter }),
+    api.credits({ range, group, limit: 50, ...filter }),
   ]);
 
   // Browser/Search totals come from credit_ledger which already exposes
@@ -287,5 +280,4 @@ async function renderCreditSubtab(api, key, { group, ids }, { range, projectId }
       </tr>
     `).join('');
   }
-  void projectId;
 }

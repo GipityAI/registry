@@ -85,8 +85,9 @@ export async function renderRealtimePanel(api, { range, projectId }) {
     `).join('');
   }
 
-  // Recent sessions — list endpoint scoped to service='realtime'.
-  const recentRes = await api.services(undefined, 'realtime', 30).catch(() => ({ data: [] }));
+  // Recent sessions — list endpoint scoped to service='realtime', following
+  // the project picker (projectId is the picker's short_guid → app_guid).
+  const recentRes = await api.services(projectId, 'realtime', 30).catch(() => ({ data: [] }));
   const recentBody = $('table-rt-recent').querySelector('tbody');
   if (!recentRes.data.length) {
     recentBody.innerHTML = emptyRow(4, 'No recent sessions.');
