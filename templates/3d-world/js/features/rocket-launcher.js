@@ -489,8 +489,8 @@ export function create(config, deps) {
     update(dt) {
       if (cooldownTimer > 0) cooldownTimer -= dt;
 
-      // Fire on held mouse click
-      if (mouseHeld && cooldownTimer <= 0) fire();
+      // Fire on held mouse click, or the mobile Action button (inputState.action)
+      if ((mouseHeld || player.inputState.action) && cooldownTimer <= 0) fire();
 
       updateRockets(dt);
       updateExplosions(dt);

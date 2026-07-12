@@ -13,6 +13,8 @@
  *   - Scroll wheel: zoom in/out (first-person when fully zoomed)
  *   - WASD/arrows: move relative to camera
  *   - Space: jump, E: interact
+ *   - Touch (mobile.js overlay, auto on touch devices): floating joystick =
+ *     move, drag on canvas = camera, Jump/Action buttons, fullscreen toggle
  *   - Crosshair always visible at screen center
  *   - Camera modes: orbit (default), firstPerson, topDown, fixed
  *
@@ -22,6 +24,7 @@
 import { scene, camera, renderer, THREE } from './world.js';
 import * as physics from './physics.js';
 import { togglePartColliders } from './primitives.js';
+import { initMobileControls } from './mobile.js';
 
 // Defaults - overridden by config passed to initPlayer()
 // World scale: 1 voxel = 1 world unit. Standard block = 3x3x3. Player = 5u tall, 4u arm span.
@@ -76,10 +79,6 @@ let pitch = 0.3;
 let camDist = 30;
 let pointerLocked = false;
 let rightDown = false;
-
-// Touch state
-let joystickActive = false;
-let joystickStart = { x: 0, y: 0 };
 
 // Crosshair
 let crosshair = null;
@@ -409,21 +408,33 @@ function initPlayer(config = {}) {
     }
   }
 
-  isMobile = 'ontouchstart' in window && window.innerWidth < 1024;
-
   if (SHOW_CROSSHAIR) createCrosshairEl();
   setupKeyboard();
   setupMouse();
-  if (isMobile) {
-    setupTouch();
-    document.getElementById('mobile-controls')?.classList.remove('hidden');
-  }
 
-  // Ensure mobile controls stay hidden on desktop
-  if (!isMobile) {
-    const mc = document.getElementById('mobile-controls');
-    if (mc) { mc.classList.add('hidden'); mc.style.display = 'none'; }
-  }
+  // Touch overlay (mobile.js): floating joystick = move, drag on canvas =
+  // camera, Jump/Action buttons. It shows itself only on touch devices, so
+  // this is safe to wire unconditionally.
+  const mobileState = initMobileControls({
+    lookElement: renderer.domElement,
+    buttons: [
+      { id: 'jump', label: 'Jump' },
+      { id: 'action', label: 'Action' },
+    ],
+    onMove: (x, y) => {
+      inputState.right = x;
+      inputState.forward = -y; // joystick up = move forward
+    },
+    onLook: (dx, dy) => {
+      yaw -= dx * MOUSE_SENSITIVITY * 2;
+      pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - (INVERT_Y ? -1 : 1) * dy * MOUSE_SENSITIVITY * 2));
+    },
+    onButton: (id, down) => {
+      if (id === 'jump' && down) inputState.jump = true;
+      if (id === 'action') inputState.action = down;
+    },
+  });
+  isMobile = mobileState.isTouch;
 
   return playerMesh;
 }
@@ -679,64 +690,6 @@ function setupMouse() {
     e.preventDefault();
     camDist = Math.max(CAM_MIN_DIST, Math.min(CAM_MAX_DIST, camDist + Math.sign(e.deltaY) * SCROLL_SPEED));
   }, { passive: false });
-}
-
-// --- Input: Touch ---
-function setupTouch() {
-  const zone = document.getElementById('joystick-zone');
-  const jumpBtn = document.getElementById('btn-jump');
-  const actionBtn = document.getElementById('btn-action');
-
-  if (zone) {
-    zone.addEventListener('touchstart', (e) => {
-      joystickActive = true;
-      joystickStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
-    }, { passive: true });
-    zone.addEventListener('touchmove', (e) => {
-      if (!joystickActive) return;
-      const t = e.touches[0];
-      const maxDist = 60;
-      inputState.right = Math.max(-1, Math.min(1, (t.clientX - joystickStart.x) / maxDist));
-      inputState.forward = Math.max(-1, Math.min(1, -(t.clientY - joystickStart.y) / maxDist));
-    }, { passive: true });
-    zone.addEventListener('touchend', () => {
-      joystickActive = false;
-      inputState.forward = 0;
-      inputState.right = 0;
-    }, { passive: true });
-  }
-
-  // Right side of screen: camera drag
-  let touchCamId = null;
-  let touchCamLast = { x: 0, y: 0 };
-  renderer.domElement.addEventListener('touchstart', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.clientX > window.innerWidth * 0.5 && touchCamId === null) {
-        touchCamId = t.identifier;
-        touchCamLast = { x: t.clientX, y: t.clientY };
-      }
-    }
-  }, { passive: true });
-  renderer.domElement.addEventListener('touchmove', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === touchCamId) {
-        yaw -= (t.clientX - touchCamLast.x) * MOUSE_SENSITIVITY * 2;
-        pitch = Math.max(PITCH_MIN, Math.min(PITCH_MAX, pitch - (INVERT_Y ? -1 : 1) * (t.clientY - touchCamLast.y) * MOUSE_SENSITIVITY * 2));
-        touchCamLast = { x: t.clientX, y: t.clientY };
-      }
-    }
-  }, { passive: true });
-  renderer.domElement.addEventListener('touchend', (e) => {
-    for (const t of e.changedTouches) {
-      if (t.identifier === touchCamId) touchCamId = null;
-    }
-  }, { passive: true });
-
-  if (jumpBtn) jumpBtn.addEventListener('touchstart', () => { inputState.jump = true; }, { passive: true });
-  if (actionBtn) {
-    actionBtn.addEventListener('touchstart', () => { inputState.action = true; }, { passive: true });
-    actionBtn.addEventListener('touchend', () => { inputState.action = false; }, { passive: true });
-  }
 }
 
 // --- Multiplayer hooks ---

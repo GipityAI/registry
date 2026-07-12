@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">{{DESCRIPTION_META}}
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">{{DESCRIPTION_META}}
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a1a2e">
   <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
   <meta property="og:type" content="website">
   <title>{{TITLE}}</title>
@@ -35,15 +39,8 @@
     <div id="hud-center" class="hud-slot"></div>
   </div>
 
-  <!-- Mobile controls -->
-  <div id="mobile-controls" class="hidden">
-    <div id="joystick-zone" class="joystick-zone"></div>
-    <div class="mobile-buttons">
-      <button id="btn-jump" class="mobile-btn">Jump</button>
-      <button id="btn-action" class="mobile-btn">Action</button>
-    </div>
-  </div>
-
+  <!-- Mobile controls: built at runtime by js/mobile.js on touch devices -->
+  <div id="mobile-controls" class="hidden"></div>
 
   <!-- Three.js -->
   <script type="importmap">

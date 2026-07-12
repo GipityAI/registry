@@ -24,6 +24,11 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
+  // Multi-touch for in-canvas pointer input (the DOM joystick/buttons overlay
+  // handles its own touches; this is for games that also tap the canvas).
+  input: {
+    activePointers: 3,
+  },
 };
 
 // Exported, not just constructed: `gipity page eval` can reach the live instance

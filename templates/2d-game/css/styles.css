@@ -3,15 +3,118 @@ html, body { width: 100%; height: 100%; }
 body {
   background: #0a0a1a;
   overflow: hidden;
+  /* Mobile hardening: no pinch-zoom/scroll/rubber-banding, no long-press
+     callouts or accidental text selection - the page IS the game. */
+  position: fixed;
+  inset: 0;
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 /* Give Scale.FIT a fixed-size parent. Do NOT let #game-container shrink-wrap the
    canvas (no flex-centering on body): a content-sized parent makes the Scale
    Manager measure -> resize -> re-measure every frame, so the centered canvas
-   jitters ~1px back and forth. CENTER_BOTH centers the canvas inside this box. */
+   jitters ~1px back and forth. CENTER_BOTH centers the canvas inside this box.
+   dvh tracks the visible viewport on mobile (URL bar collapse/expand). */
 #game-container {
   width: 100vw;
   height: 100vh;
+  height: 100dvh;
 }
 #game-container canvas {
   border-radius: 4px;
+}
+
+/* --- Touch controls overlay (built by js/controls.js on touch devices) --- */
+#touch-controls {
+  position: fixed;
+  inset: 0;
+  pointer-events: none; /* children opt back in */
+  z-index: 100;
+}
+
+/* Floating joystick: the zone captures touches on the lower-left; the base
+   appears wherever the thumb lands. */
+.touch-joystick-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 45%;
+  height: 65%;
+  pointer-events: auto;
+  touch-action: none;
+}
+.touch-joystick-base {
+  position: absolute;
+  width: 104px;
+  height: 104px;
+  margin: -52px 0 0 -52px; /* center on the touch point */
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(2px);
+  display: none;
+}
+.touch-joystick-base.active { display: block; }
+.touch-joystick-thumb {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  transform: translate(-50%, -50%);
+}
+
+/* Action buttons, bottom-right, clear of notches/home bar via safe-area. */
+.touch-buttons {
+  position: absolute;
+  right: calc(20px + env(safe-area-inset-right, 0px));
+  bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: row-reverse; /* first button = biggest, corner-most */
+  align-items: flex-end;
+  gap: 14px;
+  pointer-events: auto;
+}
+.touch-btn {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.9);
+  font: 600 13px/1 system-ui, sans-serif;
+  touch-action: none;
+  backdrop-filter: blur(2px);
+}
+.touch-btn-primary {
+  width: 80px;
+  height: 80px;
+  font-size: 15px;
+}
+.touch-btn:active {
+  background: rgba(242, 101, 34, 0.5);
+  border-color: rgba(242, 101, 34, 0.9);
+}
+
+/* Fullscreen toggle, top-right. */
+.touch-fullscreen-btn {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: calc(12px + env(safe-area-inset-right, 0px));
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.35);
+  color: rgba(255, 255, 255, 0.85);
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
 }
