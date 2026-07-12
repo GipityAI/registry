@@ -19,6 +19,7 @@ const taskBar = document.getElementById('tasks');
 const flipBtn = document.getElementById('flip-camera');
 const startGate = document.getElementById('start');
 const startBtn = document.getElementById('start-btn');
+const startHint = document.getElementById('start-hint');
 const errorGate = document.getElementById('error');
 const errorMsg = document.getElementById('error-msg');
 
@@ -78,10 +79,18 @@ async function flipCamera() {
   }
 }
 
-/** Start the camera and the vision loop. Triggered by the user gesture. */
+// A camera the browser has no camera for at all - no retry will help.
+const FATAL = ['NotFoundError', 'OverconstrainedError', 'TypeError'];
+
+/**
+ * Start the camera and the vision loop. Runs automatically on load; the start
+ * gate is the retry path for a browser that refused (permission not granted
+ * yet, or a tap required before getUserMedia).
+ */
 async function start() {
   startBtn.disabled = true;
   startBtn.textContent = 'Starting...';
+  startHint.textContent = '';
   try {
     vision = await mountVision({
       video: cam,
@@ -100,9 +109,16 @@ async function start() {
     if (await vision.hasMultipleCameras()) flipBtn.hidden = false;
   } catch (err) {
     console.error('camera start failed:', err);
-    errorMsg.textContent = err?.message || String(err);
-    startGate.hidden = true;
-    errorGate.hidden = false;
+    if (FATAL.includes(err?.name)) {
+      errorMsg.textContent = err?.message || String(err);
+      startGate.hidden = true;
+      errorGate.hidden = false;
+      return;
+    }
+    startGate.hidden = false;
+    startBtn.disabled = false;
+    startBtn.textContent = 'Enable camera';
+    startHint.textContent = err?.message || String(err);
   }
 }
 
@@ -113,4 +129,13 @@ document.addEventListener('DOMContentLoaded', () => {
   buildTaskBar();
   startBtn.addEventListener('click', start);
   flipBtn.addEventListener('click', flipCamera);
+  // Auto-start: a camera app has exactly one job, so don't make the user (or a
+  // headless check) click for it. Browsers that want a tap first simply reject,
+  // and the gate above stays up as the retry. Once running, the kit sets
+  // <html data-vision="ready"> and window.__vision - so a headless browser,
+  // handed a frame to look at, verifies the deployed app end to end:
+  //
+  //   gipity page eval <url> --camera rock.png --wait-for '[data-vision="ready"]' \
+  //     "window.__vision.gesture()"
+  start();
 });

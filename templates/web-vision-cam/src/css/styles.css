@@ -65,6 +65,10 @@ html, body {
   letter-spacing: 0.02em;
 }
 
+/* An author `display` beats the UA's [hidden] rule, so every element below that
+   sets one has to opt back out of painting when it carries the attribute. */
+[hidden] { display: none !important; }
+
 /* Flip-camera button, top-right. Hidden on devices with only one camera. */
 .flip-btn {
   position: absolute;
@@ -134,8 +138,6 @@ html, body {
   background: rgba(12, 12, 16, 0.92);
 }
 
-.overlay[hidden] { display: none; }
-
 .overlay h1 {
   margin: 0;
   font-size: 1.9rem;
@@ -162,3 +164,11 @@ html, body {
 }
 
 .overlay button:hover { background: var(--primary-hover); }
+
+/* Why the camera didn't start, under the retry button. Empty until it fails. */
+.overlay .gate-hint {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.overlay .gate-hint:empty { display: none; }
