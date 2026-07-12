@@ -42,12 +42,14 @@
     <!-- Task switcher, bottom-center -->
     <div id="tasks" class="task-bar" hidden></div>
 
-    <!-- Start gate: getUserMedia needs a user gesture -->
+    <!-- Start gate. The camera starts automatically on load; this stays up only
+         if the browser refused (permission not granted, or a tap required). -->
     <div id="start" class="overlay">
       <h1>{{TITLE}}</h1>
       <p>Live on-device vision - gesture, objects, and body pose. Nothing is
          uploaded; the camera stream stays in your browser.</p>
       <button id="start-btn" type="button">Enable camera</button>
+      <p id="start-hint" class="gate-hint"></p>
     </div>
 
     <!-- Error gate -->
