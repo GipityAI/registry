@@ -25,6 +25,7 @@ import { renderSpendTab } from './tabs/spend.js';
 import { renderPlanTab } from './tabs/plan.js';
 import { renderDevicesTab } from './tabs/devices.js';
 import { deployAnnotationPlugin, applyChartTheme } from './chart-helpers.js';
+import { initThemePicker } from './theme.js';
 
 // Globally register the deploy-annotation overlay so each tab just needs to
 // set `chart.$annotations` from the timeseries response, and apply the Monitor
@@ -213,6 +214,13 @@ async function init() {
       currentAuditType = btn.dataset.audit;
       if (currentTab === 'audit') renderActiveTab();
     });
+  });
+
+  // Theme picker — re-read the CSS tokens into Chart.js defaults and re-render
+  // the active tab so the charts (which can't resolve CSS var()s) follow the theme.
+  initThemePicker(() => {
+    applyChartTheme();
+    renderActiveTab();
   });
 
   // Filter changes

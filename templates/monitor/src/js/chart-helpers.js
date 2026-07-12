@@ -13,28 +13,35 @@ export function groupFor(range) {
 }
 
 /**
- * Set Chart.js defaults so tick labels, gridlines, and tooltips read as crisp
- * white on the dark Monitor surface. Without this, axes use Chart's default
- * dim grey (`rgba(102,102,102,1)`) and are unreadable against `--bg`.
- * Call once at startup before any chart is constructed.
+ * Set Chart.js defaults so tick labels, gridlines, and tooltips read crisply
+ * against the active theme's surface. Chart.js draws to a <canvas> and can't
+ * resolve CSS `var()`s, so we read the live token values off :root here.
+ * Call at startup AND after any theme change (then re-render the charts), so
+ * light/blue don't leave white-on-white axes.
  */
 export function applyChartTheme() {
   // eslint-disable-next-line no-undef
   if (typeof Chart === 'undefined') return;
+  const css = getComputedStyle(document.documentElement);
+  const tok = (name, fallback) => css.getPropertyValue(name).trim() || fallback;
   // eslint-disable-next-line no-undef
-  Chart.defaults.color = '#e8e4db';            // matches --text
+  Chart.defaults.color = tok('--text', '#e8e4db');
   // eslint-disable-next-line no-undef
-  Chart.defaults.borderColor = 'rgba(255,255,255,0.08)';
+  Chart.defaults.borderColor = tok('--hairline', 'rgba(255,255,255,0.08)');
   // eslint-disable-next-line no-undef
-  Chart.defaults.scale.grid.color = 'rgba(255,255,255,0.06)';
+  Chart.defaults.scale.grid.color = tok('--hairline', 'rgba(255,255,255,0.06)');
   // eslint-disable-next-line no-undef
-  Chart.defaults.scale.ticks.color = '#cfc9bd'; // slightly muted but readable
+  Chart.defaults.scale.ticks.color = tok('--text-muted', '#cfc9bd');
   // eslint-disable-next-line no-undef
-  Chart.defaults.plugins.tooltip.titleColor = '#ffffff';
+  Chart.defaults.plugins.tooltip.titleColor = tok('--text', '#ffffff');
   // eslint-disable-next-line no-undef
-  Chart.defaults.plugins.tooltip.bodyColor = '#e8e4db';
+  Chart.defaults.plugins.tooltip.bodyColor = tok('--text-muted', '#e8e4db');
   // eslint-disable-next-line no-undef
-  Chart.defaults.plugins.tooltip.backgroundColor = 'rgba(20,20,20,0.95)';
+  Chart.defaults.plugins.tooltip.backgroundColor = tok('--surface-2', 'rgba(20,20,20,0.95)');
+  // eslint-disable-next-line no-undef
+  Chart.defaults.plugins.tooltip.borderColor = tok('--border', 'rgba(255,255,255,0.1)');
+  // eslint-disable-next-line no-undef
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
 }
 
 /**

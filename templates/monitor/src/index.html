@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Apply the saved theme before stylesheets load, so there's no theme flash
+       (mirrors js/theme.js; key 'gipity-theme'). -->
+  <script>(function(){try{var t=localStorage.getItem('gipity-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='blue')?t:'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">{{DESCRIPTION_META}}
   <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
   <meta property="og:type" content="website">
@@ -46,6 +49,11 @@
           <option value="">All projects</option>
         </select>
       </label>
+      <div class="theme-seg" id="theme-seg" role="group" aria-label="Theme">
+        <button type="button" class="theme-seg-btn" data-theme-set="dark">Dark</button>
+        <button type="button" class="theme-seg-btn" data-theme-set="light">Light</button>
+        <button type="button" class="theme-seg-btn" data-theme-set="blue">Blue</button>
+      </div>
       <button id="refresh" aria-label="Refresh">Refresh</button>
     </div>
   </header>
