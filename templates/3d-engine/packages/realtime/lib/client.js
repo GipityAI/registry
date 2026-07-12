@@ -14,10 +14,23 @@ import { getSettings } from './settings.js';
 // bumping both this line and the server release in lockstep.
 const COLYSEUS_ESM = 'https://esm.sh/colyseus.js@0.16.22?bundle-deps';
 
+// The API base for THIS app's server. The deploy pipeline stamps it onto the injected
+// SDK tag (data-api-base) — a page deployed by a local dev server must call THAT
+// server, not prod, or every token/API call 404s against an app that doesn't exist
+// there. Fall back to prod for pages older than the stamp.
+function resolveApiBase() {
+  if (typeof document !== 'undefined') {
+    const tag = document.querySelector('script[data-api-base]');
+    const base = tag?.getAttribute('data-api-base');
+    if (base) return base.replace(/\/+$/, '');
+  }
+  return 'https://a.gipity.ai';
+}
+
 export function createClient() {
   let colyseus = null;
   let appGuid = null;
-  let apiBase = 'https://a.gipity.ai';
+  let apiBase = resolveApiBase();
   let wsUrl = 'wss://rt.gipity.ai';
   let appToken = null;
   let tokenFetchedAt = 0;

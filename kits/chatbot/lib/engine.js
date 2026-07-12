@@ -18,7 +18,13 @@
 import { validateConfig, ChatbotConfigError, estimateTokens } from './config.js';
 import { buildSystemPrompt } from './prompt.js';
 
-const API_BASE = 'https://a.gipity.ai';
+// The API base for THIS app's server, from the deploy-stamped SDK tag (data-api-base)
+// — a page deployed by a local dev server must call that server, not prod, where the
+// app doesn't exist. Falls back to prod for pages older than the stamp. Matches the
+// realtime kit's resolution.
+const API_BASE = (typeof document !== 'undefined'
+  && document.querySelector('script[data-api-base]')?.getAttribute('data-api-base')?.replace(/\/+$/, ''))
+  || 'https://a.gipity.ai';
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min; token is good for ~15
 
 export { ChatbotConfigError };
