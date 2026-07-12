@@ -11,7 +11,8 @@
  * keep the user where they were.
  */
 import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
+import { requestRender } from '../ui.js';
 import { renderRealtimePanel } from './realtime.js';
 
 // USD → credits conversion (1 credit = $0.001). The Monitor surfaces credits
@@ -110,13 +111,13 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // eslint-disable-next-line no-undef
   charts[`${key}Cost`] = new Chart($(ids.chartCost), {
     type: 'bar',
-    data: { labels: cost.labels, datasets: [{ label: 'Credits', data: costInCredits, backgroundColor: '#fea60b' }] },
+    data: { labels: cost.labels, datasets: [{ label: 'Credits', data: costInCredits, backgroundColor: chartColor('primary') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
   // eslint-disable-next-line no-undef
   charts[`${key}Calls`] = new Chart($(ids.chartCalls), {
     type: 'line',
-    data: { labels: calls.labels, datasets: [{ label: 'Calls', data: calls.values, borderColor: '#3498db', backgroundColor: 'rgba(52,152,219,0.1)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: { labels: calls.labels, datasets: [{ label: 'Calls', data: calls.values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 
@@ -196,7 +197,9 @@ export async function renderServicesTab(api, filters) {
     document.querySelectorAll('[data-svc-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         showSubTab(btn.dataset.svcTab);
-        renderServicesTab(api, filters).catch((err) => console.error('[services] sub-tab render failed', err));
+        // Re-render via the orchestrator so the CURRENT filters apply (this
+        // closure's `filters` are frozen at first-bind time).
+        requestRender();
       });
     });
     // Honour deep-link sub-tab on first render.
@@ -253,7 +256,7 @@ async function renderCreditSubtab(api, key, { group, ids }, { range, projectId }
   // eslint-disable-next-line no-undef
   charts[`${key}Chart`] = new Chart($(ids.chart), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Calls', data: values, backgroundColor: '#3498db' }] },
+    data: { labels, datasets: [{ label: 'Calls', data: values, backgroundColor: chartColor('info') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 

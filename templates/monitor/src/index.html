@@ -54,7 +54,16 @@
         <button type="button" class="theme-seg-btn" data-theme-set="light">Light</button>
         <button type="button" class="theme-seg-btn" data-theme-set="blue">Blue</button>
       </div>
+      <label>
+        <span class="control-label">Auto</span>
+        <select id="auto-refresh" aria-label="Auto-refresh interval">
+          <option value="0">Off</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
       <button id="refresh" aria-label="Refresh">Refresh</button>
+      <span id="freshness" class="freshness" aria-live="polite"></span>
     </div>
   </header>
 

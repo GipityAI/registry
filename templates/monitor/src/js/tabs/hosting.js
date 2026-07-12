@@ -9,7 +9,8 @@
  * "publishing your app" is one umbrella instead of three.
  */
 import { fmtNum, fmtExact, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor } from '../chart-helpers.js';
+import { requestRender } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
@@ -58,7 +59,7 @@ async function renderDeploysSubtab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   deployChart = new Chart($('chart-hosting-deploys'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Deploys', data: values, backgroundColor: '#fea60b' }] },
+    data: { labels, datasets: [{ label: 'Deploys', data: values, backgroundColor: chartColor('primary') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 
@@ -95,10 +96,10 @@ async function renderDomainsSubtab(api) {
   }
   body.innerHTML = res.data.domains.map((d) => {
     const pill = d.status === 'active' || d.status === 'verified'
-      ? `<span class="pill pill-ok">${escapeHtml(d.status)}</span>`
+      ? `<span class="pill ok">${escapeHtml(d.status)}</span>`
       : d.status === 'pending'
-        ? `<span class="pill pill-warn">${escapeHtml(d.status)}</span>`
-        : `<span class="pill pill-error">${escapeHtml(d.status)}</span>`;
+        ? `<span class="pill warn">${escapeHtml(d.status)}</span>`
+        : `<span class="pill error">${escapeHtml(d.status)}</span>`;
     return `
     <tr>
       <td class="mono">${escapeHtml(d.domain)}</td>
@@ -139,7 +140,8 @@ export async function renderHostingTab(api, filters) {
     document.querySelectorAll('[data-hosting-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         showSubTab(btn.dataset.hostingTab);
-        renderHostingTab(api, filters).catch((err) => console.error('[hosting] sub render failed', err));
+        // Via the orchestrator: this closure's `filters` are frozen at first bind.
+        requestRender();
       });
     });
     currentSub = subFromHash();

@@ -1,5 +1,5 @@
 import { fmtNum, fmtExact, truncate, escapeHtml, emptyRow, padSeries, fmtDelta } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -30,7 +30,7 @@ export async function renderTrafficTab(api, { range, appGuid, projectId }) {
   // eslint-disable-next-line no-undef
   chart = new Chart(canvas, {
     type: 'line',
-    data: { labels, datasets: [{ label: 'Page views', data: values, borderColor: '#fea60b', backgroundColor: 'rgba(254, 166, 11,0.1)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: { labels, datasets: [{ label: 'Page views', data: values, borderColor: chartColor('primary'), backgroundColor: chartFill('primary'), fill: true, tension: 0.3, pointRadius: 0 }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
   chart.$annotations = ts.data.annotations || [];

@@ -1,5 +1,5 @@
 import { fmtNum, fmtExact, fmtTime, truncate, escapeHtml, emptyRow, padSeries, fmtDelta } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -43,7 +43,7 @@ export async function renderErrorsTab(api, { range, appGuid, projectId }) {
   // eslint-disable-next-line no-undef
   chart = new Chart(canvas, {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Errors', data: values, backgroundColor: '#e74c3c' }] },
+    data: { labels, datasets: [{ label: 'Errors', data: values, backgroundColor: chartColor('error') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
   chart.$annotations = ts.data.annotations || [];

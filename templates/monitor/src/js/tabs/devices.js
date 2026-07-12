@@ -9,11 +9,11 @@ const $ = (id) => document.getElementById(id);
 
 function dispatchStatusPill(status) {
   switch (status) {
-    case 'done':       return '<span class="pill pill-ok">done</span>';
-    case 'delivering': return '<span class="pill pill-info">delivering</span>';
-    case 'pending':    return '<span class="pill pill-warn">pending</span>';
+    case 'done':       return '<span class="pill ok">done</span>';
+    case 'delivering': return '<span class="pill info">delivering</span>';
+    case 'pending':    return '<span class="pill warn">pending</span>';
     case 'cancelled':  return '<span class="pill muted">cancelled</span>';
-    case 'error':      return '<span class="pill pill-error">error</span>';
+    case 'error':      return '<span class="pill error">error</span>';
     default:           return `<span class="pill muted">${escapeHtml(status)}</span>`;
   }
 }
@@ -25,7 +25,7 @@ export async function renderDevicesTab(api, { range, appGuid }) {
   $('rmt-devices').textContent = fmtExact(summary.active_devices);
   $('rmt-dispatches').textContent = fmtExact(summary.dispatches);
   $('rmt-pending').innerHTML = summary.pending_dispatches > 0
-    ? `<span class="pill pill-warn">${fmtExact(summary.pending_dispatches)}</span>`
+    ? `<span class="pill warn">${fmtExact(summary.pending_dispatches)}</span>`
     : '0';
   $('rmt-sessions').textContent = fmtExact(summary.sessions);
 
@@ -37,8 +37,8 @@ export async function renderDevicesTab(api, { range, appGuid }) {
       const state = d.revoked_at
         ? '<span class="pill muted">revoked</span>'
         : (d.last_seen_at && (Date.now() - new Date(d.last_seen_at).getTime()) < 5 * 60_000)
-          ? '<span class="pill pill-ok">online</span>'
-          : '<span class="pill pill-info">idle</span>';
+          ? '<span class="pill ok">online</span>'
+          : '<span class="pill info">idle</span>';
       return `
         <tr>
           <td class="mono">${escapeHtml(d.name)}</td>
@@ -78,7 +78,7 @@ export async function renderDevicesTab(api, { range, appGuid }) {
         <td class="muted">${escapeHtml(s.source)}</td>
         <td class="muted">${escapeHtml(s.project_name || s.project_short_guid || '—')}</td>
         <td class="mono muted">${escapeHtml(truncate(s.cwd || '', 60))}</td>
-        <td>${s.ended_at ? '<span class="pill muted">ended</span>' : '<span class="pill pill-ok">active</span>'}</td>
+        <td>${s.ended_at ? '<span class="pill muted">ended</span>' : '<span class="pill ok">active</span>'}</td>
       </tr>
     `).join('');
   }

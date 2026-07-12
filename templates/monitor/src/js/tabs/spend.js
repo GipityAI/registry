@@ -6,6 +6,7 @@
  * data-tab attribute don't churn for users who already bookmarked it.)
  */
 import { fmtExact, fmtCredits, fmtTime, escapeHtml, emptyRow } from '../format.js';
+import { chartColor } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -83,7 +84,7 @@ export async function renderSpendTab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   chart = new Chart($('chart-spend'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: '#fea60b' }] },
+    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: chartColor('primary') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 

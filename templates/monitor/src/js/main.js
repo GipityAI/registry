@@ -26,6 +26,7 @@ import { renderPlanTab } from './tabs/plan.js';
 import { renderDevicesTab } from './tabs/devices.js';
 import { deployAnnotationPlugin, applyChartTheme } from './chart-helpers.js';
 import { initThemePicker } from './theme.js';
+import { setRenderer, beginTabLoad, endTabLoad, showTabError } from './ui.js';
 
 // Globally register the deploy-annotation overlay so each tab just needs to
 // set `chart.$annotations` from the timeseries response, and apply the Monitor
@@ -39,6 +40,12 @@ const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
 let currentTab = 'traffic';
 let currentAuditType = 'auth';
+
+// Persisted view state — survive reloads so the dashboard reopens the way the
+// user left it (sidebar width already persists via its own key below).
+const KEY_RANGE = 'monitor.range';
+const KEY_PROJECT = 'monitor.project';
+const KEY_AUTO = 'monitor.autoRefresh';
 
 function currentFilters() {
   // The picker's value is ALWAYS a project short_guid. Both `appGuid` and
@@ -64,7 +71,7 @@ function showTab(name) {
   // hash when actually switching to a different top-level tab.
   const baseHash = location.hash.slice(1).split('/')[0];
   if (baseHash !== name) location.hash = name;
-  renderActiveTab().catch((err) => console.error('[monitor] tab render failed', err));
+  renderActiveTab();
 }
 
 // CSV export per tab — only tabs that surface a flat list endpoint where
@@ -91,29 +98,85 @@ function downloadCsv(signal) {
   window.location.href = `https://a.gipity.ai${entry.path}?${params.toString()}`;
 }
 
+const TAB_RENDERERS = {
+  traffic: renderTrafficTab,
+  activity: renderActivityTab,
+  errors: renderErrorsTab,
+  services: renderServicesTab,
+  compute: renderComputeTab,
+  data: renderDataTab,
+  hosting: renderHostingTab,
+  spend: renderSpendTab,
+  plan: renderPlanTab,
+  chats: renderChatsTab,
+  devices: renderDevicesTab,
+  audit: renderAuditTab,
+  alerts: renderAlertsTab,
+  secrets: renderSecretsTab,
+};
+
+let rendering = false;
+let lastUpdatedAt = null;
+
+function updateFreshness() {
+  const el = $('freshness');
+  if (!el || !lastUpdatedAt) return;
+  const s = Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000));
+  el.textContent = s < 60 ? `Updated ${s}s ago` : `Updated ${Math.round(s / 60)}m ago`;
+}
+
 async function renderActiveTab() {
-  const filters = currentFilters();
+  const render = TAB_RENDERERS[currentTab];
+  if (!render) return;
+  const panel = document.querySelector(`.tab-panel[data-tab="${currentTab}"]`);
+  const refreshBtn = $('refresh');
+  const filters = currentTab === 'audit'
+    ? { ...currentFilters(), type: currentAuditType }
+    : currentFilters();
+  rendering = true;
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('busy');
+  beginTabLoad(panel);
   try {
-    switch (currentTab) {
-      case 'traffic':   return await renderTrafficTab(api, filters);
-      case 'activity':  return await renderActivityTab(api, filters);
-      case 'errors':    return await renderErrorsTab(api, filters);
-      case 'services':  return await renderServicesTab(api, filters);
-      case 'compute':   return await renderComputeTab(api, filters);
-      case 'data':      return await renderDataTab(api, filters);
-      case 'hosting':   return await renderHostingTab(api, filters);
-      case 'spend':     return await renderSpendTab(api, filters);
-      case 'plan':      return await renderPlanTab(api, filters);
-      case 'chats':     return await renderChatsTab(api, filters);
-      case 'devices':   return await renderDevicesTab(api, filters);
-      case 'audit':     return await renderAuditTab(api, { ...filters, type: currentAuditType });
-      case 'alerts':    return await renderAlertsTab(api, filters);
-      case 'secrets':   return await renderSecretsTab(api, filters);
-    }
+    await render(api, filters);
+    lastUpdatedAt = Date.now();
+    updateFreshness();
   } catch (err) {
-    if (err.message === 'UNAUTHENTICATED') showAuthGate();
-    else throw err;
+    if (err.message === 'UNAUTHENTICATED') { showAuthGate(); return; }
+    console.error('[monitor] tab render failed', err);
+    showTabError(panel, err);
+  } finally {
+    rendering = false;
+    endTabLoad(panel);
+    refreshBtn.classList.remove('busy');
+    refreshBtn.disabled = false;
   }
+}
+
+// ── Auto-refresh + live pulse ──────────────────────────────────────────────
+// Off / 30s / 60s, persisted. Refreshes the ACTIVE tab only, and only while
+// the page is visible. The header live-pulse (realtime CCU) updates on the
+// same cadence — plus once at load — so "N live now" stays honest.
+let autoTimer = null;
+
+async function updateLivePulse() {
+  try {
+    const res = await api.realtimeLive();
+    $('live-count').textContent = String(res.data.live_ccu ?? 0);
+    $('live-pulse').hidden = false;
+  } catch { /* decorative — never surface an error for the pulse */ }
+}
+
+function applyAutoRefresh() {
+  const secs = Number($('auto-refresh').value) || 0;
+  localStorage.setItem(KEY_AUTO, String(secs));
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  if (!secs) return;
+  autoTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible' || rendering || $('dashboard').hidden) return;
+    renderActiveTab();
+    updateLivePulse();
+  }, secs * 1000);
 }
 
 async function populateProjectFilter() {
@@ -130,7 +193,10 @@ async function populateProjectFilter() {
       opt.textContent = p.name;
       sel.appendChild(opt);
     }
-    if (current) sel.value = current;
+    // Prefer the in-page selection, else the persisted one — but only when
+    // that project still exists in the list.
+    const want = current || localStorage.getItem(KEY_PROJECT) || '';
+    if (want && Array.from(sel.options).some((o) => o.value === want)) sel.value = want;
   } catch (err) {
     if (err.message === 'UNAUTHENTICATED') showAuthGate();
     else console.error('[monitor] projects failed', err);
@@ -185,6 +251,7 @@ function initSidebarSplitter() {
 }
 
 async function init() {
+  setRenderer(renderActiveTab);
   initSidebarSplitter();
 
   // Tab clicks
@@ -192,26 +259,40 @@ async function init() {
     btn.addEventListener('click', () => showTab(btn.dataset.tab));
   });
 
+  // Restore persisted Range (Project restores in populateProjectFilter once
+  // the options exist).
+  const savedRange = localStorage.getItem(KEY_RANGE);
+  if (savedRange && $('range').querySelector(`option[value="${savedRange}"]`)) {
+    $('range').value = savedRange;
+  }
+
   // Hash routing
   const initialTab = location.hash.slice(1);
-  // Initial tab from URL hash. `services/<sub>` deep-links into a Services sub-tab.
-  const baseTab = initialTab.split('/')[0];
-  if (['traffic', 'activity', 'errors', 'services', 'compute', 'data', 'hosting', 'spend', 'plan', 'chats', 'devices', 'audit', 'alerts'].includes(baseTab)) {
+  // Initial tab from URL hash. `<tab>/<sub>` deep-links into a sub-tab —
+  // services/compute/data/hosting handle their own sub part; audit's is here.
+  const [baseTab, subPart] = initialTab.split('/');
+  if (['traffic', 'activity', 'errors', 'services', 'compute', 'data', 'hosting', 'spend', 'plan', 'chats', 'devices', 'audit', 'alerts', 'secrets'].includes(baseTab)) {
     currentTab = baseTab;
     $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === baseTab));
     $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== baseTab; });
+  }
+  if (baseTab === 'audit' && ['auth', 'upload', 'secret'].includes(subPart)) {
+    currentAuditType = subPart;
+    $$('[data-audit]').forEach((b) => b.classList.toggle('active', b.dataset.audit === subPart));
   }
   window.addEventListener('hashchange', () => {
     const name = location.hash.slice(1).split('/')[0];
     if (name && name !== currentTab) showTab(name);
   });
 
-  // Audit sub-tabs
+  // Audit sub-tabs — mirror the other sub-tab strips: reflect the selection
+  // in the hash (`#audit/<type>`) so reloads land on the same view.
   $$('[data-audit]').forEach((btn) => {
     btn.addEventListener('click', () => {
       $$('[data-audit]').forEach((b) => b.classList.remove('active'));
       btn.classList.add('active');
       currentAuditType = btn.dataset.audit;
+      if (location.hash.slice(1).split('/')[0] === 'audit') location.hash = `audit/${currentAuditType}`;
       if (currentTab === 'audit') renderActiveTab();
     });
   });
@@ -223,10 +304,25 @@ async function init() {
     renderActiveTab();
   });
 
-  // Filter changes
+  // Filter changes — persist, then re-render.
   $('refresh').addEventListener('click', () => renderActiveTab());
-  $('range').addEventListener('change', () => renderActiveTab());
-  $('project-filter').addEventListener('change', () => renderActiveTab());
+  $('range').addEventListener('change', () => {
+    localStorage.setItem(KEY_RANGE, $('range').value);
+    renderActiveTab();
+  });
+  $('project-filter').addEventListener('change', () => {
+    localStorage.setItem(KEY_PROJECT, $('project-filter').value);
+    renderActiveTab();
+  });
+
+  // Auto-refresh + freshness ticker
+  const savedAuto = localStorage.getItem(KEY_AUTO);
+  if (savedAuto && $('auto-refresh').querySelector(`option[value="${savedAuto}"]`)) {
+    $('auto-refresh').value = savedAuto;
+  }
+  $('auto-refresh').addEventListener('change', applyAutoRefresh);
+  applyAutoRefresh();
+  setInterval(updateFreshness, 1000);
 
   // Per-tab CSV buttons live inside each tab footer; one delegated listener
   // covers all of them so new tabs only need the button markup.
@@ -241,6 +337,7 @@ async function init() {
       showDashboard();
       await populateProjectFilter();
       await renderActiveTab();
+      updateLivePulse();
     } catch (err) {
       alert(`Sign-in failed: ${err.message}`);
     }
@@ -250,6 +347,7 @@ async function init() {
     showDashboard();
     await populateProjectFilter();
     await renderActiveTab();
+    updateLivePulse();
   } else {
     showAuthGate();
   }

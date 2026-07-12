@@ -17,13 +17,6 @@ import { fmtTime, truncate, escapeHtml, consoleLogsHtml } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
-const KIND_COLORS = {
-  error:    '#e74c3c',
-  function: '#f39c12',
-  service:  '#f39c12',
-  traffic:  '#7f8c8d',
-};
-
 function rangeToSince(range) {
   // Monitor's global range selector uses '1h' / '24h' / '7d' / etc. — same
   // strings the activity endpoint accepts as `since`.
@@ -104,12 +97,13 @@ function renderTimeline(ol, entries) {
     return;
   }
   ol.innerHTML = entries.map((e) => {
-    const color = KIND_COLORS[e.kind] || '#888';
+    // Kind tag color comes from CSS (.activity-<kind> .activity-kind) so the
+    // status palette follows the active theme's tokens.
     return `
       <li class="activity-entry activity-${e.kind} severity-${e.severity || 'info'}">
         <div class="activity-line">
           <span class="activity-time muted mono">${escapeHtml(fmtTime(e.at))}</span>
-          <span class="activity-kind" style="background:${color}">${escapeHtml(e.kind)}</span>
+          <span class="activity-kind">${escapeHtml(e.kind)}</span>
           <span class="activity-summary">${escapeHtml(truncate(e.summary, 200))}</span>
           ${e.detail && e.detail.app_guid ? `<span class="muted small">${escapeHtml(e.detail.app_guid)}</span>` : ''}
         </div>

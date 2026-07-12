@@ -1,5 +1,5 @@
 import { fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -25,7 +25,7 @@ export async function renderAuditTab(api, { range, projectId, type }) {
   // eslint-disable-next-line no-undef
   chart = new Chart($('chart-audit'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: type, data: values, backgroundColor: '#3498db' }] },
+    data: { labels, datasets: [{ label: type, data: values, backgroundColor: chartColor('info') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 

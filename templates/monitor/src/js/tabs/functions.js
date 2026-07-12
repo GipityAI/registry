@@ -1,5 +1,5 @@
 import { fmtNum, fmtExact, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries, fmtDelta, consoleLogsHtml } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -29,7 +29,7 @@ export async function renderFunctionsTab(api, { range, appGuid, projectId }) {
   // eslint-disable-next-line no-undef
   chart = new Chart($('chart-functions'), {
     type: 'line',
-    data: { labels, datasets: [{ label: 'Invocations', data: values, borderColor: '#9b59b6', backgroundColor: 'rgba(155,89,182,0.1)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: { labels, datasets: [{ label: 'Invocations', data: values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
   chart.$annotations = ts.data.annotations || [];
@@ -44,7 +44,7 @@ export async function renderFunctionsTab(api, { range, appGuid, projectId }) {
       <td class="muted">${escapeHtml(f.project_name || '—')}</td>
       <td class="num">${fmtNum(f.count)}</td>
       <td class="num muted">${fmtMs(f.avg_duration_ms)}</td>
-      <td class="num">${f.error_count > 0 ? `<span class="pill pill-error">${fmtNum(f.error_count)}</span>` : '<span class="muted">0</span>'}</td>
+      <td class="num">${f.error_count > 0 ? `<span class="pill error">${fmtNum(f.error_count)}</span>` : '<span class="muted">0</span>'}</td>
     </tr>
   `).join('');
 

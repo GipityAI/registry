@@ -86,9 +86,9 @@ export async function renderPlanTab(api) {
   $('plan-days').innerHTML = burn.days_to_empty == null
     ? '<span class="muted">∞</span>'
     : burn.days_to_empty < 7
-      ? `<span class="pill pill-error">${fmtExact(burn.days_to_empty)}d</span>`
+      ? `<span class="pill error">${fmtExact(burn.days_to_empty)}d</span>`
       : burn.days_to_empty < 30
-        ? `<span class="pill pill-warn">${fmtExact(burn.days_to_empty)}d</span>`
+        ? `<span class="pill warn">${fmtExact(burn.days_to_empty)}d</span>`
         : `${fmtExact(burn.days_to_empty)}d`;
 
   // Effective limits (the snapshot applied to this user). Falls back to the

@@ -98,7 +98,7 @@ export function fmtDelta(cmp, direction = 'up_good') {
   const up = delta_pct > 0;
   const isGood = (up && direction === 'up_good') || (!up && direction === 'up_bad');
   const cls = isGood ? 'delta good' : 'delta bad';
-  const arrow = up ? '↑' : '↓';
+  const arrow = up ? '▲' : '▼';
   return `<span class="${cls}">${arrow} ${Math.abs(delta_pct).toFixed(0)}%</span>`;
 }
 
@@ -129,10 +129,10 @@ export function escapeHtml(s) {
 
 export function statusPill(status) {
   const s = (status || '').toLowerCase();
-  const cls = s === 'ok' || s === 'success' ? 'pill-ok'
-    : s === 'error' || s === 'failed' ? 'pill-error'
-    : s === 'warn' || s === 'timeout' ? 'pill-warn'
-    : 'pill-info';
+  const cls = s === 'ok' || s === 'success' ? 'ok'
+    : s === 'error' || s === 'failed' ? 'error'
+    : s === 'warn' || s === 'timeout' ? 'warn'
+    : 'info';
   return `<span class="pill ${cls}">${escapeHtml(status || '—')}</span>`;
 }
 

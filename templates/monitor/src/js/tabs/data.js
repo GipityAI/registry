@@ -8,6 +8,8 @@
  * about delivery, not persistence.
  */
 import { fmtNum, fmtExact, fmtCredits, escapeHtml, emptyRow } from '../format.js';
+import { chartColor } from '../chart-helpers.js';
+import { requestRender } from '../ui.js';
 
 // Same conversion the Usage tab uses — keeps the dashboard in one consistent
 // unit (credits) instead of mixing USD and credit cards.
@@ -143,7 +145,7 @@ async function renderFilesSubtab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   costChart = new Chart($('chart-storage-cost'), {
     type: 'bar',
-    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: '#fea60b' }] },
+    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: chartColor('primary') }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 
@@ -233,7 +235,8 @@ export async function renderDataTab(api, filters) {
     document.querySelectorAll('[data-data-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         showSubTab(btn.dataset.dataTab);
-        renderDataTab(api, filters).catch((err) => console.error('[data] sub render failed', err));
+        // Via the orchestrator: this closure's `filters` are frozen at first bind.
+        requestRender();
       });
     });
     $('retention-form').addEventListener('submit', (ev) => saveRetention(api, ev));

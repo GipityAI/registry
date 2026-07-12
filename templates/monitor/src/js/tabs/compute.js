@@ -6,7 +6,8 @@
  */
 import { renderFunctionsTab } from './functions.js';
 import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtTime, escapeHtml, statusPill, emptyRow, padSeries } from '../format.js';
-import { groupFor } from '../chart-helpers.js';
+import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
+import { requestRender } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
@@ -40,7 +41,7 @@ async function renderJobsSubtab(api, { range, projectId }) {
       <td class="mono">${escapeHtml(j.name)}</td>
       <td class="muted">${escapeHtml(j.compute || '—')}</td>
       <td class="num">${fmtNum(j.runs)}</td>
-      <td class="num">${j.failures > 0 ? `<span class="pill pill-error">${fmtNum(j.failures)}</span>` : '<span class="muted">0</span>'}</td>
+      <td class="num">${j.failures > 0 ? `<span class="pill error">${fmtNum(j.failures)}</span>` : '<span class="muted">0</span>'}</td>
       <td class="num muted">${fmtMs(j.avg_ms)}</td>
     </tr>
   `).join('');
@@ -76,7 +77,7 @@ async function renderSandboxSubtab(api, { range, projectId }) {
   // eslint-disable-next-line no-undef
   sandboxChart = new Chart($('chart-sandbox'), {
     type: 'line',
-    data: { labels: padded.labels, datasets: [{ label: 'Executions', data: padded.values, borderColor: '#9b59b6', backgroundColor: 'rgba(155,89,182,0.1)', fill: true, tension: 0.3, pointRadius: 0 }] },
+    data: { labels: padded.labels, datasets: [{ label: 'Executions', data: padded.values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
   });
 
@@ -97,7 +98,7 @@ async function renderWorkflowsSubtab(api, { range, projectId }) {
   $('wf-active').textContent = fmtExact(s.active);
   $('wf-runs').textContent = fmtExact(s.runs);
   $('wf-failures').innerHTML = s.failures > 0
-    ? `<span class="pill pill-error">${fmtExact(s.failures)}</span>`
+    ? `<span class="pill error">${fmtExact(s.failures)}</span>`
     : '0';
   $('wf-avg').textContent = fmtMs(s.avg_ms);
 
@@ -107,9 +108,9 @@ async function renderWorkflowsSubtab(api, { range, projectId }) {
     <tr>
       <td class="mono">${escapeHtml(w.name)}</td>
       <td class="muted">${escapeHtml(w.trigger_type)}${w.cron_expression ? ` <code>${escapeHtml(w.cron_expression)}</code>` : ''}</td>
-      <td>${w.is_active ? '<span class="pill pill-ok">on</span>' : '<span class="pill muted">off</span>'}</td>
+      <td>${w.is_active ? '<span class="pill ok">on</span>' : '<span class="pill muted">off</span>'}</td>
       <td class="num">${fmtNum(w.runs)}</td>
-      <td class="num">${w.failures > 0 ? `<span class="pill pill-error">${fmtNum(w.failures)}</span>` : '<span class="muted">0</span>'}</td>
+      <td class="num">${w.failures > 0 ? `<span class="pill error">${fmtNum(w.failures)}</span>` : '<span class="muted">0</span>'}</td>
       <td class="muted">${w.last_run_at ? fmtTime(w.last_run_at) : '—'}</td>
     </tr>
   `).join('');
@@ -133,7 +134,8 @@ export async function renderComputeTab(api, filters) {
     document.querySelectorAll('[data-cmp-tab]').forEach((btn) => {
       btn.addEventListener('click', () => {
         showSubTab(btn.dataset.cmpTab);
-        renderComputeTab(api, filters).catch((err) => console.error('[compute] sub render failed', err));
+        // Via the orchestrator: this closure's `filters` are frozen at first bind.
+        requestRender();
       });
     });
     currentSub = subFromHash();

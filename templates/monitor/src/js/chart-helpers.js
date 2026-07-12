@@ -13,6 +13,22 @@ export function groupFor(range) {
 }
 
 /**
+ * Resolve a theme token (e.g. 'primary', 'info', 'error') to its current CSS
+ * value for use inside a chart. Chart.js paints to <canvas> and can't resolve
+ * CSS var()s, so datasets must read the live token values at render time —
+ * charts re-render on theme change, so this stays in sync automatically.
+ */
+export function chartColor(token) {
+  return getComputedStyle(document.documentElement).getPropertyValue(`--${token}`).trim();
+}
+
+/** Translucent fill for the same token, via its `--<token>-rgb` triplet. */
+export function chartFill(token, alpha = 0.1) {
+  const rgb = getComputedStyle(document.documentElement).getPropertyValue(`--${token}-rgb`).trim();
+  return rgb ? `rgba(${rgb}, ${alpha})` : chartColor(token);
+}
+
+/**
  * Set Chart.js defaults so tick labels, gridlines, and tooltips read crisply
  * against the active theme's surface. Chart.js draws to a <canvas> and can't
  * resolve CSS `var()`s, so we read the live token values off :root here.
@@ -81,7 +97,7 @@ export const deployAnnotationPlugin = {
       const x = xs.getPixelForValue(best);
       if (x < chartArea.left || x > chartArea.right) continue;
       const ok = a.kind !== 'deploy.failure';
-      const color = ok ? '#3498db' : '#e74c3c';
+      const color = ok ? chartColor('info') : chartColor('error');
 
       // Vertical line
       ctx.strokeStyle = color;
