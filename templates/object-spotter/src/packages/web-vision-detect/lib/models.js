@@ -12,7 +12,7 @@
  * accuracy for download size and frame rate.
  */
 
-export const ORT_VERSION = '1.26.0';
+export const ORT_VERSION = '1.27.0';
 
 /** Directory the ONNX Runtime WASM binaries are loaded from (ort.env.wasm.wasmPaths). */
 export const ORT_WASM_BASE = `https://cdn.jsdelivr.net/npm/onnxruntime-web@${ORT_VERSION}/dist/`;

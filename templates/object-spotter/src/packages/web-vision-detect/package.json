@@ -10,7 +10,7 @@
     "protocolVersion": 1,
     "permissions": {
       "network": [
-        "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0",
+        "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0",
         "https://media.gipity.ai/models/yolox"
       ],
       "camera": true
@@ -20,7 +20,7 @@
       "importMap": {
         "@gipity/web-vision-detect": "./packages/web-vision-detect/index.js",
         "@gipity/web-vision-detect/": "./packages/web-vision-detect/",
-        "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.26.0/dist/ort.min.mjs"
+        "onnxruntime-web": "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.27.0/dist/ort.min.mjs"
       }
     }
   }
