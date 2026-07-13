@@ -268,8 +268,29 @@ function initSidebarSplitter() {
   if (saved >= MIN && saved <= MAX) sidebar.style.width = `${saved}px`;
 
   let dragging = false;
+  // The sidebar's left edge can't move during a drag, so it's measured once on
+  // mousedown. Measuring inside the mousemove handler instead would force a
+  // synchronous relayout of the whole dashboard (tables + charts) on every
+  // pointer event, and the drag locks up the browser.
+  let originLeft = 0;
+  // Latest pointer x, applied once per frame - pointer events fire far faster
+  // than the browser paints, so writing the width on each one just queues
+  // relayouts that are discarded before anyone sees them.
+  let pendingX = 0;
+  let hasPendingX = false;
+  let rafId = 0;
+
+  const applyPending = () => {
+    rafId = 0;
+    if (!hasPendingX) return;
+    const next = Math.min(MAX, Math.max(MIN, pendingX - originLeft));
+    sidebar.style.width = `${next}px`;
+  };
+
   splitter.addEventListener('mousedown', (ev) => {
     dragging = true;
+    hasPendingX = false;
+    originLeft = sidebar.getBoundingClientRect().left;
     splitter.classList.add('dragging');
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
@@ -277,13 +298,16 @@ function initSidebarSplitter() {
   });
   window.addEventListener('mousemove', (ev) => {
     if (!dragging) return;
-    const rect = sidebar.getBoundingClientRect();
-    const next = Math.min(MAX, Math.max(MIN, ev.clientX - rect.left));
-    sidebar.style.width = `${next}px`;
+    pendingX = ev.clientX;
+    hasPendingX = true;
+    if (!rafId) rafId = requestAnimationFrame(applyPending);
   });
   window.addEventListener('mouseup', () => {
     if (!dragging) return;
     dragging = false;
+    // Land the final pointer position even if its frame hasn't run yet.
+    if (rafId) cancelAnimationFrame(rafId);
+    applyPending();
     splitter.classList.remove('dragging');
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
