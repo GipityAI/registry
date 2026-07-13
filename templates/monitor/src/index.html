@@ -11,7 +11,6 @@
   <title>{{TITLE}}</title>
   <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
   <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
   <link rel="stylesheet" href="./css/styles.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="importmap">
@@ -68,43 +67,91 @@
   </header>
 
   <div id="auth-gate" hidden>
-    <p>Sign in with Gipity to view your account's logs.</p>
-    <button id="signin">Sign in</button>
+    <div class="gate-card">
+      <img class="gate-logo" src="./images/egg-192.png" alt="" width="72" height="72" />
+      <h2>{{TITLE}}</h2>
+      <p class="gate-lede">Traffic, errors, spend, and compute for everything you've deployed on Gipity — one dashboard.</p>
+      <button id="signin">Sign in with Gipity</button>
+    </div>
   </div>
 
   <main id="dashboard" hidden>
-    <nav class="sidebar" id="tabs" role="tablist">
+    <nav class="sidebar" id="tabs">
       <div class="sidebar-group">
-        <h4 class="sidebar-label">Activity</h4>
-        <button data-tab="traffic" class="active" role="tab">Traffic</button>
-        <button data-tab="activity" role="tab">Activity</button>
-        <button data-tab="errors" role="tab">Errors</button>
-        <button data-tab="chats" role="tab">Chats</button>
-        <button data-tab="audit" role="tab">Audit</button>
+        <button data-tab="overview" class="active" aria-current="page"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg><span class="nav-text">Overview</span></button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Observe</h4>
+        <button data-tab="traffic"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="nav-text">Traffic</span></button>
+        <button data-tab="activity"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span class="nav-text">Activity</span></button>
+        <button data-tab="errors"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="10" x2="12" y2="15"/><line x1="12" y1="17.5" x2="12" y2="18"/></svg><span class="nav-text">Errors</span><span class="nav-badge" id="errors-badge" hidden></span></button>
+        <button data-tab="chats"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="nav-text">Chats</span></button>
+        <button data-tab="audit"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="nav-text">Audit</span></button>
       </div>
       <div class="sidebar-group">
         <h4 class="sidebar-label">Project</h4>
-        <button data-tab="compute" role="tab">Compute</button>
-        <button data-tab="data" role="tab">Data</button>
-        <button data-tab="services" role="tab">Services</button>
-        <button data-tab="hosting" role="tab">Hosting</button>
+        <button data-tab="compute"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/><rect x="10" y="10" width="4" height="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg><span class="nav-text">Compute</span></button>
+        <button data-tab="data"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span class="nav-text">Data</span></button>
+        <button data-tab="services"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="nav-text">Services</span></button>
+        <button data-tab="hosting"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg><span class="nav-text">Hosting</span></button>
       </div>
       <div class="sidebar-group">
         <h4 class="sidebar-label">Account</h4>
-        <button data-tab="plan" role="tab">Plan</button>
-        <button data-tab="spend" role="tab">Usage</button>
-        <button data-tab="devices" role="tab">Devices</button>
-        <button data-tab="alerts" role="tab">Alerts</button>
-        <button data-tab="secrets" role="tab">Secrets</button>
+        <button data-tab="plan"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span class="nav-text">Plan</span></button>
+        <button data-tab="spend"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="nav-text">Usage</span></button>
+        <button data-tab="devices"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></svg><span class="nav-text">Devices</span></button>
+        <button data-tab="alerts"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="nav-text">Alerts</span></button>
+        <button data-tab="secrets"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="nav-text">Secrets</span></button>
       </div>
     </nav>
     <div class="v-splitter" id="sidebar-splitter" aria-hidden="true"></div>
 
     <div class="main-content">
 
+
+    <!-- ── Overview tab (default landing) ─────────────────────── -->
+    <section class="tab-panel" data-tab="overview">
+      <div class="cards ov-tiles">
+        <div class="card tile" id="ov-tile-errors" title="Errors captured across your deployed apps in this window, with the trend beneath.">
+          <span class="card-label">Errors</span><span class="card-value" id="ov-errors">—</span>
+          <span class="tile-note" hidden></span>
+          <div class="spark-box"><canvas id="ov-spark-errors"></canvas></div>
+        </div>
+        <div class="card tile" id="ov-tile-failed-fns" title="Function invocations that returned an error in this window.">
+          <span class="card-label">Failed functions</span><span class="card-value" id="ov-failed-fns">—</span>
+          <span class="tile-note" hidden></span>
+        </div>
+        <div class="card tile" id="ov-tile-live" title="Distinct visitor sessions active in the last 5 minutes.">
+          <span class="card-label">Live now</span><span class="card-value" id="ov-live">—</span>
+          <span class="tile-note" hidden></span>
+        </div>
+        <div class="card tile" id="ov-tile-credits" title="Credits used in the last 30 days across all services. 1 credit = $0.001.">
+          <span class="card-label">Credits · 30d</span><span class="card-value" id="ov-credits">—</span>
+          <span class="tile-note" hidden></span>
+          <div class="spark-box"><canvas id="ov-spark-credits"></canvas></div>
+        </div>
+        <div class="card tile" id="ov-tile-storage" title="Physical bytes stored in Gipity Storage — what you're billed for.">
+          <span class="card-label">Storage</span><span class="card-value" id="ov-storage">—</span>
+          <span class="tile-note" hidden></span>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Needs attention</h3>
+        <ol class="attn-list" id="ov-attention"><li class="attn-quiet">Loading…</li></ol>
+      </div>
+      <div class="grid-2">
+        <div class="panel chart-panel"><h3>Page views</h3><div class="chart-box"><canvas id="chart-ov-traffic"></canvas></div></div>
+        <div class="panel chart-panel"><h3>Service calls</h3><div class="chart-box"><canvas id="chart-ov-services"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <h3>Recent deploys</h3>
+        <ol class="attn-list" id="ov-deploys"><li class="attn-quiet">Loading…</li></ol>
+      </div>
+    </section>
+
     <!-- ── Traffic tab ─────────────────────────────────────────── -->
-    <section class="tab-panel" data-tab="traffic">
-      <p class="tab-desc">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. <span class="try-it">Try it on any external page: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code></span></p>
+    <section class="tab-panel" data-tab="traffic" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. <span class="try-it">Try it on any external page: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code></span></p></div></div>
       <div class="cards">
         <div class="card" title="Total page views your deployed apps recorded in this window."><span class="card-label">Page views</span><span class="card-value" id="traffic-pageviews">—</span></div>
         <div class="card" title="Distinct browsing sessions. A session ends after ~30 min of inactivity."><span class="card-label">Sessions</span><span class="card-value" id="traffic-sessions">—</span></div>
@@ -113,7 +160,7 @@
       </div>
       <div class="panel chart-panel">
         <h3>Page views over time</h3>
-        <canvas id="chart-traffic" height="80"></canvas>
+        <div class="chart-box"><canvas id="chart-traffic"></canvas></div>
       </div>
       <div class="grid-2">
         <div class="panel">
@@ -148,7 +195,7 @@
          instead of CLI. Each entry shows breadcrumbs + network context +
          server-side function row (when correlated) inline. -->
     <section class="tab-panel" data-tab="activity" hidden>
-      <p class="tab-desc">Everything happening in your deployed apps right now — JS errors, failed function calls, failed service calls, and (optionally) page views — merged into one chronological timeline. Equivalent to <code>gipity logs app</code> in the CLI. Auto-captured fetch failures show response body + breadcrumbs + the server function row that broke. <span class="try-it">Hard-refresh your app, click around, then refresh this tab.</span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Everything happening in your deployed apps right now — JS errors, failed function calls, failed service calls, and (optionally) page views — merged into one chronological timeline. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Everything happening in your deployed apps right now — JS errors, failed function calls, failed service calls, and (optionally) page views — merged into one chronological timeline. Equivalent to <code>gipity logs app</code> in the CLI. Auto-captured fetch failures show response body + breadcrumbs + the server function row that broke. <span class="try-it">Hard-refresh your app, click around, then refresh this tab.</span></p></div></div>
       <div class="activity-toolbar">
         <label class="inline">Severity
           <select id="activity-severity">
@@ -177,7 +224,7 @@
 
     <!-- ── Errors tab ──────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="errors" hidden>
-      <p class="tab-desc">JavaScript errors thrown by your deployed apps — captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <span class="try-it">Try it: in your app, <code>throw new Error('test from monitor')</code> and refresh this tab.</span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">JavaScript errors thrown by your deployed apps — captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">JavaScript errors thrown by your deployed apps — captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <span class="try-it">Try it: in your app, <code>throw new Error('test from monitor')</code> and refresh this tab.</span></p></div></div>
       <div class="cards">
         <div class="card" title="Sum of every error occurrence in this window — includes repeats of the same bug."><span class="card-label">Total errors</span><span class="card-value" id="errors-total">—</span></div>
         <div class="card" title="Distinct errors after deduping by message + stack trace."><span class="card-label">Unique issues</span><span class="card-value" id="errors-unique">—</span></div>
@@ -185,7 +232,7 @@
       </div>
       <div class="panel chart-panel">
         <h3>Errors over time</h3>
-        <canvas id="chart-errors" height="80"></canvas>
+        <div class="chart-box"><canvas id="chart-errors"></canvas></div>
       </div>
       <div class="panel">
         <h3>Issues (most frequent first)</h3>
@@ -211,7 +258,7 @@
 
       <!-- LLMs sub-tab -->
       <div class="svc-panel" data-svc-panel="llm">
-        <p class="tab-desc small">Chat completions, streaming, image input. <span class="try-it">Try it: <code>$ gipity chat "What's a Porsche 914?"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Chat completions, streaming, image input. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Chat completions, streaming, image input. <span class="try-it">Try it: <code>$ gipity chat "What's a Porsche 914?"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-llm-cost">—</span></div>
           <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-llm-calls">—</span></div>
@@ -219,8 +266,8 @@
           <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-llm-err">—</span></div>
         </div>
         <div class="grid-2">
-          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-llm-cost" height="100"></canvas></div>
-          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-llm-calls" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-llm-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-llm-calls"></canvas></div></div>
         </div>
         <div class="grid-2">
           <div class="panel">
@@ -240,7 +287,7 @@
 
       <!-- Speech sub-tab -->
       <div class="svc-panel" data-svc-panel="tts" hidden>
-        <p class="tab-desc small">Gipity Speech — text-to-speech that streams audio in real time. <span class="try-it">Try it: <code>$ gipity generate speech "Hello world"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Speech — text-to-speech that streams audio in real time. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Speech — text-to-speech that streams audio in real time. <span class="try-it">Try it: <code>$ gipity generate speech "Hello world"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-tts-cost">—</span></div>
           <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-tts-calls">—</span></div>
@@ -248,8 +295,8 @@
           <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-tts-err">—</span></div>
         </div>
         <div class="grid-2">
-          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-tts-cost" height="100"></canvas></div>
-          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-tts-calls" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-tts-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-tts-calls"></canvas></div></div>
         </div>
         <div class="grid-2">
           <div class="panel">
@@ -269,7 +316,7 @@
 
       <!-- Media sub-tab -->
       <div class="svc-panel" data-svc-panel="media" hidden>
-        <p class="tab-desc small">Image, sound, music, and video generation + transcription. <span class="try-it">Try it: <code>$ gipity generate image "Porsche 914 in Monaco at sunset"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Image, sound, music, and video generation + transcription. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Image, sound, music, and video generation + transcription. <span class="try-it">Try it: <code>$ gipity generate image "Porsche 914 in Monaco at sunset"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-media-cost">—</span></div>
           <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-media-calls">—</span></div>
@@ -277,8 +324,8 @@
           <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-media-err">—</span></div>
         </div>
         <div class="grid-2">
-          <div class="panel chart-panel"><h3>Credits used over time</h3><canvas id="chart-svc-media-cost" height="100"></canvas></div>
-          <div class="panel chart-panel"><h3>Calls over time</h3><canvas id="chart-svc-media-calls" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-media-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-media-calls"></canvas></div></div>
         </div>
         <div class="grid-2">
           <div class="panel">
@@ -298,7 +345,7 @@
 
       <!-- Browser sub-tab (credit_ledger operation='browser') -->
       <div class="svc-panel" data-svc-panel="browser" hidden>
-        <p class="tab-desc small">Headless browser sessions — page-inspect, browser_open, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page-inspect https://gipity.ai</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Headless browser sessions — page-inspect, browser_open, screenshots. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Headless browser sessions — page-inspect, browser_open, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page-inspect https://gipity.ai</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-browser-cost">—</span></div>
           <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-browser-calls">—</span></div>
@@ -306,7 +353,7 @@
         </div>
         <div class="panel chart-panel">
           <h3>Browser calls over time</h3>
-          <canvas id="chart-svc-browser" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-svc-browser"></canvas></div>
         </div>
         <div class="panel">
           <h3>Recent browser calls</h3>
@@ -316,7 +363,7 @@
 
       <!-- Search sub-tab (credit_ledger group=search → web_search + twitter_search + web_fetch + embedding) -->
       <div class="svc-panel" data-svc-panel="search" hidden>
-        <p class="tab-desc small">Gipity Search — web, Twitter/X, raw web fetch, and embeddings. Agent tools that read live data from outside Gipity. <span class="try-it">Try it: <code>$ gipity chat "find recent news about porsche 914"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Search — web, Twitter/X, raw web fetch, and embeddings. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Search — web, Twitter/X, raw web fetch, and embeddings. Agent tools that read live data from outside Gipity. <span class="try-it">Try it: <code>$ gipity chat "find recent news about porsche 914"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-search-cost">—</span></div>
           <div class="card" title="Sum of web searches + Twitter/X + raw web fetches + embeddings in this window."><span class="card-label">All calls</span><span class="card-value" id="svc-search-calls">—</span></div>
@@ -324,7 +371,7 @@
         </div>
         <div class="panel chart-panel">
           <h3>Calls over time</h3>
-          <canvas id="chart-svc-search" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-svc-search"></canvas></div>
         </div>
         <div class="panel">
           <h3>Recent search / fetch calls</h3>
@@ -334,7 +381,7 @@
 
       <!-- Realtime sub-tab -->
       <div class="svc-panel" data-svc-panel="realtime" hidden>
-        <p class="tab-desc small">Gipity Realtime — live multiplayer connections, presence, and shared state. CCU = currently-connected users; CCU-min = sum of session minutes. <span class="muted">Free in v1 — billed later.</span> <span class="try-it">Try it: <code>$ gipity add realtime</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Realtime — live multiplayer connections, presence, and shared state. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Realtime — live multiplayer connections, presence, and shared state. CCU = currently-connected users; CCU-min = sum of session minutes. <span class="muted">Free in v1 — billed later.</span> <span class="try-it">Try it: <code>$ gipity add realtime</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Concurrently-connected users (CCU) right now across all your Gipity Realtime rooms."><span class="card-label">Live now (CCU)</span><span class="card-value" id="rt-live">—</span></div>
           <div class="card" title="Total realtime sessions that ended (disconnected) in this window."><span class="card-label">Sessions</span><span class="card-value" id="rt-sessions">—</span></div>
@@ -342,8 +389,8 @@
           <div class="card" title="Sum of all session minutes. 10 users × 60 min = 600 CCU-min."><span class="card-label">CCU-minutes</span><span class="card-value" id="rt-ccu-min">—</span></div>
         </div>
         <div class="grid-2">
-          <div class="panel chart-panel"><h3>CCU-minutes over time</h3><canvas id="chart-realtime-ccu" height="100"></canvas></div>
-          <div class="panel chart-panel"><h3>Sessions over time</h3><canvas id="chart-realtime-sessions" height="100"></canvas></div>
+          <div class="panel chart-panel"><h3>CCU-minutes over time</h3><div class="chart-box"><canvas id="chart-realtime-ccu"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Sessions over time</h3><div class="chart-box"><canvas id="chart-realtime-sessions"></canvas></div></div>
         </div>
         <div class="grid-2">
           <div class="panel">
@@ -374,7 +421,7 @@
 
       <!-- Functions sub-tab -->
       <div class="cmp-panel" data-cmp-panel="functions">
-        <p class="tab-desc small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. Fast (millisecond) execution. <span class="try-it">Try it: <code>$ gipity fn call &lt;function-name&gt;</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. Fast (millisecond) execution. <span class="try-it">Try it: <code>$ gipity fn call &lt;function-name&gt;</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Total times your serverless functions ran in this window."><span class="card-label">Invocations</span><span class="card-value" id="fn-invocations">—</span></div>
           <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="fn-p95">—</span></div>
@@ -382,7 +429,7 @@
         </div>
         <div class="panel chart-panel">
           <h3>Invocations over time</h3>
-          <canvas id="chart-functions" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-functions"></canvas></div>
         </div>
         <div class="panel">
           <h3>Functions</h3>
@@ -396,7 +443,7 @@
 
       <!-- Jobs sub-tab -->
       <div class="cmp-panel" data-cmp-panel="jobs" hidden>
-        <p class="tab-desc small">Gipity Jobs — long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job run &lt;name&gt;</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Jobs — long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Jobs — long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job run &lt;name&gt;</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Job runs in this window (all tiers)."><span class="card-label">Runs</span><span class="card-value" id="job-runs">—</span></div>
           <div class="card" title="Runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="job-failures">—</span></div>
@@ -415,14 +462,14 @@
 
       <!-- Sandbox sub-tab -->
       <div class="cmp-panel" data-cmp-panel="sandbox" hidden>
-        <p class="tab-desc small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. Used when an agent runs ad-hoc code on your behalf. <span class="try-it">Try it: <code>$ gipity sandbox run "echo hello"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. Used when an agent runs ad-hoc code on your behalf. <span class="try-it">Try it: <code>$ gipity sandbox run "echo hello"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="sbx-cost">—</span></div>
           <div class="card" title="Number of sandbox script executions in this window."><span class="card-label">Executions</span><span class="card-value" id="sbx-calls">—</span></div>
         </div>
         <div class="panel chart-panel">
           <h3>Sandbox executions over time</h3>
-          <canvas id="chart-sandbox" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-sandbox"></canvas></div>
         </div>
         <div class="panel">
           <h3>Recent sandbox calls</h3>
@@ -432,7 +479,7 @@
 
       <!-- Workflows sub-tab -->
       <div class="cmp-panel" data-cmp-panel="workflows" hidden>
-        <p class="tab-desc small">Multi-step LLM pipelines triggered by schedule, webhook, or manual run. Each step is an LLM call with template variables, tool filters, and optional human approval. <span class="try-it">Try it: <code>$ gipity chat "create a workflow that…"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Multi-step LLM pipelines triggered by schedule, webhook, or manual run. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Multi-step LLM pipelines triggered by schedule, webhook, or manual run. Each step is an LLM call with template variables, tool filters, and optional human approval. <span class="try-it">Try it: <code>$ gipity chat "create a workflow that…"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Workflows currently enabled (schedule / webhook / manual triggers)."><span class="card-label">Active workflows</span><span class="card-value" id="wf-active">—</span></div>
           <div class="card" title="Workflow runs that started in this window."><span class="card-label">Runs</span><span class="card-value" id="wf-runs">—</span></div>
@@ -459,7 +506,7 @@
 
       <!-- Files sub-tab -->
       <div class="data-panel" data-data-panel="files">
-        <p class="tab-desc small">Gipity Storage — your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Storage — your project files: the agent's working dir, deployed app source, and user-uploaded media. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Storage — your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Physical bytes actually stored in Gipity Storage — this is what you're billed for. Retained file versions are included; a blob shared by copies or identical files is counted once."><span class="card-label">Billed (stored)</span><span class="card-value" id="files-size">—</span></div>
           <div class="card" title="What you have right now: the current version of every live file."><span class="card-label">Live size</span><span class="card-value" id="files-live">—</span></div>
@@ -488,7 +535,7 @@
         </div>
         <div class="panel chart-panel">
           <h3>Credits used over time</h3>
-          <canvas id="chart-storage-cost" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-storage-cost"></canvas></div>
         </div>
         <div class="panel">
           <h3>Top projects by file storage</h3>
@@ -502,7 +549,7 @@
 
       <!-- DB sub-tab -->
       <div class="data-panel" data-data-panel="db" hidden>
-        <p class="tab-desc small">Gipity DB — one Postgres database per project. Includes tables, indexes, and materialized views. <span class="try-it">Try it: <code>$ gipity db query "SELECT version()"</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity DB — one Postgres database per project. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity DB — one Postgres database per project. Includes tables, indexes, and materialized views. <span class="try-it">Try it: <code>$ gipity db query "SELECT version()"</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Total bytes of your Postgres databases (tables + indexes + materialized views)."><span class="card-label">Total size</span><span class="card-value" id="db-size">—</span></div>
           <div class="card" title="Number of distinct Postgres databases across your projects."><span class="card-label">Databases</span><span class="card-value" id="db-schemas">—</span></div>
@@ -533,10 +580,10 @@
 
       <!-- Deploys sub-tab -->
       <div class="hosting-panel" data-hosting-panel="deploys">
-        <p class="tab-desc small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps — phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps — phases that ran, what was emitted. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps — phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p></div></div>
         <div class="panel chart-panel">
           <h3>Deploys over time</h3>
-          <canvas id="chart-hosting-deploys" height="80"></canvas>
+          <div class="chart-box"><canvas id="chart-hosting-deploys"></canvas></div>
         </div>
         <div class="panel">
           <h3>Recent deploys</h3>
@@ -549,7 +596,7 @@
 
       <!-- Domains sub-tab -->
       <div class="hosting-panel" data-hosting-panel="domains" hidden>
-        <p class="tab-desc small">Custom domains pointing at your deployed apps. Free with any paid plan — Gipity auto-issues Let's Encrypt certs. <span class="try-it">Try it: <code>$ gipity domain add myapp.com</code></span></p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Custom domains pointing at your deployed apps. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Custom domains pointing at your deployed apps. Free with any paid plan — Gipity auto-issues Let's Encrypt certs. <span class="try-it">Try it: <code>$ gipity domain add myapp.com</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Custom domains attached to any of your projects."><span class="card-label">Total</span><span class="card-value" id="dom-total">—</span></div>
           <div class="card" title="Domains successfully verified and serving traffic."><span class="card-label">Active</span><span class="card-value" id="dom-active">—</span></div>
@@ -567,7 +614,7 @@
 
       <!-- CDN sub-tab -->
       <div class="hosting-panel" data-hosting-panel="cdn" hidden>
-        <p class="tab-desc small">Gipity CDN — your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. Live size refreshed every 5 min. <strong>Not currently metered</strong> — we absorb the storage + egress cost for v1.</p>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity CDN — your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity CDN — your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. Live size refreshed every 5 min. <strong>Not currently metered</strong> — we absorb the storage + egress cost for v1.</p></div></div>
         <div class="cards">
           <div class="card" title="Total bytes of your deployed app bundles served by Gipity CDN."><span class="card-label">Total size</span><span class="card-value" id="cdn-size">—</span></div>
           <div class="card" title="Total file count served by Gipity CDN across all your deployed apps."><span class="card-label">Objects</span><span class="card-value" id="cdn-objects">—</span></div>
@@ -586,7 +633,7 @@
 
     <!-- ── Usage tab (credit ledger) ───────────────────────────── -->
     <section class="tab-panel" data-tab="spend" hidden>
-      <p class="tab-desc">The full credit ledger — every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p>
+      <div class="tab-desc-wrap"><p class="tab-lede">The full credit ledger — every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">The full credit ledger — every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p></div></div>
       <div class="cards">
         <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="spend-credits">—</span></div>
         <div class="card" title="Distinct credit-ledger rows in this window — one row per billed event."><span class="card-label">Charges</span><span class="card-value" id="spend-charges">—</span></div>
@@ -594,7 +641,7 @@
       </div>
       <div class="panel chart-panel">
         <h3>Credits used over time</h3>
-        <canvas id="chart-spend" height="80"></canvas>
+        <div class="chart-box"><canvas id="chart-spend"></canvas></div>
       </div>
       <div class="grid-2">
         <div class="panel">
@@ -614,7 +661,7 @@
 
     <!-- ── Plan tab (subscription + balance) ─────────────────────── -->
     <section class="tab-panel" data-tab="plan" hidden>
-      <p class="tab-desc">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <span class="try-it">Try it: <code>$ gipity plan</code></span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <span class="try-it">Try it: <code>$ gipity plan</code></span></p></div></div>
       <div class="cards">
         <div class="card" title="Your current subscription tier, monthly price, and included credits per cycle."><span class="card-label">Plan</span><span class="card-value" id="plan-name">—</span></div>
         <div class="card" title="Live balance across all active grants (subscription cycle, top-ups, and bonus credits)."><span class="card-label">Credits remaining</span><span class="card-value" id="plan-remaining">—</span></div>
@@ -643,7 +690,7 @@
 
     <!-- ── Chats tab ────────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="chats" hidden>
-      <p class="tab-desc">Your conversations with Gipity agents on this account — titles, project, last activity. Click a row to see the messages. <span class="try-it">Try it: <code>$ gipity chat "build me a..."</code></span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Your conversations with Gipity agents on this account — titles, project, last activity. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your conversations with Gipity agents on this account — titles, project, last activity. Click a row to see the messages. <span class="try-it">Try it: <code>$ gipity chat "build me a..."</code></span></p></div></div>
       <div class="cards">
         <div class="card" title="Distinct conversations on this account that this window touches."><span class="card-label">Conversations</span><span class="card-value" id="chats-count">—</span></div>
       </div>
@@ -659,7 +706,7 @@
 
     <!-- ── Devices tab (paired CC/Codex devices + dispatches + sessions) ── -->
     <section class="tab-panel" data-tab="devices" hidden>
-      <p class="tab-desc">Local agents (Claude Code, Codex) paired to this account via <code>gipity claude</code>. Devices receive prompts dispatched from the web CLI's <code>cc&gt;</code> mode and stream their session transcript back here. <span class="try-it">Try it: <code>$ gipity claude</code> on your laptop, then <code>/cc</code> in the web CLI.</span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Local agents (Claude Code, Codex) paired to this account via <code>gipity claude</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Local agents (Claude Code, Codex) paired to this account via <code>gipity claude</code>. Devices receive prompts dispatched from the web CLI's <code>cc&gt;</code> mode and stream their session transcript back here. <span class="try-it">Try it: <code>$ gipity claude</code> on your laptop, then <code>/cc</code> in the web CLI.</span></p></div></div>
       <div class="cards">
         <div class="card" title="Local Claude Code / Codex instances paired to your account."><span class="card-label">Active devices</span><span class="card-value" id="rmt-devices">—</span></div>
         <div class="card" title="Prompts sent from the web CLI to a paired device in this window."><span class="card-label">Dispatches</span><span class="card-value" id="rmt-dispatches">—</span></div>
@@ -691,7 +738,7 @@
 
     <!-- ── Alerts tab ───────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="alerts" hidden>
-      <p class="tab-desc">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold — plus an optional daily/weekly digest with all the cards from each tab. <span class="try-it">Configure here; the schedule checks every 5 minutes.</span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold — plus an optional daily/weekly digest with all the cards from each tab. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold — plus an optional daily/weekly digest with all the cards from each tab. <span class="try-it">Configure here; the schedule checks every 5 minutes.</span></p></div></div>
       <div class="panel">
         <div class="panel-head">
           <h3>Email digest</h3>
@@ -785,7 +832,7 @@
 
     <!-- ── Secrets tab ──────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="secrets" hidden>
-      <p class="tab-desc">Encrypted API keys, tokens, and passwords for your apps — stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <span class="try-it">Never hardcode a key in source — store it here instead.</span></p>
+      <div class="tab-desc-wrap"><p class="tab-lede">Encrypted API keys, tokens, and passwords for your apps — stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Encrypted API keys, tokens, and passwords for your apps — stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <span class="try-it">Never hardcode a key in source — store it here instead.</span></p></div></div>
       <div class="sub-tabs">
         <button data-secret-scope="project" class="active">This project</button>
         <button data-secret-scope="account">Account-wide</button>
@@ -837,7 +884,7 @@
       </div>
       <div class="panel chart-panel">
         <h3>Events over time</h3>
-        <canvas id="chart-audit" height="80"></canvas>
+        <div class="chart-box"><canvas id="chart-audit"></canvas></div>
       </div>
       <div class="panel">
         <h3>Recent events</h3>

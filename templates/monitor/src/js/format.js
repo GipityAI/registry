@@ -140,6 +140,23 @@ export function emptyRow(cols, msg = 'No data in this window.') {
   return `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
 }
 
+/**
+ * Rich empty state for a panel's primary table: an icon, one sentence of what
+ * will appear here, and (optionally) the Try-it command as a click-to-copy
+ * chip — shown exactly when the user needs it instead of living permanently
+ * in the tab header. Drop-in replacement for emptyRow.
+ */
+export function emptyState(cols, { icon = '◌', message, tryit } = {}) {
+  const chip = tryit
+    ? `<button type="button" class="copy-chip" data-copy="${escapeHtml(tryit)}" title="Copy command"><code>$ ${escapeHtml(tryit)}</code></button>`
+    : '';
+  return `<tr><td colspan="${cols}"><div class="empty-state">
+    <span class="empty-ico" aria-hidden="true">${escapeHtml(icon)}</span>
+    <span class="empty-msg">${message}</span>
+    ${chip}
+  </div></td></tr>`;
+}
+
 // Captured function console output (console.log/warn/error) as a collapsible
 // <details> block, level-colored. Returns '' when the invocation logged nothing,
 // so callers can append it unconditionally.

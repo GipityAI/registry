@@ -28,6 +28,90 @@ export function chartFill(token, alpha = 0.1) {
   return rgb ? `rgba(${rgb}, ${alpha})` : chartColor(token);
 }
 
+// ── Mark spec ────────────────────────────────────────────────────────────────
+// One spec, applied by the factories below so every tab inherits it:
+// 2px lines with no point markers at rest and ≥8px hover hit targets, area
+// fill at ≤10% opacity, shared index tooltip + crosshair on time series,
+// y-grid only (recessive hairline), legends off — the panel title names the
+// single series. Charts here are ALWAYS single-series: two measures means two
+// charts, never a second series or a second y-axis.
+
+/** Crosshair: a faint vertical line through the active (hovered) index. */
+export const crosshairPlugin = {
+  id: 'monitorCrosshair',
+  afterDatasetsDraw(chart) {
+    const actives = chart.tooltip?.getActiveElements?.() || [];
+    if (!actives.length || !chart.chartArea) return;
+    const { ctx, chartArea } = chart;
+    const x = actives[0].element.x;
+    ctx.save();
+    ctx.strokeStyle = chartColor('border-strong') || 'rgba(255,255,255,0.25)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, chartArea.top);
+    ctx.lineTo(x, chartArea.bottom);
+    ctx.stroke();
+    ctx.restore();
+  },
+};
+
+function baseOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: { legend: { display: false } },
+    scales: { x: { grid: { display: false } } },
+  };
+}
+
+/** Single-series time-series line — the default form for change-over-time. */
+export function lineChart(canvas, { label, labels, values, color = 'primary' }) {
+  // eslint-disable-next-line no-undef
+  return new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets: [{
+      label, data: values,
+      borderColor: chartColor(color), backgroundColor: chartFill(color, 0.08),
+      borderWidth: 2, fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 8,
+    }] },
+    options: baseOptions(),
+  });
+}
+
+/** Single-series bar — counts per bucket. */
+export function barChart(canvas, { label, labels, values, color = 'primary' }) {
+  // eslint-disable-next-line no-undef
+  return new Chart(canvas, {
+    type: 'bar',
+    data: { labels, datasets: [{
+      label, data: values,
+      backgroundColor: chartColor(color), borderRadius: 2, maxBarThickness: 32,
+    }] },
+    options: baseOptions(),
+  });
+}
+
+/** Tiny axis-less sparkline for stat tiles. No tooltip, no grid — the tile's
+ *  number is the readout; the line only shows shape. */
+export function sparkline(canvas, { values, color = 'primary' }) {
+  // eslint-disable-next-line no-undef
+  return new Chart(canvas, {
+    type: 'line',
+    data: { labels: values.map((_, i) => i), datasets: [{
+      data: values,
+      borderColor: chartColor(color), backgroundColor: chartFill(color, 0.08),
+      borderWidth: 1.5, fill: true, tension: 0.3, pointRadius: 0, pointHitRadius: 0,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: false,
+      events: [],
+      plugins: { legend: { display: false }, tooltip: { enabled: false } },
+      scales: { x: { display: false }, y: { display: false } },
+    },
+  });
+}
+
 /**
  * Set Chart.js defaults so tick labels, gridlines, and tooltips read crisply
  * against the active theme's surface. Chart.js draws to a <canvas> and can't

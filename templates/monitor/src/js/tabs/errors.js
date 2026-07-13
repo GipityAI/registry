@@ -1,14 +1,16 @@
-import { fmtNum, fmtExact, fmtTime, truncate, escapeHtml, emptyRow, padSeries, fmtDelta } from '../format.js';
-import { groupFor, chartColor } from '../chart-helpers.js';
+import { fmtNum, fmtExact, fmtTime, truncate, escapeHtml, emptyState, padSeries, fmtDelta } from '../format.js';
+import { groupFor, barChart } from '../chart-helpers.js';
+import { renderTable } from '../ui.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
 let currentRows = [];
 
 function renderIssuesTable(tbody, rows) {
-  if (!rows.length) { tbody.innerHTML = emptyRow(4, 'No errors in this window.'); return; }
-  tbody.innerHTML = rows.map((e) => `
-    <tr>
+  // Each issue row is clickable: it jumps to the Activity timeline pre-filtered
+  // to this issue's message, where breadcrumbs + network context live.
+  renderTable(tbody, rows, (e) => `
+    <tr class="row-link" data-goto="activity" data-search="${escapeHtml(truncate(e.message, 60))}">
       <td class="mono" title="${escapeHtml(e.message)}">
         ${escapeHtml(truncate(e.message, 200))}
         ${e.stack ? `<div class="meta">${escapeHtml(truncate(e.stack.split('\n')[1] || e.stack, 200))}</div>` : ''}
@@ -17,7 +19,11 @@ function renderIssuesTable(tbody, rows) {
       <td class="num">${fmtNum(e.occurrence_count)}</td>
       <td class="muted">${fmtTime(e.last_seen_at)}</td>
     </tr>
-  `).join('');
+  `, { cap: 15, emptyHtml: emptyState(4, {
+    icon: '✓',
+    message: 'No errors in this window — captured automatically from <code>window.onerror</code> in your deployed apps.',
+    tryit: `gipity chat "throw a test error in my app"`,
+  }) });
 }
 
 export async function renderErrorsTab(api, { range, appGuid, projectId }) {
@@ -38,14 +44,8 @@ export async function renderErrorsTab(api, { range, appGuid, projectId }) {
   const group = groupFor(range);
   const ts = await api.timeseries('errors', range, group, projectId, undefined, 'deploy');
   const { labels, values } = padSeries(ts.data.series, range, group);
-  const canvas = $('chart-errors');
   if (chart) chart.destroy();
-  // eslint-disable-next-line no-undef
-  chart = new Chart(canvas, {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Errors', data: values, backgroundColor: chartColor('error') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  chart = barChart($('chart-errors'), { label: 'Errors', labels, values, color: 'error' });
   chart.$annotations = ts.data.annotations || [];
   chart.update();
 

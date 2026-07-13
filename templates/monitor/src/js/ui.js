@@ -134,3 +134,52 @@ export function clearTabError(panel) {
   if (!panel) return;
   for (const el of panel.querySelectorAll(':scope > .tab-error')) el.remove();
 }
+
+// ── Accessible card tooltips ────────────────────────────────────────────────
+// Native `title=` bubbles are invisible on touch and unreachable by keyboard.
+// Convert each card's title into a focusable ⓘ trigger whose explanation is a
+// CSS tooltip (shown on hover AND focus) — one sweep at startup covers every
+// card, including ones added later via re-render (the markup is static).
+
+export function initCardTips() {
+  for (const card of document.querySelectorAll('.card[title]')) {
+    const text = card.getAttribute('title');
+    card.removeAttribute('title');
+    if (!text) continue;
+    const tip = document.createElement('button');
+    tip.type = 'button';
+    tip.className = 'tip';
+    tip.setAttribute('aria-label', text);
+    tip.dataset.tip = text;
+    tip.textContent = 'ⓘ';
+    card.appendChild(tip);
+  }
+}
+
+// ── Table renderer with "Show more" ─────────────────────────────────────────
+// Renders the first `cap` rows and a "Show N more" affordance that reveals the
+// next 25 per click — so capped tables stop being dead ends without dumping
+// 100 rows up front. Falls back to `emptyHtml` when there are no rows.
+
+const SHOW_MORE_STEP = 25;
+
+export function renderTable(tbody, rows, mapRow, { cap = 10, emptyHtml = '' } = {}) {
+  if (!rows.length) { tbody.innerHTML = emptyHtml; return; }
+  let shown = Math.min(cap, rows.length);
+
+  const paint = () => {
+    tbody.innerHTML = rows.slice(0, shown).map(mapRow).join('');
+    const remaining = rows.length - shown;
+    if (remaining > 0) {
+      const tr = document.createElement('tr');
+      tr.className = 'show-more-row';
+      tr.innerHTML = `<td colspan="9"><button type="button" class="show-more-btn">Show ${Math.min(SHOW_MORE_STEP, remaining)} more (${remaining} hidden)</button></td>`;
+      tr.querySelector('button').addEventListener('click', () => {
+        shown = Math.min(shown + SHOW_MORE_STEP, rows.length);
+        paint();
+      });
+      tbody.appendChild(tr);
+    }
+  };
+  paint();
+}

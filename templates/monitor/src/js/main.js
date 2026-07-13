@@ -1,15 +1,16 @@
 /**
  * Monitor — sidebar-nav dashboard orchestrator.
  * - Auth gate via Sign in with Gipity (cookie).
- * - Left sidebar grouped into ACTIVITY / PROJECT / ACCOUNT:
- *   - Activity: Traffic / Errors / Chats / Audit        (event streams)
- *   - Project:  Compute / Data / Services / Hosting     (resources)
- *   - Account:  Plan / Spend / Devices / Alerts         (account state)
+ * - Overview (default landing: health verdict) sits above three groups:
+ *   - Observe: Traffic / Activity / Errors / Chats / Audit   (event streams)
+ *   - Project: Compute / Data / Services / Hosting           (resources)
+ *   - Account: Plan / Usage / Devices / Alerts / Secrets     (account state)
  * - URL hash preserves the active tab + sub-tab across reloads.
  * - Range + Project filters re-render the active tab on change.
  */
 import { api } from './api.js';
 import { signIn, isSignedIn } from './auth.js';
+import { renderOverviewTab } from './tabs/overview.js';
 import { renderTrafficTab } from './tabs/traffic.js';
 import { renderActivityTab } from './tabs/activity.js';
 import { renderErrorsTab } from './tabs/errors.js';
@@ -24,22 +25,26 @@ import { renderHostingTab } from './tabs/hosting.js';
 import { renderSpendTab } from './tabs/spend.js';
 import { renderPlanTab } from './tabs/plan.js';
 import { renderDevicesTab } from './tabs/devices.js';
-import { deployAnnotationPlugin, applyChartTheme } from './chart-helpers.js';
+import { deployAnnotationPlugin, crosshairPlugin, applyChartTheme } from './chart-helpers.js';
 import { initThemePicker } from './theme.js';
-import { setRenderer, beginTabLoad, endTabLoad, showTabError, hashPath, setHashPath } from './ui.js';
+import { setRenderer, beginTabLoad, endTabLoad, showTabError, initCardTips, hashPath, setHashPath } from './ui.js';
 
 // Globally register the deploy-annotation overlay so each tab just needs to
 // set `chart.$annotations` from the timeseries response, and apply the Monitor
 // chart theme (readable tick / grid colors on the dark surface).
 // eslint-disable-next-line no-undef
-if (typeof Chart !== 'undefined') Chart.register(deployAnnotationPlugin);
+if (typeof Chart !== 'undefined') Chart.register(deployAnnotationPlugin, crosshairPlugin);
 applyChartTheme();
 
 const $ = (id) => document.getElementById(id);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
 
-let currentTab = 'traffic';
+let currentTab = 'overview';
 let currentAuditType = 'auth';
+
+// Feature flag: unread-style error count on the Errors nav item, driven by the
+// stats already fetched for Overview (no extra polling of its own).
+const SHOW_ERRORS_BADGE = true;
 
 // Persisted view state — survive reloads so the dashboard reopens the way the
 // user left it (sidebar width already persists via its own key below).
@@ -65,7 +70,12 @@ function currentFilters() {
 
 function showTab(name) {
   currentTab = name;
-  $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === name));
+  $$('.sidebar button').forEach((b) => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle('active', active);
+    if (active) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
   $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== name; });
   // Preserve `#services/<sub>` when re-clicking Services — only clobber the
   // hash when actually switching to a different top-level tab. setHashPath
@@ -138,6 +148,7 @@ function downloadCsv(signal) {
 }
 
 const TAB_RENDERERS = {
+  overview: renderOverviewTab,
   traffic: renderTrafficTab,
   activity: renderActivityTab,
   errors: renderErrorsTab,
@@ -164,9 +175,25 @@ function updateFreshness() {
   el.textContent = s < 60 ? `Updated ${s}s ago` : `Updated ${Math.round(s / 60)}m ago`;
 }
 
+function updateErrorsBadge(n) {
+  const badge = $('errors-badge');
+  if (!badge || !SHOW_ERRORS_BADGE) return;
+  badge.textContent = n > 99 ? '99+' : String(n);
+  badge.hidden = !(n > 0);
+}
+
 async function renderActiveTab() {
   const render = TAB_RENDERERS[currentTab];
   if (!render) return;
+  // Honour a `#audit/<type>` hash on every render (not just first load) so
+  // "needs attention"-style links can target a specific audit view.
+  if (currentTab === 'audit') {
+    const sub = hashPath().split('/')[1];
+    if (['auth', 'upload', 'secret'].includes(sub) && sub !== currentAuditType) {
+      currentAuditType = sub;
+      $$('[data-audit]').forEach((b) => b.classList.toggle('active', b.dataset.audit === sub));
+    }
+  }
   const panel = document.querySelector(`.tab-panel[data-tab="${currentTab}"]`);
   const refreshBtn = $('refresh');
   const filters = currentTab === 'audit'
@@ -177,7 +204,10 @@ async function renderActiveTab() {
   refreshBtn.classList.add('busy');
   beginTabLoad(panel);
   try {
-    await render(api, filters);
+    const out = await render(api, filters);
+    if (currentTab === 'overview' && out && typeof out.errorCount === 'number') {
+      updateErrorsBadge(out.errorCount);
+    }
     lastUpdatedAt = Date.now();
     updateFreshness();
   } catch (err) {
@@ -339,7 +369,7 @@ async function init() {
   // Filter params (`?project=…&range=…`) ride behind the path — see
   // hashParams()/syncHashFilters().
   const [baseTab, subPart] = hashPath().split('/');
-  if (['traffic', 'activity', 'errors', 'services', 'compute', 'data', 'hosting', 'spend', 'plan', 'chats', 'devices', 'audit', 'alerts', 'secrets'].includes(baseTab)) {
+  if (['overview', 'traffic', 'activity', 'errors', 'services', 'compute', 'data', 'hosting', 'spend', 'plan', 'chats', 'devices', 'audit', 'alerts', 'secrets'].includes(baseTab)) {
     currentTab = baseTab;
     $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === baseTab));
     $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== baseTab; });
@@ -398,6 +428,57 @@ async function init() {
   // covers all of them so new tabs only need the button markup.
   document.querySelectorAll('.export-csv-btn').forEach((btn) => {
     btn.addEventListener('click', () => downloadCsv(btn.dataset.export));
+  });
+
+  // Convert card `title=` explanations into focusable ⓘ tooltips (keyboard +
+  // touch reachable, unlike native title bubbles).
+  initCardTips();
+
+  // Delegated interactions that any tab can emit without its own wiring:
+  //   .row-link[data-goto]      → navigate to `<tab>` or `<tab>/<sub>`, with
+  //                               optional data-search prefilling a filter box
+  //                               and data-set-project driving the global picker
+  //   .info-toggle              → expand/collapse the tab's full description
+  //   .copy-chip[data-copy]     → copy a Try-it command to the clipboard
+  document.addEventListener('click', (ev) => {
+    const link = ev.target.closest('.row-link[data-goto]');
+    if (link) {
+      if (link.dataset.setProject !== undefined) {
+        const sel = $('project-filter');
+        if (Array.from(sel.options).some((o) => o.value === link.dataset.setProject)) {
+          sel.value = link.dataset.setProject;
+          localStorage.setItem(KEY_PROJECT, sel.value);
+        }
+      }
+      if (link.dataset.search !== undefined) {
+        const box = $('activity-search');
+        if (box) box.value = link.dataset.search;
+      }
+      const path = link.dataset.goto;
+      // setHashPath keeps any `?project=…&range=…` filter params intact.
+      if (hashPath() !== path) setHashPath(path);
+      const base = path.split('/')[0];
+      // hashchange only fires showTab on a base-tab change; same-tab
+      // navigations (sub-tab or filter tweaks) re-render explicitly.
+      if (base === currentTab || !base) renderActiveTab();
+      return;
+    }
+    const toggle = ev.target.closest('.info-toggle');
+    if (toggle) {
+      const info = toggle.closest('.tab-desc-wrap')?.querySelector('.tab-info');
+      if (info) {
+        info.hidden = !info.hidden;
+        toggle.setAttribute('aria-expanded', String(!info.hidden));
+      }
+      return;
+    }
+    const chip = ev.target.closest('.copy-chip[data-copy]');
+    if (chip) {
+      navigator.clipboard?.writeText(chip.dataset.copy).then(() => {
+        chip.classList.add('copied');
+        setTimeout(() => chip.classList.remove('copied'), 1200);
+      }).catch(() => { /* clipboard unavailable — the command is still visible */ });
+    }
   });
 
   // Sign-in

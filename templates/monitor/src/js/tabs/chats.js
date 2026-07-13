@@ -7,7 +7,7 @@
  * directly underneath the clicked row. Re-clicking collapses without
  * re-fetching (messages are cached on the row's dataset).
  */
-import { fmtExact, fmtTime, fmtFullTime, fmtTokens, fmtDuration, escapeHtml, truncate, emptyRow } from '../format.js';
+import { fmtExact, fmtTime, fmtFullTime, fmtTokens, fmtDuration, escapeHtml, truncate, emptyState } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -84,7 +84,11 @@ export async function renderChatsTab(api, { range, appGuid }) {
 
   const tbody = $('table-chats').querySelector('tbody');
   if (!res.data.length) {
-    tbody.innerHTML = emptyRow(5, 'No chats yet.');
+    tbody.innerHTML = emptyState(5, {
+      icon: '💬',
+      message: 'Conversations with Gipity agents appear here — titles, tokens, and full transcripts.',
+      tryit: 'gipity chat "build me a…"',
+    });
     return;
   }
   tbody.innerHTML = res.data.map((c) => {

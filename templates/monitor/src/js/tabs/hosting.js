@@ -9,8 +9,8 @@
  * "publishing your app" is one umbrella instead of three.
  */
 import { fmtNum, fmtExact, fmtBytes, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor, chartColor } from '../chart-helpers.js';
-import { requestRender, subTabs } from '../ui.js';
+import { groupFor, barChart } from '../chart-helpers.js';
+import { requestRender, subTabs, hashPath } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
@@ -43,12 +43,7 @@ async function renderDeploysSubtab(api, { range, projectId }) {
   const series = Array.from(counts.entries()).map(([t, v]) => ({ bucket: new Date(t), value: v }));
   const { labels, values } = padSeries(series, range, group);
   if (deployChart) deployChart.destroy();
-  // eslint-disable-next-line no-undef
-  deployChart = new Chart($('chart-hosting-deploys'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Deploys', data: values, backgroundColor: chartColor('primary') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  deployChart = barChart($('chart-hosting-deploys'), { label: 'Deploys', labels, values, color: 'primary' });
 
   const tbody = $('table-hosting-deploys').querySelector('tbody');
   if (!res.data.length) {
@@ -139,9 +134,10 @@ export async function renderHostingTab(api, filters) {
         requestRender();
       });
     });
-    currentSub = tabs.fromHash();
-    showSubTab(currentSub);
   }
+  // Re-read the sub-tab from the hash on every render so cross-tab links
+  // land on the right sub view.
+  if (hashPath().split('/')[0] === 'hosting') showSubTab(tabs.fromHash());
   switch (currentSub) {
     case 'deploys': return renderDeploysSubtab(api, filters);
     case 'domains': return renderDomainsSubtab(api);

@@ -11,8 +11,8 @@
  * keep the user where they were.
  */
 import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtPct, fmtTime, toCredits, escapeHtml, statusPill, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
-import { requestRender, subTabs } from '../ui.js';
+import { groupFor, lineChart, barChart } from '../chart-helpers.js';
+import { requestRender, subTabs, hashPath } from '../ui.js';
 import { renderRealtimePanel } from './realtime.js';
 
 const $ = (id) => document.getElementById(id);
@@ -98,18 +98,8 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // the "Credits used" card label.
   const costInCredits = cost.values.map(toCredits);
   destroy(`${key}Cost`); destroy(`${key}Calls`);
-  // eslint-disable-next-line no-undef
-  charts[`${key}Cost`] = new Chart($(ids.chartCost), {
-    type: 'bar',
-    data: { labels: cost.labels, datasets: [{ label: 'Credits', data: costInCredits, backgroundColor: chartColor('primary') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
-  // eslint-disable-next-line no-undef
-  charts[`${key}Calls`] = new Chart($(ids.chartCalls), {
-    type: 'line',
-    data: { labels: calls.labels, datasets: [{ label: 'Calls', data: calls.values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  charts[`${key}Cost`] = barChart($(ids.chartCost), { label: 'Credits', labels: cost.labels, values: costInCredits, color: 'primary' });
+  charts[`${key}Calls`] = lineChart($(ids.chartCalls), { label: 'Calls', labels: calls.labels, values: calls.values, color: 'info' });
 
   // Top models (filtered to this sub-tab's service set)
   const modelsBody = $(ids.tableModels)?.querySelector('tbody');
@@ -192,10 +182,10 @@ export async function renderServicesTab(api, filters) {
         requestRender();
       });
     });
-    // Honour deep-link sub-tab on first render.
-    currentSub = tabs.fromHash();
-    showSubTab(currentSub);
   }
+  // Re-read the sub-tab from the hash on EVERY render (not just first bind),
+  // so cross-tab links like Overview's rows land on the right sub view.
+  if (hashPath().split('/')[0] === 'services') showSubTab(tabs.fromHash());
 
   switch (currentSub) {
     case 'llm':
@@ -246,12 +236,7 @@ async function renderCreditSubtab(api, key, { group, ids }, { range, projectId }
   const labels = (daily.data.series || []).map(r => new Date(r.bucket).toISOString().slice(0, 10));
   const values = (daily.data.series || []).map(r => r.n);
   destroy(`${key}Chart`);
-  // eslint-disable-next-line no-undef
-  charts[`${key}Chart`] = new Chart($(ids.chart), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Calls', data: values, backgroundColor: chartColor('info') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  charts[`${key}Chart`] = barChart($(ids.chart), { label: 'Calls', labels, values, color: 'info' });
 
   // Recent
   const recentBody = $(ids.recent).querySelector('tbody');

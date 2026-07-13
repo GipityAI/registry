@@ -8,8 +8,8 @@
  * about delivery, not persistence.
  */
 import { fmtNum, fmtExact, fmtCredits, fmtBytes, toCredits, escapeHtml, emptyRow } from '../format.js';
-import { chartColor } from '../chart-helpers.js';
-import { requestRender, subTabs } from '../ui.js';
+import { barChart } from '../chart-helpers.js';
+import { requestRender, subTabs, hashPath } from '../ui.js';
 
 /**
  * Roll up multiple per-reading ledger rows into one entry per UTC day.
@@ -124,12 +124,7 @@ async function renderFilesSubtab(api, { range, projectId }) {
   const labels = (costSeries.data.series || []).map(r => new Date(r.bucket).toISOString().slice(0, 10));
   const values = (costSeries.data.series || []).map(r => toCredits(r.usd));
   if (costChart) costChart.destroy();
-  // eslint-disable-next-line no-undef
-  costChart = new Chart($('chart-storage-cost'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: chartColor('primary') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  costChart = barChart($('chart-storage-cost'), { label: 'Credits', labels, values, color: 'primary' });
 
   const projBody = $('table-storage-projects').querySelector('tbody');
   const shown = live.data.top_projects;
@@ -223,9 +218,10 @@ export async function renderDataTab(api, filters) {
     });
     $('retention-form').addEventListener('submit', (ev) => saveRetention(api, ev));
     $('retention-reset').addEventListener('click', () => resetRetention(api));
-    currentSub = tabs.fromHash();
-    showSubTab(currentSub);
   }
+  // Re-read the sub-tab from the hash on every render so cross-tab links
+  // land on the right sub view.
+  if (hashPath().split('/')[0] === 'data') showSubTab(tabs.fromHash());
   switch (currentSub) {
     case 'files':   return renderFilesSubtab(api, filters);
     case 'db':      return renderDbSubtab(api, filters);

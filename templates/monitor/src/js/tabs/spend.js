@@ -5,8 +5,9 @@
  * this same ledger. (Internal tab key remains `spend` so URL hashes and the
  * data-tab attribute don't churn for users who already bookmarked it.)
  */
-import { fmtExact, fmtCredits, fmtTime, escapeHtml, emptyRow, toCredits } from '../format.js';
-import { chartColor } from '../chart-helpers.js';
+import { fmtExact, fmtCredits, fmtTime, escapeHtml, emptyRow, emptyState, toCredits } from '../format.js';
+import { barChart } from '../chart-helpers.js';
+import { renderTable } from '../ui.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -78,12 +79,7 @@ export async function renderSpendTab(api, { range, projectId }) {
   const labels = (daily.data.series || []).map((r) => new Date(r.bucket).toISOString().slice(0, 10));
   const values = (daily.data.series || []).map((r) => toCredits(r.usd));
   if (chart) chart.destroy();
-  // eslint-disable-next-line no-undef
-  chart = new Chart($('chart-spend'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Credits', data: values, backgroundColor: chartColor('primary') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  chart = barChart($('chart-spend'), { label: 'Credits', labels, values, color: 'primary' });
 
   // By operation
   const opsBody = $('table-spend-ops').querySelector('tbody');
@@ -96,11 +92,12 @@ export async function renderSpendTab(api, { range, projectId }) {
     </tr>
   `).join('');
 
-  // By project
+  // By project — rows drive the GLOBAL project picker, so "which project is
+  // spending?" is one click from "show me only that project everywhere".
   const projBody = $('table-spend-projects').querySelector('tbody');
   if (!byProject.data.items.length) projBody.innerHTML = emptyRow(3);
   else projBody.innerHTML = byProject.data.items.map((r) => `
-    <tr>
+    <tr class="row-link" data-goto="spend" data-set-project="${escapeHtml(r.project_short_guid || '')}">
       <td>${escapeHtml(r.project_name || r.project_short_guid || '—')}</td>
       <td class="num">${fmtExact(r.n)}</td>
       <td class="num">${fmtCredits(toCredits(r.usd))}</td>
@@ -109,9 +106,7 @@ export async function renderSpendTab(api, { range, projectId }) {
 
   // Recent charges — show what the user was charged in credits. Never expose
   // credit_ledger.cost_usd (that's our provider cost / margin data).
-  const recentBody = $('table-spend-recent').querySelector('tbody');
-  if (!recent.data.items.length) recentBody.innerHTML = emptyRow(5);
-  else recentBody.innerHTML = recent.data.items.map((c) => `
+  renderTable($('table-spend-recent').querySelector('tbody'), recent.data.items, (c) => `
     <tr>
       <td class="muted">${fmtTime(c.created_at)}</td>
       <td>${escapeHtml(opLabel(c.operation))}</td>
@@ -119,5 +114,9 @@ export async function renderSpendTab(api, { range, projectId }) {
       <td class="muted">${escapeHtml(c.project_name || c.project_short_guid || '—')}</td>
       <td class="num">${fmtCredits(c.credits_deducted)}</td>
     </tr>
-  `).join('');
+  `, { cap: 15, emptyHtml: emptyState(5, {
+    icon: '¢',
+    message: 'Every billed event lands here — LLM calls, media generation, compute, storage.',
+    tryit: 'gipity chat "hello"',
+  }) });
 }

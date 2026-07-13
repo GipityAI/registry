@@ -82,14 +82,36 @@
   --shadow-lg: 0 10px 34px rgba(0, 0, 0, 0.6);
 }
 
-/* Override Water.css base palette so our explicit tokens win on body + form
-   elements that we don't otherwise re-style. */
+/* ── Owned base styles (Water.css replaced, C11) ─────────────────────
+   Everything the dropped framework used to provide: reset, typography,
+   form controls, and focus rings — in our own tokens, ~40 lines. */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
 html, body {
   background: var(--bg);
   color: var(--text);
 }
-
-body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
+body {
+  max-width: 1600px; margin: 0 auto; padding: 1rem;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  font-size: var(--text-base); line-height: 1.5;
+}
+h1, h2, h3, h4, p { margin: 0 0 0.6rem; }
+h2 { font-size: var(--text-lg); }
+code, pre, kbd { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; }
+code { background: var(--surface-2); padding: 0.05rem 0.3rem; border-radius: var(--radius-xs); }
+button, select, input {
+  font: inherit; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 0.35rem 0.6rem;
+}
+button { cursor: pointer; }
+button:hover { background: var(--surface-hover); }
+select { cursor: pointer; }
+input::placeholder { color: var(--text-faint); }
+dialog { border: none; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible,
+[tabindex]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /* Dashboard layout — header on top, then a two-column flex with the sidebar
    nav on the left, a draggable splitter, and the active tab panel filling the
@@ -131,9 +153,13 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 
 @media (max-width: 800px) {
   #dashboard { flex-direction: column; min-height: 0; }
-  .sidebar { width: 100% !important; flex-direction: row; flex-wrap: wrap; }
+  .sidebar { width: 100% !important; }
   .v-splitter { display: none; }
   .main-content { padding-left: 0; padding-top: 1rem; }
+  /* Wide tables scroll inside their panel instead of overflowing the page. */
+  .panel { overflow-x: auto; }
+  .data-table.issues { table-layout: auto; min-width: 560px; }
+  .monitor-header { position: sticky; top: 0; z-index: 20; background: var(--bg); padding: 0.5rem 0; margin-top: -0.5rem; }
 }
 
 /* ── Header ─────────────────────────────────────────────── */
@@ -192,17 +218,22 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 .sidebar-group { display: flex; flex-direction: column; gap: 0.05rem; }
 .sidebar-label { margin: 0.6rem 0 0.4rem 0.4rem; padding: 0 0.5rem 0.35rem; font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text); opacity: 1; border-bottom: 1px solid var(--border); }
 .sidebar-group:first-child .sidebar-label { margin-top: 0; }
-.sidebar button { background: transparent; border: none; border-left: 2px solid transparent; padding: 0.45rem 0.85rem; font-size: var(--text-sm); cursor: pointer; color: var(--text-muted); text-align: left; border-radius: 0 4px 4px 0; }
+.sidebar button { display: flex; align-items: center; gap: 0.5rem; background: transparent; border: none; border-left: 2px solid transparent; padding: 0.45rem 0.85rem; font-size: var(--text-sm); cursor: pointer; color: var(--text-muted); text-align: left; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.sidebar .nav-ico { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.75; }
+.sidebar button.active .nav-ico { opacity: 1; color: var(--primary); }
+.sidebar .nav-text { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-badge { flex-shrink: 0; min-width: 1.4em; padding: 0 0.35em; border-radius: var(--radius-pill); background: var(--error); color: white; font-size: var(--text-xs); font-weight: 700; text-align: center; line-height: 1.5; }
 .sidebar button:hover { color: var(--text); background: var(--bg-card); }
 .sidebar button.active { color: var(--text); background: var(--bg-card); border-left-color: var(--primary); }
 
 /* Compact horizontal layout on narrow screens — labels become inline chips. */
 @media (max-width: 800px) {
-  .sidebar { gap: 0.5rem; position: static; }
-  .sidebar-group { flex-direction: row; flex-wrap: wrap; gap: 0.25rem; align-items: center; }
-  .sidebar-label { margin: 0; }
-  .sidebar button { border-left: none; border-bottom: 2px solid transparent; border-radius: var(--radius-sm); padding: 0.35rem 0.7rem; }
+  .sidebar { gap: 0.75rem; position: static; flex-direction: row; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.25rem; -webkit-overflow-scrolling: touch; }
+  .sidebar-group { flex-direction: row; flex-wrap: nowrap; gap: 0.25rem; align-items: center; }
+  .sidebar-label { margin: 0; border-bottom: none; }
+  .sidebar button { border-left: none; border-bottom: 2px solid transparent; border-radius: var(--radius-sm); padding: 0.35rem 0.7rem; white-space: nowrap; }
   .sidebar button.active { border-left-color: transparent; border-bottom-color: var(--primary); }
+  .sidebar .nav-ico { display: none; }
 }
 
 /* ── Sub-tabs strip (secondary nav at top of main content) ── */
@@ -272,8 +303,24 @@ body { max-width: 1600px; margin: 0 auto; padding: 1rem; }
 #errors-search { width: 100%; padding: 0.4rem 0.6rem; margin-bottom: 0.5rem; background: var(--bg-card); border: 1px solid var(--border); color: var(--text); border-radius: 4px; font-size: var(--text-sm); }
 
 /* ── Auth gate ──────────────────────────────────────────── */
-#auth-gate { text-align: center; padding: 3rem 1rem; }
-#auth-gate button { background: var(--primary); border: none; color: var(--text-on-primary); padding: 0.5rem 1.5rem; font-size: var(--text-base); cursor: pointer; border-radius: 4px; }
+/* `:not([hidden])` is critical — a bare `display:flex` would beat the HTML
+   `hidden` attribute and render the gate on top of the dashboard. */
+#auth-gate:not([hidden]) { position: relative; display: flex; align-items: center; justify-content: center; min-height: 70vh; padding: 3rem 1rem; overflow: hidden; }
+#auth-gate::before {
+  /* Blurred dashboard-esque glow standing in for a screenshot backdrop —
+     self-contained (no asset), reads as "there's a product behind this". */
+  content: ''; position: absolute; inset: -20%; z-index: 0; filter: blur(70px); opacity: 0.35;
+  background:
+    radial-gradient(420px 220px at 25% 30%, rgba(var(--primary-rgb), 0.55), transparent 70%),
+    radial-gradient(380px 240px at 75% 60%, rgba(var(--info-rgb), 0.4), transparent 70%),
+    radial-gradient(300px 200px at 55% 25%, rgba(var(--success-rgb), 0.28), transparent 70%);
+}
+.gate-card { position: relative; z-index: 1; text-align: center; max-width: 26rem; padding: 2.5rem 2rem; background: color-mix(in srgb, var(--surface) 82%, transparent); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); backdrop-filter: blur(6px); }
+.gate-logo { display: block; margin: 0 auto 0.75rem; }
+.gate-card h2 { font-size: var(--text-xl); margin-bottom: 0.4rem; }
+.gate-lede { color: var(--text-muted); font-size: var(--text-sm); margin-bottom: 1.4rem; }
+#auth-gate button { background: var(--primary); border: none; color: var(--text-on-primary); padding: 0.55rem 1.6rem; font-size: var(--text-base); font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); }
+#auth-gate button:hover { background: var(--primary-hover); }
 
 /* ── Empty state ────────────────────────────────────────── */
 .empty { text-align: center; padding: 1.5rem; color: var(--text-muted); font-size: var(--text-sm); }
@@ -522,3 +569,77 @@ tr.skeleton-row td { border-bottom: none; padding: 0.5rem; }
 .crumb-nav { color: var(--info); }
 .crumb-console_error { color: var(--error); }
 .crumb-sep { color: var(--text-muted); padding: 0 0.1rem; }
+
+/* ── Chart boxes (C13): every chart renders at one consistent height ── */
+.chart-box { position: relative; height: 200px; }
+.spark-box { position: relative; height: 34px; margin-top: 0.5rem; }
+/* A canvas's 300px intrinsic width must never set a grid column's min-content
+   size (it locked the 2-up mobile grid at 668px wide). Grid/flex items shrink
+   past their content; the canvas follows its box. */
+.cards > .card, .grid-2 > .panel, .grid-3 > .panel { min-width: 0; }
+.chart-box canvas, .spark-box canvas { max-width: 100%; }
+
+/* ── Overview (B7) ──────────────────────────────────────── */
+.card.tile { position: relative; }
+.card.tile.tile-warn { border-color: color-mix(in srgb, var(--warning) 45%, var(--border)); background: color-mix(in srgb, var(--warning) 7%, var(--surface)); }
+.card.tile.tile-error { border-color: color-mix(in srgb, var(--error) 45%, var(--border)); background: color-mix(in srgb, var(--error) 7%, var(--surface)); }
+.tile-note { font-size: var(--text-xs); font-weight: 600; margin-top: 0.15rem; }
+.tile-warn .tile-note { color: var(--warning); }
+.tile-error .tile-note { color: var(--error); }
+
+.attn-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.attn-row { display: flex; align-items: baseline; gap: 0.6rem; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--hairline); font-size: var(--text-sm); }
+.attn-row:last-child { border-bottom: none; }
+.attn-title { font-weight: 600; white-space: nowrap; }
+.attn-detail { color: var(--text-muted); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attn-time { color: var(--text-muted); font-size: var(--text-xs); margin-left: auto; white-space: nowrap; }
+.attn-quiet { padding: 0.5rem 0.4rem; color: var(--text-muted); font-size: var(--text-sm); }
+
+/* ── Ledes + ⓘ info toggle (B9) ─────────────────────────── */
+.tab-desc-wrap { max-width: 920px; }
+.tab-lede { margin: 0; color: var(--text-muted); font-size: var(--text-sm); line-height: 1.5; }
+.tab-lede.small { font-size: var(--text-xs); }
+.info-toggle { display: inline-flex; align-items: center; justify-content: center; width: 1.35em; height: 1.35em; padding: 0; margin-left: 0.2rem; border: none; background: transparent; color: var(--text-muted); font-size: 1em; line-height: 1; border-radius: 50%; vertical-align: -0.1em; }
+.info-toggle:hover, .info-toggle[aria-expanded="true"] { color: var(--primary); background: transparent; }
+.tab-info { margin-top: 0.5rem; padding: 0.6rem 0.9rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.tab-info .tab-desc { margin: 0; }
+
+/* ── Empty states (B10) ─────────────────────────────────── */
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 0.6rem; padding: 1.75rem 1rem; text-align: center; }
+.empty-ico { font-size: var(--text-xl); color: var(--text-faint); line-height: 1; }
+.empty-msg { color: var(--text-muted); font-size: var(--text-sm); max-width: 34rem; }
+.copy-chip { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.7rem; background: rgba(var(--primary-rgb), 0.1); border: 1px solid rgba(var(--primary-rgb), 0.35); border-radius: var(--radius-pill); cursor: pointer; }
+.copy-chip code { background: transparent; padding: 0; color: var(--primary); font-size: var(--text-xs); }
+.copy-chip:hover { background: rgba(var(--primary-rgb), 0.18); }
+.copy-chip.copied::after { content: 'copied'; color: var(--success); font-size: var(--text-xs); }
+
+/* ── Show more (C14) ────────────────────────────────────── */
+.show-more-row td { text-align: center; border-bottom: none; padding: 0.35rem; }
+.show-more-btn { background: transparent; border: none; color: var(--text-muted); font-size: var(--text-xs); text-decoration: underline; text-underline-offset: 3px; padding: 0.2rem 0.5rem; }
+.show-more-btn:hover { color: var(--text); background: transparent; }
+
+/* Rows that navigate get the affordance; rows that don't, don't. */
+tr.row-link, .attn-row.row-link { cursor: pointer; }
+.attn-row.row-link:hover { background: var(--row-hover); }
+
+/* ── Card ⓘ tooltips (C15) — hover AND keyboard/touch reachable ── */
+.card { position: relative; }
+.card .tip { position: absolute; top: 0.5rem; right: 0.6rem; width: 1.2rem; height: 1.2rem; display: inline-flex; align-items: center; justify-content: center; padding: 0; border: none; background: transparent; color: var(--text-faint); font-size: var(--text-xs); line-height: 1; border-radius: 50%; }
+.card .tip:hover, .card .tip:focus-visible { color: var(--text-muted); background: transparent; }
+.card .tip::after {
+  content: attr(data-tip);
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30;
+  width: 240px; padding: 0.5rem 0.65rem;
+  background: var(--surface-2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); box-shadow: var(--shadow-md);
+  font-size: var(--text-xs); line-height: 1.45; text-align: left; text-transform: none; letter-spacing: normal; white-space: normal; font-weight: 400;
+  opacity: 0; visibility: hidden; transition: opacity var(--transition-fast);
+  pointer-events: none;
+}
+.card .tip:hover::after, .card .tip:focus-visible::after { opacity: 1; visibility: visible; }
+
+/* Cards go 2-up on phones. Lives at the end of the sheet so it wins the
+   cascade over the base auto-fit grid above. */
+@media (max-width: 480px) {
+  .cards { grid-template-columns: 1fr 1fr; }
+}

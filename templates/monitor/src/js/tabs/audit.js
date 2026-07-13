@@ -1,5 +1,5 @@
 import { fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
-import { groupFor, chartColor } from '../chart-helpers.js';
+import { groupFor, barChart } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -22,12 +22,7 @@ export async function renderAuditTab(api, { range, projectId, type }) {
   const series = Array.from(counts.entries()).map(([t, v]) => ({ bucket: new Date(t), value: v }));
   const { labels, values } = padSeries(series, range, group);
   if (chart) chart.destroy();
-  // eslint-disable-next-line no-undef
-  chart = new Chart($('chart-audit'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: type, data: values, backgroundColor: chartColor('info') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  chart = barChart($('chart-audit'), { label: type, labels, values, color: 'info' });
 
   const tbody = $('table-audit').querySelector('tbody');
   if (!res.data.length) {

@@ -1,5 +1,5 @@
-import { fmtNum, fmtExact, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, padSeries, fmtDelta, consoleLogsHtml } from '../format.js';
-import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
+import { fmtNum, fmtExact, fmtMs, fmtPct, fmtTime, escapeHtml, statusPill, truncate, emptyRow, emptyState, padSeries, fmtDelta, consoleLogsHtml } from '../format.js';
+import { groupFor, lineChart } from '../chart-helpers.js';
 
 let chart = null;
 const $ = (id) => document.getElementById(id);
@@ -26,18 +26,17 @@ export async function renderFunctionsTab(api, { range, appGuid, projectId }) {
   const ts = await api.timeseries('functions', range, group, projectId, undefined, 'deploy');
   const { labels, values } = padSeries(ts.data.series, range, group);
   if (chart) chart.destroy();
-  // eslint-disable-next-line no-undef
-  chart = new Chart($('chart-functions'), {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Invocations', data: values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  chart = lineChart($('chart-functions'), { label: 'Invocations', labels, values, color: 'info' });
   chart.$annotations = ts.data.annotations || [];
   chart.update();
 
   // Functions summary table
   const fnBody = $('table-functions').querySelector('tbody');
-  if (!fnTop.data.items.length) fnBody.innerHTML = emptyRow(5, 'No function invocations in this window.');
+  if (!fnTop.data.items.length) fnBody.innerHTML = emptyState(5, {
+    icon: 'ƒ',
+    message: 'Serverless functions you deploy show up here with call counts and latency.',
+    tryit: 'gipity fn call <function-name>',
+  });
   else fnBody.innerHTML = fnTop.data.items.map((f) => `
     <tr>
       <td class="mono">${escapeHtml(f.key)}</td>

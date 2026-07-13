@@ -5,7 +5,7 @@
  * log_services where service='realtime'.
  */
 import { fmtNum, fmtExact, fmtMs, fmtTime, escapeHtml, emptyRow, padSeries, truncate } from '../format.js';
-import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
+import { groupFor, lineChart, barChart } from '../chart-helpers.js';
 
 let ccuChart = null;
 let sessionsChart = null;
@@ -45,18 +45,8 @@ export async function renderRealtimePanel(api, { range, projectId }) {
 
   if (ccuChart) ccuChart.destroy();
   if (sessionsChart) sessionsChart.destroy();
-  // eslint-disable-next-line no-undef
-  ccuChart = new Chart($('chart-realtime-ccu'), {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'CCU-min', data: ccuMinSeries, borderColor: chartColor('primary'), backgroundColor: chartFill('primary'), fill: true, tension: 0.3, pointRadius: 0 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
-  // eslint-disable-next-line no-undef
-  sessionsChart = new Chart($('chart-realtime-sessions'), {
-    type: 'bar',
-    data: { labels, datasets: [{ label: 'Sessions', data: values, backgroundColor: chartColor('info') }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  ccuChart = lineChart($('chart-realtime-ccu'), { label: 'CCU-min', labels, values: ccuMinSeries, color: 'primary' });
+  sessionsChart = barChart($('chart-realtime-sessions'), { label: 'Sessions', labels, values, color: 'info' });
 
   // Top apps by CCU-min (from log_services aggregation)
   const appsBody = $('table-rt-apps').querySelector('tbody');

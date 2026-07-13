@@ -6,8 +6,8 @@
  */
 import { renderFunctionsTab } from './functions.js';
 import { fmtNum, fmtExact, fmtCredits, fmtMs, fmtTime, escapeHtml, statusPill, emptyRow, padSeries } from '../format.js';
-import { groupFor, chartColor, chartFill } from '../chart-helpers.js';
-import { requestRender, subTabs } from '../ui.js';
+import { groupFor, lineChart } from '../chart-helpers.js';
+import { requestRender, subTabs, hashPath } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
@@ -69,12 +69,7 @@ async function renderSandboxSubtab(api, { range, projectId }) {
   const group = groupFor(range);
   const padded = padSeries((daily.data.series || []).map(r => ({ bucket: r.bucket, value: r.n })), range, group);
   if (sandboxChart) sandboxChart.destroy();
-  // eslint-disable-next-line no-undef
-  sandboxChart = new Chart($('chart-sandbox'), {
-    type: 'line',
-    data: { labels: padded.labels, datasets: [{ label: 'Executions', data: padded.values, borderColor: chartColor('info'), backgroundColor: chartFill('info'), fill: true, tension: 0.3, pointRadius: 0 }] },
-    options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } } } },
-  });
+  sandboxChart = lineChart($('chart-sandbox'), { label: 'Executions', labels: padded.labels, values: padded.values, color: 'info' });
 
   const recentBody = $('table-sandbox-recent').querySelector('tbody');
   if (!recent.data.items.length) recentBody.innerHTML = emptyRow(3, 'No sandbox executions in this window.');
@@ -133,9 +128,10 @@ export async function renderComputeTab(api, filters) {
         requestRender();
       });
     });
-    currentSub = tabs.fromHash();
-    showSubTab(currentSub);
   }
+  // Re-read the sub-tab from the hash on every render (not just first bind)
+  // so cross-tab links (e.g. Overview → compute/jobs) land on the right sub view.
+  if (hashPath().split('/')[0] === 'compute') showSubTab(tabs.fromHash());
   switch (currentSub) {
     case 'functions':
       return renderFunctionsTab(api, filters);
