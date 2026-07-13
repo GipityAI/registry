@@ -5,7 +5,7 @@ version: 1
 # Functions (functions/) → serverless HTTP endpoints. No frontend, no database.
 #
 # Call an endpoint with:
-#   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
+#   curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/<function_name> \
 #     -H 'Content-Type: application/json' -d '{}'
 #
 # Response shape: raw HTTP wraps the result as {"data": ...}. Everything else -

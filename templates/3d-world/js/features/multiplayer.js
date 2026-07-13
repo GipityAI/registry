@@ -17,7 +17,7 @@
 export const DEFAULTS = {
   room: 'game-lobby',
   maxClients: 10,
-  apiBase: 'https://a.gipity.ai',
+  apiBase: '{{API_BASE}}',
   wsUrl: 'wss://rt.gipity.ai',
   /** Optional - override timing/precision (see packages/realtime/lib/settings.js). */
   settings: null,

@@ -29,7 +29,7 @@ export function initConfig() {
 
     // Fallback: try localStorage (set during dev)
     if (!config.API_BASE) {
-        config.API_BASE = localStorage.getItem('gipitsm_api_base') || 'https://a.gipity.ai';
+        config.API_BASE = localStorage.getItem('gipitsm_api_base') || '{{API_BASE}}';
     }
     if (!config.APP_GUID) {
         config.APP_GUID = localStorage.getItem('gipitsm_app_guid') || '';

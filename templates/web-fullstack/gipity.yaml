@@ -7,7 +7,7 @@ version: 1
 # Functions (functions/)   → serverless endpoints
 #
 # Call an endpoint with:
-#   curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<function_name> \
+#   curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/<function_name> \
 #     -H 'Content-Type: application/json' -d '{}'
 #
 # Response shape: raw HTTP wraps the result as {"data": ...}. Everything else -
@@ -46,7 +46,7 @@ deploy:
           auth: public
 
     # Records API - expose a DB table as auto CRUD endpoints
-    #   (GET/POST/PUT/DELETE https://a.gipity.ai/api/{{PROJECT_GUID}}/records/<table>).
+    #   (GET/POST/PUT/DELETE {{API_BASE}}/api/{{PROJECT_GUID}}/records/<table>).
     # This is how a browser writes to the DB directly, and how record.after_insert
     # workflow triggers fire. Must come AFTER the database phase (the table has to
     # exist first). auth_level: public lets anonymous, signed-out visitors write -

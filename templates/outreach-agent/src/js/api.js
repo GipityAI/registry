@@ -1,13 +1,14 @@
 // Two backends, two clients:
 //   1) app functions  - window.Gipity.fn(name, body): this app's own data plane.
-//   2) the platform bridge - /account/agents/:guid/{rules,learn} on a.gipity.ai,
+//   2) the platform bridge - /account/agents/:guid/{rules,learn} on the platform
+//      API (stamped at install time),
 //      authed by the SAME Sign-in-with-Gipity session cookie the SDK lands. We call
 //      it directly with credentials:'include' so the dashboard can show the agent's
 //      growing playbook and teach it from your comments.
 
 const fn = (name, body) => window.Gipity.fn(name, body);
 
-const PLATFORM = 'https://a.gipity.ai';
+const PLATFORM = '{{API_BASE}}';
 async function bridge(method, path, body) {
     const res = await fetch(`${PLATFORM}${path}`, {
         method,

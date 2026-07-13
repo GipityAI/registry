@@ -41,7 +41,7 @@ gipity.yaml      Deploy manifest - controls all three phases
 ## Calling the API
 
 ```bash
-curl -s -X POST https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/example \
+curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/example \
   -H 'Content-Type: application/json' -d '{}'
 ```
 

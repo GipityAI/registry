@@ -134,7 +134,7 @@ function downloadCsv(signal) {
   if (signal === 'audit') params.set('type', currentAuditType);
   for (const [k, v] of Object.entries(entry.extra || {})) params.set(k, v);
   params.set('format', 'csv');
-  window.location.href = `https://a.gipity.ai${entry.path}?${params.toString()}`;
+  window.location.href = `{{API_BASE}}${entry.path}?${params.toString()}`;
 }
 
 const TAB_RENDERERS = {

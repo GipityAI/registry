@@ -130,7 +130,7 @@ function connectPlatformEvents() {
   if (!meta || !meta.content) return; // no app GUID = not deployed, skip
 
   const appGuid = meta.content;
-  const apiBase = 'https://a.gipity.ai';
+  const apiBase = '{{API_BASE}}';
 
   try {
     const es = new EventSource(`${apiBase}/api/${appGuid}/events`);

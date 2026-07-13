@@ -10,7 +10,8 @@
  *   bot.on('complete', () => stopThinking());
  *   await bot.send('how do I fly the ship?');
  *
- * Network: calls https://a.gipity.ai/api/token then /services/llm. Resolves
+ * Network: calls the platform API's /api/token then /services/llm (base
+ * resolved from the deploy-stamped data-api-base tag below). Resolves
  * the app GUID from window.__GIPITY_APP_GUID or <meta name="gipity-app">,
  * matching the realtime kit's convention.
  */

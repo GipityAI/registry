@@ -6,7 +6,7 @@
  */
 
 export const APP_GUID = window.GIPITY_APP_GUID || '{{PROJECT_GUID}}';
-const API_BASE = 'https://a.gipity.ai';
+const API_BASE = '{{API_BASE}}';
 
 export async function callFn(name, body, method = 'POST') {
   const url = `${API_BASE}/api/${APP_GUID}/fn/${name}`;

@@ -18,7 +18,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const API_BASE = process.env.GIPITY_API_BASE || 'https://a.gipity.ai';
+const API_BASE = process.env.GIPITY_API_BASE || '{{API_BASE}}';
 const APP_GUID = process.env.GIPITY_APP_GUID;
 const APP_TOKEN = process.env.GIPITY_APP_TOKEN;
 
