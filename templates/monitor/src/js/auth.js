@@ -3,11 +3,11 @@
  *
  * We don't need an app token because we read /account/logs/* which is
  * session-cookie-authenticated. We use the SiwG popup just to land the
- * session cookie on `a.gipity.ai`, then the API client uses
+ * session cookie on the platform API host, then the API client uses
  * credentials: 'include' for subsequent requests.
  */
 const APP_GUID = '{{PROJECT_GUID}}';
-const API_BASE = 'https://a.gipity.ai';
+const API_BASE = '{{API_BASE}}';
 
 /**
  * Open the consent/login popup, wait for the postMessage handshake from

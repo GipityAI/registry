@@ -5,8 +5,10 @@ export const config = {
   title: '{{JS_TITLE}}',
   version: 1,
 
-  // API base - calls go to https://a.gipity.ai/api/{{PROJECT_GUID}}/fn/<name>
-  apiBase: 'https://a.gipity.ai/api/{{PROJECT_GUID}}/fn',
+  // Function endpoints live at `${apiBase}/<name>`. The host is stamped at
+  // install time with the platform instance this app deploys through - it
+  // matches the SDK tag's data-api-base, so don't hardcode a host here.
+  apiBase: '{{API_BASE}}/api/{{PROJECT_GUID}}/fn',
 
   features: {},
 };

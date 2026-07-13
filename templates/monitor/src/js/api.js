@@ -2,7 +2,7 @@
  * Thin client for /account/logs/*. Uses session cookie (Sign in with Gipity)
  * to authenticate via `credentials: 'include'`.
  */
-const API_BASE = 'https://a.gipity.ai';
+const API_BASE = '{{API_BASE}}';
 
 async function getJson(path) {
   const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });

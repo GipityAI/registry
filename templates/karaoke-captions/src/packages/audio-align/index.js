@@ -13,11 +13,16 @@
 const DEFAULT_SUBMIT_FN = 'audio-align-submit';
 const DEFAULT_STATUS_FN = 'audio-align-status';
 
-/** Resolve the API base from the page's deployed location. Apps served from
- *  app.gipity.ai/<acct>/<proj>/ call /api/<projectGuid>/... — the kit takes
- *  the projectGuid as a config arg rather than parsing the URL itself. */
+/** Resolve the API base: explicit opts.apiBase wins, then the deploy-stamped
+ *  SDK tag (data-api-base) — a page deployed by a local dev server must call
+ *  THAT server, not prod, where the app doesn't exist. Falls back to prod for
+ *  pages older than the stamp. Matches the realtime kit's resolution. */
 function apiBase(opts) {
   if (opts && opts.apiBase) return opts.apiBase.replace(/\/+$/, '');
+  if (typeof document !== 'undefined') {
+    const base = document.querySelector('script[data-api-base]')?.getAttribute('data-api-base');
+    if (base) return base.replace(/\/+$/, '');
+  }
   return 'https://a.gipity.ai';
 }
 
