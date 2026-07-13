@@ -24,6 +24,8 @@ Gipity apps keep copy right in the page by default — no i18n machinery, nothin
 
 Then you do the one-time migration: move your user-facing strings into `strings.js` as `key: 'text'` and swap hard-coded copy for `t('key')`. From then on every call site is translation-aware.
 
+> The files this migration touches — `src/js/strings.js`, the kit's `translations.js`, and any page you re-route through `t()` — already exist on disk after `add`. Read each one with the Read tool before your first Write/Edit to it (a `cat` in Bash doesn't count), or the write fails with "File has not been read yet".
+
 > Adding i18n means routing copy through `t('key')`. If the app already has hard-coded strings, that copy moves into `strings.js` as part of the install — a quick, mechanical pass. Most single-language apps never need this kit at all.
 
 ## Use it
