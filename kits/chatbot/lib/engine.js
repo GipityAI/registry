@@ -150,6 +150,14 @@ export function createChatbot(rawConfig) {
       max_tokens: config.model.maxTokens,
     };
 
+    // route 'default' means "whatever the project's default_model is". The LLM
+    // service has no 'default' alias, so send no model field at all and let it
+    // resolve; anything else (a tier alias like 'medium' or a concrete id) goes
+    // through as-is.
+    if (config.model.route !== 'default') {
+      body.model = config.model.route;
+    }
+
     let assistantText = '';
     emit('start');
 

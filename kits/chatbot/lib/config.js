@@ -257,5 +257,8 @@ function validateModel(m) {
   const out = { route: 'default', temperature: 0.7, maxTokens: 1024 };
   if (m === undefined) return out;
   if (!isObject(m)) throw new ChatbotConfigError('config.model must be an object');
+  if (m.route !== undefined && (typeof m.route !== 'string' || !m.route.trim())) {
+    throw new ChatbotConfigError('model.route must be a non-empty string (a tier alias like "medium", a concrete model id, or "default")');
+  }
   return { ...out, ...m };
 }
