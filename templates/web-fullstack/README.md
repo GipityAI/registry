@@ -45,4 +45,9 @@ curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/example \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
+`auth: public` functions accept calls from anywhere on the internet, so this URL
+is what you give to external callers (webhooks, devices, third-party services).
+Exception: a localhost/docker host means a local dev platform instance - that
+URL only works from the dev environment; don't hand it out externally.
+
 **Auth levels:** `public` (no auth), `user` (login required), `member` (project member required).
