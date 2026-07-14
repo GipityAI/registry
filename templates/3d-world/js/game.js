@@ -1,6 +1,6 @@
 // Game logic - orchestrates init and update loop
 // World scale: 1 voxel = 1 world unit. Standard block = 3x3x3. Player = 5u tall.
-import { setConfig, onInit, onUpdate, physics, player, primitives, ui, features } from './core.js';
+import { setConfig, onInit, onUpdate, physics, player, ui, features } from './core.js';
 import { config } from './config.js';
 import { settings } from './settings.js';
 import { buildDemoScene } from './scene.js';
@@ -15,8 +15,6 @@ onInit(async () => {
     aim: settings.aim,
     crosshair: settings.controls.crosshair,
   });
-
-  primitives.workspace.snapEnabled = false;
 
   buildDemoScene();
 

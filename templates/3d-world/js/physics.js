@@ -12,8 +12,12 @@ let eventQueue = null;
 const triggers = new Map(); // collider handle → { onEnter, onExit }
 const activeTriggers = new Set(); // currently-overlapping pairs: "handleA-handleB"
 
+// World gravity. Single source of truth - workspace.gravity (primitives.js)
+// proxies to getGravity/setGravity, so setting either one takes effect live.
+let pendingGravity = { x: 0, y: -40, z: 0 };
+
 /** Initialize physics. Must be called (and awaited) before using other functions. */
-async function initPhysics(gravity = { x: 0, y: -40, z: 0 }) {
+async function initPhysics(gravity = pendingGravity) {
   // rapier3d-compat requires init() to load WASM before use
   if (typeof RAPIER.init === 'function') {
     // Suppress Rapier's internal deprecation warning during WASM init (not actionable)
@@ -29,6 +33,19 @@ async function initPhysics(gravity = { x: 0, y: -40, z: 0 }) {
   world = new rapier.World(gravity);
   eventQueue = new rapier.EventQueue({ autoFlush: true });
   return world;
+}
+
+/** Current world gravity ({x, y, z}). Pre-init, the value initPhysics will use. */
+function getGravity() {
+  return world ? world.gravity : pendingGravity;
+}
+
+/** Set world gravity at runtime. Wakes all bodies so sleeping stacks respond. */
+function setGravity(gravity) {
+  pendingGravity = { x: gravity.x, y: gravity.y, z: gravity.z };
+  if (!world) return;
+  world.gravity = pendingGravity;
+  world.bodies.forEach((body) => body.wakeUp());
 }
 
 /** Create a static box collider (floors, walls, platforms) */
@@ -303,6 +320,8 @@ function queryNearby(position, radius) {
 
 export {
   initPhysics,
+  getGravity,
+  setGravity,
   world,
   addStaticBox,
   addDynamicBox,
