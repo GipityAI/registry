@@ -37,3 +37,27 @@ const config = {
 // rather than booting a second one. That means you can drive and assert on real
 // game state headlessly without attaching a debug handle to `window`.
 export const game = new Phaser.Game(config);
+
+// Deterministic time-stepping for headless verification. In `gipity page eval`
+// the browser can paint at ~15 fps, so waiting wall-clock time (setTimeout)
+// advances the game far less than it looks and assertions report false
+// negatives. advance() pauses the browser-driven loop and ticks Phaser's own
+// TimeStep by hand - N simulated seconds run in milliseconds of real time,
+// physics and timers included, at a fixed dt on any machine:
+//
+//   const { game, advance } = await import('./js/config.js');
+//   advance(3);   // exactly 3s of game time, deterministic
+export function advance(seconds, { fps = 60 } = {}) {
+  const loop = game.loop;
+  const dt = 1000 / fps;
+  const steps = Math.max(1, Math.round(seconds * fps));
+  const wasRunning = loop.running;
+  if (wasRunning) loop.stop(); // stop RAF so our ticks are the only ones
+  let now = loop.now;
+  for (let i = 0; i < steps; i++) {
+    now += dt;
+    loop.step(now);
+  }
+  if (wasRunning) loop.start(game.step.bind(game)); // hand the clock back to RAF
+  return steps;
+}
