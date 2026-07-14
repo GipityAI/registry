@@ -1,8 +1,11 @@
 {
   "name": "@gipity/realtime",
-  "version": "3.3.0",
+  "version": "3.4.0",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Engine-agnostic realtime kit for Gipity apps: channels (messages/presence/entities/store), party (host/invite-link/join-by-code/browse/quick-match), host election, server-persisted entity sync, observability.",
   "gipity": {
     "kit": true,
