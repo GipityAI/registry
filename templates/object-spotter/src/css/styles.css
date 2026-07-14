@@ -13,6 +13,10 @@
 
 * { box-sizing: border-box; }
 
+/* An author `display` beats the UA's [hidden] rule, so every element below that
+   sets one has to opt back out of painting when it carries the attribute. */
+[hidden] { display: none !important; }
+
 html, body {
   margin: 0;
   height: 100%;
@@ -180,8 +184,6 @@ html, body {
   text-align: center;
   background: rgba(12, 12, 16, 0.92);
 }
-
-.overlay[hidden] { display: none; }
 
 .overlay h1 {
   margin: 0;

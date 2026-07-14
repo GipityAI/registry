@@ -34,8 +34,7 @@ const PART_DEFAULTS = {
   size: { x: 1, y: 1, z: 1 },
   anchored: false,
   canCollide: true,
-  massless: false,
-  mass: 1.0,
+  mass: null, // null = auto (size-derived at density 1). A number = TOTAL mass in kg.
   friction: 0.5,
   elasticity: 0.3,
   linearDamping: 0.1,
@@ -285,8 +284,8 @@ function setProperty(partOrId, key, value) {
       break;
 
     case 'mass':
-      if (part._body && !part.anchored) {
-        part._body.setAdditionalMass(value);
+      if (part._collider && !part.anchored) {
+        part._collider.setMass(value); // TOTAL mass, matching physics.addBody
       }
       break;
 

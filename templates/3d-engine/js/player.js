@@ -19,7 +19,7 @@
  *   - Camera modes: orbit (default), firstPerson, topDown, fixed
  *
  * Exports: initPlayer, updatePlayer, getPosition, setPosition,
- *          getAimDirection, getAimOrigin, playerMesh, inputState, velocity
+ *          getAimDirection, getAimOrigin, aimRaycast, playerMesh, inputState, velocity
  */
 import { scene, camera, renderer, THREE } from './world.js';
 import * as physics from './physics.js';
@@ -605,9 +605,30 @@ function getAimDirection() {
   return { x: dir.x, y: dir.y, z: dir.z };
 }
 
-/** Get camera position (ray origin for shooting) */
+/** Get camera position (ray origin for shooting). NOTE: in third-person the
+ *  camera sits well BEHIND the player (up to ~25 world units zoomed out), so
+ *  never measure a player-reach against a ray cast from here - the reach gets
+ *  eaten by the camera offset and the ray "runs out" before the ground. For
+ *  reach-limited interactions use aimRaycast() instead. */
 function getAimOrigin() {
   return { x: camera.position.x, y: camera.position.y, z: camera.position.z };
+}
+
+/** Cast the crosshair aim ray into the physics world with `reach` measured
+ *  from the PLAYER, not the camera (see getAimOrigin). Excludes the player's
+ *  own body. Returns castRay's { point, distance, collider } or null when
+ *  nothing the player could reach is under the crosshair. Use for "place /
+ *  pick the block the player is looking at" interactions. */
+function aimRaycast(reach = 50) {
+  const origin = getAimOrigin();
+  const playerPos = getPosition();
+  const camToPlayer = Math.hypot(
+    playerPos.x - origin.x, playerPos.y - origin.y, playerPos.z - origin.z);
+  const hit = physics.castRay(origin, getAimDirection(), reach + camToPlayer, playerBody);
+  if (!hit) return null;
+  const distFromPlayer = Math.hypot(
+    hit.point.x - playerPos.x, hit.point.y - playerPos.y, hit.point.z - playerPos.z);
+  return distFromPlayer <= reach ? hit : null;
 }
 
 // --- Input: Keyboard ---
@@ -787,6 +808,7 @@ export {
   setPosition,
   getAimDirection,
   getAimOrigin,
+  aimRaycast,
   buildPlayerModel,
   animatePlayerModel,
   playerMesh,

@@ -143,7 +143,8 @@ function step(dt) {
  * @param {Object} options
  * @param {'dynamic'|'fixed'|'kinematic'} options.type - Body type (default: 'dynamic')
  * @param {Object} options.rotation - Quaternion {x, y, z, w} (default: identity)
- * @param {number} options.mass - Additional mass (default: 1)
+ * @param {number} options.mass - TOTAL body mass in kg (default: size-derived at density 1,
+ *   e.g. a 2x2x2 box weighs 8). Pass a value to make the body weigh exactly that.
  * @param {number} options.friction - Collider friction (default: 0.5)
  * @param {number} options.restitution - Collider restitution/elasticity (default: 0.3)
  * @param {number} options.linearDamping - Linear velocity damping (default: 0.1)
@@ -162,7 +163,6 @@ function addBody(position, halfExtents, options = {}) {
     bodyDesc = rapier.RigidBodyDesc.kinematicPositionBased();
   } else {
     bodyDesc = rapier.RigidBodyDesc.dynamic();
-    if (options.mass !== undefined) bodyDesc.setAdditionalMass(options.mass);
     bodyDesc.setCcdEnabled(true); // Prevent tunneling through other bodies
   }
 
@@ -188,6 +188,13 @@ function addBody(position, halfExtents, options = {}) {
   if (options.friction !== undefined) colliderDesc.setFriction(options.friction);
   if (options.restitution !== undefined) colliderDesc.setRestitution(options.restitution);
   if (options.isSensor) colliderDesc.setSensor(true);
+  // `mass` is the body's TOTAL mass. Setting it on the collider (not
+  // setAdditionalMass on the body) replaces the density-derived mass and keeps
+  // a shape-correct inertia tensor. Without this, `mass: 0.5` on a 2x2x2 box
+  // silently produced an 8.5 kg body (8 from density 1 + 0.5 additional).
+  if (type === 'dynamic' && options.mass !== undefined && options.mass !== null) {
+    colliderDesc.setMass(options.mass);
+  }
 
   const collider = world.createCollider(colliderDesc, body);
   return { body, collider };
