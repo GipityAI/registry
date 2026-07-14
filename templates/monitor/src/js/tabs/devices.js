@@ -31,7 +31,7 @@ export async function renderDevicesTab(api, { range, appGuid }) {
 
   const dBody = $('table-rmt-devices').querySelector('tbody');
   if (!devices.length) {
-    dBody.innerHTML = emptyRow(5, 'No paired devices yet — run <code>gipity claude</code> on your laptop to pair.');
+    dBody.innerHTML = emptyRow(5, 'No paired devices yet — run <code>gipity connect</code> on your laptop to pair.');
   } else {
     dBody.innerHTML = devices.map((d) => {
       const state = d.revoked_at

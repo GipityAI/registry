@@ -87,7 +87,7 @@ The full-stack platform tuned for AI agents.
 
 Describe what you want. Your agent writes the code, builds the app, sets up the database, deploys it to a live URL, and keeps it running. From idea to production in one conversation. Any model, any infra, always your code.
 
-**Get started:** `npm install -g gipity && gipity claude`
+**Get started:** `npm install -g gipity && gipity build` - launches your coding agent (Claude Code, Codex, or Grok) with the whole Gipity stack wired up.
 
 ## License
 
