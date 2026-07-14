@@ -34,6 +34,11 @@ curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/example \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
+`auth: public` functions accept calls from anywhere on the internet, so this URL
+is what you give to external callers (webhooks, devices, third-party services).
+Exception: a localhost/docker host means a local dev platform instance - that
+URL only works from the dev environment; don't hand it out externally.
+
 **Response shape:** raw HTTP wraps the result as `{"data": ...}`. Everything else - `ctx.fn.call` in tests, `gipity fn call`, and the client `Gipity.fn` - returns it **unwrapped**: use `result.field`, never `result.data.field`.
 
 **URL pattern:** `POST /api/{PROJECT_GUID}/fn/{name}`
