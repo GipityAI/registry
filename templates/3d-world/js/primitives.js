@@ -51,8 +51,14 @@ const PART_DEFAULTS = {
 const workspace = {
   parts: new Map(),
   spawnPoints: [],
-  gravity: { x: 0, y: -20, z: 0 },
-  snapEnabled: true,
+  // World gravity, live: assigning it (or mutating .y) changes the physics
+  // world immediately and wakes sleeping bodies. Default { x: 0, y: -40, z: 0 }.
+  get gravity() { return physics.getGravity(); },
+  set gravity(g) { physics.setGravity(g); },
+  // Auto-weld is OPT-IN: when true, aligned dynamic Parts that touch are fused
+  // into one rigid body (Roblox-style snap-together building). Leave false for
+  // free-standing physics - stacks that can topple, piles that scatter.
+  snapEnabled: false,
   snapDistance: 0.15,
   snapAngle: Math.PI / 12, // 15 degrees
 
@@ -68,6 +74,7 @@ const workspace = {
 let snapFrameCounter = 0;
 const SNAP_INTERVAL = 5; // run every N frames (~80ms at 60fps)
 const snappedPairs = new Set(); // "idA-idB" strings to avoid re-snapping
+let snapLogged = false; // one-time console note the first time auto-weld fires
 
 /**
  * Create a Part - the universal 3D primitive.
@@ -432,6 +439,10 @@ function runSnapDetection() {
       // Snap! Create a weld constraint
       snappedPairs.add(pairKey);
       const constraint = constraintsModule.weld(part, otherPart);
+      if (constraint && !snapLogged) {
+        snapLogged = true;
+        console.info('[Snap] Auto-weld fused two touching Parts into one rigid body (workspace.snapEnabled is true). Welded Parts move as a unit and cannot topple apart - set workspace.snapEnabled = false for free-standing stacks.');
+      }
 
       // Fire snap event
       if (constraint) {
