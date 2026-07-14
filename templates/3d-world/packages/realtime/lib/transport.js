@@ -24,6 +24,7 @@
 
 import { applySettings, getSettings } from './settings.js';
 import { reconnectDelay, isRoomGoneError } from './reconnect.js';
+import { classifyJoinError } from './errors.js';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -109,6 +110,11 @@ export function createTransport({ client, observability }) {
       const token = await client.acquireToken();
       const colyseus = await client.colyseusClient();
       const opts = { app: guid, room: roomName, scope, token, maxClients: config.maxClients || 50 };
+      // Rooms provisioned auth_level:'user' verify a Gipity session server-side;
+      // without this pass-through the kit simply could not join them (the server
+      // rejects with "requires Gipity login" and there was no way to comply).
+      if (config.sessionId) opts.sessionId = config.sessionId;
+      if (config.displayName) opts.displayName = config.displayName;
 
       room = await joinWithRetry(() => {
         if (mode === 'create') return colyseus.create('state', opts);
@@ -148,6 +154,11 @@ export function createTransport({ client, observability }) {
       } catch (err) {
         lastErr = err;
         if (isRoomGoneError(err)) throw err;
+        // A rejection that can never succeed on retry (bad/expired auth, an
+        // unprovisioned room name, join-only found nothing) must fail fast -
+        // retrying used to burn the full backoff window (~6s) on every one.
+        const kind = classifyJoinError(err);
+        if (kind === 'auth' || kind === 'unprovisioned' || kind === 'not-found') throw err;
         console.warn(`[realtime] join attempt ${i + 1}/${attempts} failed:`, err?.message);
         if (i < attempts - 1) await sleep(reconnectDelay(i + 1, { baseMs: 450, maxMs: 3000 }));
       }

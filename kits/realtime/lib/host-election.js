@@ -19,10 +19,30 @@ export function createHostElection({ name, transport }) {
   let confirmedHostId = null;
   let callbacks = {};
   let watchdog = null;
+  let heartbeat = null;
 
   const send = (t, d) => transport.send(M(t), d);
   const on = (t, cb) => transport.on(M(t), cb);
   const peerCount = () => transport.getPeers().size + 1;
+
+  // The host re-asserts itself on an interval. This is what makes the
+  // watchdog below trustworthy: host-confirmed carries `sid`, so it refreshes
+  // the transport's lastSeen for the host. Without it, a host that runs no
+  // presence channel is silent between keyframes (which carry no sid) and a
+  // watchdog would re-elect against a perfectly live host — which is why the
+  // watchdog used to be armed only for claim-losers, leaving every fast-path
+  // joiner unguarded against a crashed host (observed: dead host, survivors
+  // waited the server's full 30s seat-hold before recovering).
+  function startHeartbeat() {
+    stopHeartbeat();
+    const period = Math.max(250, Math.floor(getSettings().hostLossMs / 2));
+    heartbeat = setInterval(() => {
+      if (isHost) send('host-confirmed', { sid: transport.getSessionId() });
+    }, period);
+  }
+  function stopHeartbeat() {
+    if (heartbeat) { clearInterval(heartbeat); heartbeat = null; }
+  }
 
   function becomeHost(reason) {
     const myId = transport.getSessionId();
@@ -31,12 +51,14 @@ export function createHostElection({ name, transport }) {
     console.log(`[realtime] ★ HOST - ${reason}`);
     send('host-confirmed', { sid: myId });
     stopWatchdog();
+    startHeartbeat();
     callbacks.onBecomeHost?.();
     callbacks.onHostChange?.(true, 1, peerCount());
   }
 
   function becomeNonHost() {
     isHost = false;
+    stopHeartbeat();
     callbacks.onBecomeNonHost?.();
     callbacks.onHostChange?.(false, Math.min(peerCount(), 2), peerCount());
     startWatchdog();
@@ -53,7 +75,19 @@ export function createHostElection({ name, transport }) {
       send('host-confirmed', { sid: myId });
       callbacks.onBecomeHost?.();
     } else if (!isHost) {
-      const result = evaluateHost(myId, [...transport.getPeers().keys()]);
+      // Rank only against peers that are provably alive. A crashed peer stays
+      // in the server's player map for its whole reconnection hold (30s) —
+      // ranking against it meant a dead low-sid host kept "winning" and no
+      // survivor ever claimed. The cutoff must be AT MOST the watchdog's
+      // trigger age (hostLossMs): the watchdog only re-elects once the host
+      // has been silent that long, so a looser cutoff here re-admits the very
+      // peer we just declared dead. If a filtered-out peer is actually alive,
+      // the collision handler resolves the double-host deterministically.
+      const s = getSettings();
+      const fresh = [...transport.getPeers().entries()]
+        .filter(([, p]) => Date.now() - (p.lastSeen || 0) <= s.hostLossMs)
+        .map(([sid]) => sid);
+      const result = evaluateHost(myId, fresh);
       isHost = result.isHost;
       if (isHost) {
         confirmedHostId = myId;
@@ -73,7 +107,14 @@ export function createHostElection({ name, transport }) {
     stopWatchdog();
     const { hostLossMs } = getSettings();
     watchdog = setInterval(() => {
-      if (isHost || !confirmedHostId) return;
+      if (isHost) return;
+      if (!confirmedHostId) {
+        // Headless (the last election failed to seat anyone, e.g. every
+        // candidate looked stale mid-transition) - keep trying, don't go
+        // inert; peers only get staler, so a survivor eventually claims.
+        electHost();
+        return;
+      }
       if (confirmedHostId === transport.getSessionId()) return;
       const host = transport.getPeers().get(confirmedHostId);
       if (!host) { confirmedHostId = null; electHost(); return; }
@@ -105,12 +146,16 @@ export function createHostElection({ name, transport }) {
         // Resolve it deterministically: the lower session id is the host.
         if (myId < hostSid) { send('host-confirmed', { sid: myId }); return; }
         isHost = false;
+        stopHeartbeat();
         callbacks.onResign?.();
       } else if (confirmedHostId && hostSid > confirmedHostId) {
         // Already tracking a lower-id (higher-priority) host - ignore this one.
         return;
       }
       confirmedHostId = hostSid;
+      // Guard the remote host from here on - EVERY non-host tracks it, not
+      // just claim-losers (see startHeartbeat for why this is now safe).
+      startWatchdog();
       callbacks.onHostConfirmed?.(hostSid);
       updatePeerCount();
     });
@@ -132,6 +177,7 @@ export function createHostElection({ name, transport }) {
     setTimeout(() => {
       if (confirmedHostId && confirmedHostId !== myId) {
         callbacks.onHostConfirmed?.(confirmedHostId);
+        startWatchdog();
         resolveReady({ isHost: false });
         return;
       }
@@ -178,7 +224,7 @@ export function createHostElection({ name, transport }) {
         }
       }, 50);
     });
-    transport.onDisconnect(() => stopWatchdog());
+    transport.onDisconnect(() => { stopWatchdog(); stopHeartbeat(); });
 
     return ready;
   }
@@ -187,6 +233,6 @@ export function createHostElection({ name, transport }) {
     init,
     isHost: () => isHost,
     getConfirmedHostId: () => confirmedHostId,
-    reset() { isHost = false; confirmedHostId = null; stopWatchdog(); },
+    reset() { isHost = false; confirmedHostId = null; stopWatchdog(); stopHeartbeat(); },
   };
 }

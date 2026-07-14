@@ -45,6 +45,11 @@ export function classifyJoinError(err) {
   if (!err) return 'offline';
   const msg = String(err.message || '');
   if (/not found for this project/i.test(msg)) return 'unprovisioned';
+  // Server 4216 identity/config rejections - permanent, never retryable:
+  // joining a foreign instance by id, or joining a relay-provisioned room
+  // through the kit (which only speaks 'state').
+  if (/belongs to a different app/i.test(msg)) return 'not-found';
+  if (/type mismatch/i.test(msg)) return 'unprovisioned';
   if (err.code === 4212 || /reservation/i.test(msg)) {
     if (/locked/i.test(msg)) return 'full';
     return 'gone';
@@ -52,7 +57,9 @@ export function classifyJoinError(err) {
   if (err.code === 4211 || /no rooms found/i.test(msg)) return 'not-found';
   if (/disposed|not found|not available/i.test(msg)) return 'gone';
   if (/locked|max ?clients|is full/i.test(msg)) return 'full';
-  if (/token|auth/i.test(msg)) return 'auth';
+  // "requires Gipity login" / "Invalid or expired Gipity session" are the
+  // server's user-room rejections - auth failures, not transient errors.
+  if (/token|auth|session|login/i.test(msg)) return 'auth';
   return 'failed';
 }
 

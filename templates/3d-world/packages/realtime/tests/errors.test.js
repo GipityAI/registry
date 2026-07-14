@@ -40,6 +40,16 @@ test('token problems map to auth', () => {
   assert.equal(classifyJoinError(err('Invalid app token')), 'auth');
 });
 
+test('user-room session rejections map to auth (fail fast, never retried)', () => {
+  assert.equal(classifyJoinError(err('Room requires Gipity login - pass sessionId in join options')), 'auth');
+  assert.equal(classifyJoinError(err('Invalid or expired Gipity session')), 'auth');
+});
+
+test('4216 identity/config rejections are permanent, typed codes', () => {
+  assert.equal(classifyJoinError(err('Room instance belongs to a different app, room, or scope', 4216)), 'not-found');
+  assert.equal(classifyJoinError(err('Room type mismatch - expected state', 4216)), 'unprovisioned');
+});
+
 test('anything else is failed', () => {
   assert.equal(classifyJoinError(err('socket hang up')), 'failed');
 });
