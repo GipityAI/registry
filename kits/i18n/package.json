@@ -3,6 +3,9 @@
   "version": "1.0.1",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Multi-language for any Gipity web app: a language picker, locale persistence, RTL, and plural/translation lookup. On install it scaffolds src/js/strings.js and wires `@gipity/i18n`; move your user-facing copy into strings.js and read it with `t('key')`. Translations live in translations.js.",
   "gipity": {
     "kit": true,

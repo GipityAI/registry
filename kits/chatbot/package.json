@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Drop-in chatbot for Gipity apps: configurable persona, scope guardrails (allowed/refused with refusal examples), static knowledge (20k token budget), streaming LLM responses, suggested-prompt chips. Headless engine + bubble widget; bring your own UI if you want.",
   "gipity": {
     "kit": true,

@@ -3,6 +3,9 @@
   "version": "1.2.3",
   "type": "module",
   "main": "api.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Registry-driven generic data plane: objects/fields declared as data, generic CRUD functions with validation + full-text search, soft delete, ACTOR provenance, and a transactional audit event spine.",
   "gipity": {
     "kit": true,
