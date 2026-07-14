@@ -2,6 +2,11 @@
 -- This template ships no tables so it deploys clean - there's nothing to delete.
 -- Uncomment the example below (or replace it) to define your schema, then redeploy.
 --
+-- Reference/catalog rows: don't INSERT them in a migration - the `gipity test`
+-- DB reset truncates tables, so those rows vanish under tests. Put them in a
+-- seed dir (declare `seed: <dir>` on the sql phase in gipity.yaml; seeds re-run
+-- on every reset) or list their table under `test: preserve:` in gipity.yaml.
+--
 -- CREATE TABLE IF NOT EXISTS items (
 --     short_guid  VARCHAR(20) PRIMARY KEY,   -- external id; make one with guid('item') in a function
 --     name        VARCHAR(200) NOT NULL,
