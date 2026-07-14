@@ -27,11 +27,25 @@ function resolveApiBase() {
   return 'https://a.gipity.ai';
 }
 
+// The realtime WebSocket endpoint, stamped the same way (data-ws-url on the SDK
+// tag). Rooms are provisioned in the deploying server's DB, so a page deployed
+// by a local/dev platform instance must connect to THAT instance's Colyseus -
+// against prod the app's rooms don't exist and every join fails auth. Fall back
+// to prod for pages older than the stamp.
+function resolveWsUrl() {
+  if (typeof document !== 'undefined') {
+    const tag = document.querySelector('script[data-ws-url]');
+    const url = tag?.getAttribute('data-ws-url');
+    if (url) return url.replace(/\/+$/, '');
+  }
+  return 'wss://rt.gipity.ai';
+}
+
 export function createClient() {
   let colyseus = null;
   let appGuid = null;
   let apiBase = resolveApiBase();
-  let wsUrl = 'wss://rt.gipity.ai';
+  let wsUrl = resolveWsUrl();
   let appToken = null;
   let tokenFetchedAt = 0;
   let tokenPromise = null;
