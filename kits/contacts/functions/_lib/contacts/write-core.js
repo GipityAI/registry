@@ -2,6 +2,12 @@
 // function (contact-import, contact-write, contact-harvest) delegates here, and
 // every mutation emits an event inside the same transaction as the data write so
 // the spine can never drift. Pure module: db and guid are injected by the entry.
+//
+// Every writer takes `ensureActor(tx)` instead of a pre-built actor: the entry
+// resolves the caller's membership READ-ONLY, and the membership row (first
+// caller = owner) is claimed inside each write's own transaction, AFTER that
+// write's validation/lock throw-points - so a rejected write can never leave a
+// committed contact_members row behind (registry#25).
 import { mapRow } from './mappers.js';
 import { resolveSource, confirmMerge, rejectMerge, undoMerge, refreshContact } from './resolve.js';
 import { emitEvent } from './events.js';
@@ -11,7 +17,9 @@ const SERVER_CAP = 500;
 // Drive a batch of raw rows through the resolution engine. Each row commits in
 // its OWN transaction so one bad row can't roll back the good ones (the CSV
 // import pattern), and the caller gets per-row results + aggregate counts.
-export async function importRows({ db, guid, actor, source, rows }) {
+// ensureActor runs per row transaction (idempotent claim), so a batch whose
+// every row fails claims nothing.
+export async function importRows({ db, guid, ensureActor, source, rows }) {
   if (!Array.isArray(rows) || !rows.length) {
     return { error: 'Provide a non-empty rows array.' };
   }
@@ -27,7 +35,10 @@ export async function importRows({ db, guid, actor, source, rows }) {
         results.push({ ok: false, error: 'No usable fields in row.' });
         continue;
       }
-      const res = await db.tx((tx) => resolveSource(tx, guid, { source, raw, ...mapped, actor }));
+      const res = await db.tx(async (tx) => {
+        const actor = await ensureActor(tx);
+        return resolveSource(tx, guid, { source, raw, ...mapped, actor });
+      });
       results.push({
         ok: true, contact_id: res.contact_id, status: res.status,
         ...(res.merge_candidate_id ? { merge_candidate_id: res.merge_candidate_id } : {}),
@@ -49,7 +60,7 @@ export async function importRows({ db, guid, actor, source, rows }) {
 }
 
 // Edit a contact's own columns (display_name, score). Other facts are attributes.
-export async function updateContact({ db, guid, actor, id, values }) {
+export async function updateContact({ db, guid, ensureActor, id, values }) {
   const allowed = {};
   if (typeof values?.display_name === 'string') allowed.display_name = values.display_name;
   if (values?.score === null || Number.isFinite(values?.score)) allowed.score = values.score;
@@ -57,6 +68,7 @@ export async function updateContact({ db, guid, actor, id, values }) {
 
   const record = await db.tx(async (tx) => {
     const before = await lockContact(tx, id);
+    const actor = await ensureActor(tx);
     const sets = Object.keys(allowed).map((k, i) => `${k} = $${i + 1}`);
     const params = Object.values(allowed);
     params.push(actor || {}, id);
@@ -73,11 +85,12 @@ export async function updateContact({ db, guid, actor, id, values }) {
 }
 
 // Flip which value is the current ("primary") one for its (contact, kind).
-export async function setPrimary({ db, guid, actor, attributeId }) {
+export async function setPrimary({ db, guid, ensureActor, attributeId }) {
   return db.tx(async (tx) => {
     const { rows } = await tx.query('SELECT * FROM contact_attributes WHERE id = $1', [attributeId]);
     if (!rows.length) throw new Error(`No attribute '${attributeId}'.`);
     const attr = rows[0];
+    const actor = await ensureActor(tx);
     await tx.query('UPDATE contact_attributes SET is_primary = FALSE WHERE contact_id = $1 AND kind = $2 AND is_primary',
       [attr.contact_id, attr.kind]);
     await tx.query('UPDATE contact_attributes SET is_primary = TRUE WHERE id = $1', [attributeId]);
@@ -94,10 +107,11 @@ export async function setPrimary({ db, guid, actor, attributeId }) {
 
 // Attach an enrichment attribute (seniority, company_size, recency, ...) through
 // the same spine, attributed to the caller's source (enrichment|app|agent).
-export async function enrich({ db, guid, actor, contactId, kind, value, value_json, label, source = 'enrichment' }) {
+export async function enrich({ db, guid, ensureActor, contactId, kind, value, value_json, label, source = 'enrichment' }) {
   if (!kind || (value == null && value_json == null)) return { error: "enrich needs 'kind' and a value." };
   return db.tx(async (tx) => {
     await lockContact(tx, contactId);
+    const actor = await ensureActor(tx);
     const { rows: ins } = await tx.query(
       `INSERT INTO contact_attributes (id, contact_id, kind, value, value_json, label, source, is_primary, created_by)
        VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE, $8)
@@ -121,10 +135,11 @@ export async function enrich({ db, guid, actor, contactId, kind, value, value_js
 }
 
 // The kit STORES the score; computing it is the consuming app's policy.
-export async function setScore({ db, guid, actor, contactId, score }) {
+export async function setScore({ db, guid, ensureActor, contactId, score }) {
   if (!Number.isFinite(score)) return { error: "'score' must be a number." };
   return db.tx(async (tx) => {
     const before = await lockContact(tx, contactId);
+    const actor = await ensureActor(tx);
     await tx.query('UPDATE contacts SET score = $1, updated_by = $2, updated_at = NOW() WHERE id = $3', [score, actor || {}, contactId]);
     await emitEvent(tx, guid, {
       objectName: 'contact', recordId: contactId, action: 'score.set', actor,
@@ -135,9 +150,10 @@ export async function setScore({ db, guid, actor, contactId, score }) {
   });
 }
 
-export async function deleteContact({ db, guid, actor, id }) {
+export async function deleteContact({ db, guid, ensureActor, id }) {
   return db.tx(async (tx) => {
     await lockContact(tx, id);
+    const actor = await ensureActor(tx);
     await tx.query('UPDATE contacts SET deleted_at = NOW(), updated_by = $1 WHERE id = $2', [actor || {}, id]);
     await emitEvent(tx, guid, { objectName: 'contact', recordId: id, action: 'delete', actor, summary: 'Contact deleted' });
     return { ok: true };
@@ -146,10 +162,11 @@ export async function deleteContact({ db, guid, actor, id }) {
 
 // ---- Tags ---------------------------------------------------------------------
 
-export async function createTag({ db, guid, actor, label, color }) {
+export async function createTag({ db, guid, ensureActor, label, color }) {
   const clean = String(label || '').trim();
   if (!clean) return { error: 'Tag label is required.' };
   return db.tx(async (tx) => {
+    const actor = await ensureActor(tx);
     const { rows: [tag] } = await tx.query(
       `INSERT INTO tags (id, label, color, created_by) VALUES ($1, $2, $3, $4)
        ON CONFLICT (label) DO UPDATE SET color = COALESCE(EXCLUDED.color, tags.color) RETURNING *`,
@@ -160,16 +177,18 @@ export async function createTag({ db, guid, actor, label, color }) {
   });
 }
 
-export async function deleteTag({ db, guid, actor, tagId }) {
+export async function deleteTag({ db, guid, ensureActor, tagId }) {
   return db.tx(async (tx) => {
+    const actor = await ensureActor(tx);
     await tx.query('DELETE FROM tags WHERE id = $1', [tagId]); // contact_tags cascade
     await emitEvent(tx, guid, { objectName: 'tag', recordId: tagId, action: 'delete', actor, summary: 'Tag deleted' });
     return { ok: true };
   });
 }
 
-export async function applyTag({ db, guid, actor, contactId, tagId, label, source = 'manual' }) {
+export async function applyTag({ db, guid, ensureActor, contactId, tagId, label, source = 'manual' }) {
   return db.tx(async (tx) => {
+    const actor = await ensureActor(tx);
     let id = tagId;
     if (!id && label) {
       const { rows: [tag] } = await tx.query(
@@ -189,8 +208,9 @@ export async function applyTag({ db, guid, actor, contactId, tagId, label, sourc
   });
 }
 
-export async function removeTag({ db, guid, actor, contactId, tagId }) {
+export async function removeTag({ db, guid, ensureActor, contactId, tagId }) {
   return db.tx(async (tx) => {
+    const actor = await ensureActor(tx);
     await tx.query('DELETE FROM contact_tags WHERE contact_id = $1 AND tag_id = $2', [contactId, tagId]);
     await emitEvent(tx, guid, { objectName: 'contact', recordId: contactId, action: 'tag.remove', actor, changes: { tag_id: tagId }, summary: 'Tag removed' });
     return { ok: true };
@@ -199,14 +219,14 @@ export async function removeTag({ db, guid, actor, contactId, tagId }) {
 
 // ---- Merge-review (delegates to the resolution engine, one tx each) -----------
 
-export function mergeConfirm({ db, guid, actor, candidateId }) {
-  return db.tx((tx) => confirmMerge(tx, guid, { candidateId, actor }));
+export function mergeConfirm({ db, guid, ensureActor, candidateId }) {
+  return db.tx(async (tx) => confirmMerge(tx, guid, { candidateId, actor: await ensureActor(tx) }));
 }
-export function mergeReject({ db, guid, actor, candidateId }) {
-  return db.tx((tx) => rejectMerge(tx, guid, { candidateId, actor }));
+export function mergeReject({ db, guid, ensureActor, candidateId }) {
+  return db.tx(async (tx) => rejectMerge(tx, guid, { candidateId, actor: await ensureActor(tx) }));
 }
-export function mergeUndo({ db, guid, actor, candidateId }) {
-  return db.tx((tx) => undoMerge(tx, guid, { candidateId, actor }));
+export function mergeUndo({ db, guid, ensureActor, candidateId }) {
+  return db.tx(async (tx) => undoMerge(tx, guid, { candidateId, actor: await ensureActor(tx) }));
 }
 
 async function lockContact(tx, id) {

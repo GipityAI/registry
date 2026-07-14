@@ -1,7 +1,9 @@
-// contacts kit - signed-in member write door. Resolves identity to an app member,
-// builds the ACTOR, and dispatches to the shared write core. Every branch flows
-// through the single write path so the event spine stays complete.
-import { ensureMember, assertCanWrite, actorFor } from '../_lib/contacts/members.js';
+// contacts kit - signed-in member write door. Resolves identity to an app member
+// (READ-ONLY - the membership row is claimed inside the write's own transaction,
+// so a rejected call never commits one), and dispatches to the shared write
+// core. Every branch flows through the single write path so the event spine
+// stays complete.
+import { resolveMember, makeEnsureActor, assertCanWrite } from '../_lib/contacts/members.js';
 import {
   updateContact, setPrimary, enrich, setScore, deleteContact,
   createTag, deleteTag, applyTag, removeTag,
@@ -12,11 +14,12 @@ export default async function contactWrite(ctx, { db, guid }) {
   const b = ctx.body || {};
   const { action } = b;
   try {
-    const member = await ensureMember(db, guid, ctx.auth);
-    assertCanWrite(member);
+    const resolved = await resolveMember(db, ctx.auth);
+    assertCanWrite(resolved.member);
     // Machine writers may declare provenance; humans in the UI are HUMAN.
-    const actor = actorFor(member, ['AGENT', 'API', 'IMPORT'].includes(b.source) ? b.source : 'HUMAN');
-    const base = { db, guid, actor };
+    const source = ['AGENT', 'API', 'IMPORT'].includes(b.source) ? b.source : 'HUMAN';
+    const ensureActor = makeEnsureActor(resolved, guid, ctx.auth, source);
+    const base = { db, guid, ensureActor };
 
     switch (action) {
       case 'update':       return await updateContact({ ...base, id: b.id, values: b.values });

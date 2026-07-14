@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS kit_api_keys (
     revoked_at    TIMESTAMPTZ
 );
 
--- No keys are seeded. Mint one in your own migration or via gipity db query:
---   INSERT INTO kit_api_keys (id, name, key, role, source)
---   VALUES ('key-myagent', 'My agent', '<long random string>', 'writer', 'AGENT');
+-- No keys are seeded. Mint one with the kit's owner-only management function:
+--   gipity fn call agent-keys '{"action":"create","name":"my-agent","source":"AGENT"}'
+-- (list / revoke via the same function; the secret is returned once, at create.)

@@ -7,7 +7,7 @@
 // app-level workflow with tool_filter:[gmail_search, gmail_read] that calls this
 // function. That step costs LLM tokens per run (the inbox scan) and is therefore
 // MANUAL-trigger only; Gmail's own API is free/quota-limited. See README.
-import { ensureMember, assertCanWrite, actorFor } from '../_lib/contacts/members.js';
+import { resolveMember, makeEnsureActor, assertCanWrite } from '../_lib/contacts/members.js';
 import { importRows } from '../_lib/contacts/write-core.js';
 
 // The harvest agent sometimes wraps its output ({ result: { contacts: [...] } }),
@@ -39,14 +39,14 @@ export default async function contactHarvest(ctx, { db, guid }) {
     const found = findContacts(parsed);
     if (!found.length) return { results: [], created: 0, folded: 0, pending_merge: 0, job_changes: [], found: 0 };
 
-    const member = await ensureMember(db, guid, ctx.auth);
-    assertCanWrite(member);
-    const actor = actorFor(member, 'IMPORT');
+    const resolved = await resolveMember(db, ctx.auth);
+    assertCanWrite(resolved.member);
+    const ensureActor = makeEnsureActor(resolved, guid, ctx.auth, 'IMPORT');
 
     const rows = found
       .slice(0, 500)
       .map(c => ({ email: c.email, name: c.name, message_id: c.message_id }));
-    const out = await importRows({ db, guid, actor, source: 'gmail', rows });
+    const out = await importRows({ db, guid, ensureActor, source: 'gmail', rows });
     return { ...out, found: found.length };
   } catch (err) {
     return { error: err.message };

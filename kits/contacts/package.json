@@ -1,6 +1,6 @@
 {
   "name": "@gipity/contacts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "api.js",
   "description": "Source-agnostic contact data layer: ingest LinkedIn CSV + Gmail + paste, resolve duplicates while keeping every value from every source with provenance, a merge-review queue for fuzzy matches, job-change signals across re-imports, user tags, and a transactional event spine.",
