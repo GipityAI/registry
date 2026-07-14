@@ -362,7 +362,12 @@ function getSpawnPosition(teamColor = null) {
     const filtered = points.filter(sp => sp.teamColor === teamColor);
     if (filtered.length) points = filtered;
   }
-  if (points.length === 0) return { x: 0, y: 2, z: 0 }; // default fallback
+  // No declared spawn points -> defer to the caller (null). Returning a
+  // hardcoded origin here silently overrode initPlayer's documented x/y/z
+  // config, so every fresh scene spawned the player at the origin no matter
+  // what the app asked for (and the camera ended up inside whatever the app
+  // had built there).
+  if (points.length === 0) return null;
   const sp = points[Math.floor(Math.random() * points.length)];
   const JITTER = 1.5; // world units
   return {
