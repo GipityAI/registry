@@ -18,7 +18,10 @@ export const DEFAULTS = {
   room: 'game-lobby',
   maxClients: 10,
   apiBase: '{{API_BASE}}',
-  wsUrl: 'wss://rt.gipity.ai',
+  // Realtime endpoint: leave '' to use the one stamped on the page by the
+  // deploying server (data-ws-url on the SDK tag) - set only to point at a
+  // different realtime server.
+  wsUrl: '',
   /** Optional - override timing/precision (see packages/realtime/lib/settings.js). */
   settings: null,
   /**
