@@ -1,0 +1,35 @@
+{
+  "name": "@gipity/servicenow",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "api.js",
+  "description": "Use ServiceNow tables as a data source: OAuth-authenticated polling pull into a local Postgres mirror, plus write-back into ServiceNow. Any table, configurable per app.",
+  "gipity": {
+    "kit": true,
+    "install": {
+      "importMap": {
+        "@gipity/servicenow": "./packages/servicenow/api.js"
+      },
+      "functions": true,
+      "migrations": true,
+      "workflows": true,
+      "deployPhase": {
+        "name": "functions",
+        "type": "functions",
+        "source": "functions",
+        "function_definitions": [
+          {
+            "name": "sn-pull",
+            "auth": "user",
+            "tables": ["sn_records"]
+          },
+          {
+            "name": "sn-write",
+            "auth": "user",
+            "tables": ["sn_records"]
+          }
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+name: ServiceNow Poll
+description: Every 5 minutes, pull changed rows from the configured ServiceNow tables into sn_records.
+trigger:
+  type: cron
+  schedule: "*/5 * * * *"
+
+steps:
+  - name: pull
+    action: function.call
+    params:
+      name: sn-pull
+    on_failure: stop
