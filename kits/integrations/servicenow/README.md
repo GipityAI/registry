@@ -5,10 +5,11 @@ polling pulls rows into a local Postgres mirror (`sn_records`), and your app
 can write records back into ServiceNow. Any table, configurable per app - not
 a fixed ITSM table list.
 
-This is **Phase 1 (pull mode)**: scheduled read + on-demand write, both over
-ServiceNow's REST Table API. A future phase adds real-time push (a ServiceNow
-Business Rule that calls back into a Gipity webhook the moment a record
-changes) - see "What's not here yet" below.
+**Pull mode** (scheduled read + on-demand write, both over ServiceNow's REST
+Table API) works standalone. **Real-time sync** (a ServiceNow Business Rule
+pushing changes to a Gipity webhook the instant they happen, instead of
+waiting for the next poll) is additive on top of it - see "Setup (real-time
+sync, optional)" below.
 
 ## Setup (ServiceNow admin, once)
 
@@ -92,6 +93,44 @@ domain to be explicitly declared - no wildcards):
 
 Then `gipity deploy`.
 
+## Setup (real-time sync, optional)
+
+Once pull mode is deployed (sn-webhook has to exist before ServiceNow can push
+to it), add real-time push on top:
+
+```bash
+node src/packages/servicenow/scripts/connect-realtime.mjs \
+  --instance https://mycompany.service-now.com --username gipity.integration \
+  --tables incident,problem
+```
+
+This creates (or idempotently updates, safe to re-run) three things on the
+ServiceNow side, then stores the webhook secret as a Gipity secret:
+
+- **System properties** `gipity.webhook.url` / `gipity.webhook.secret` - the
+  webhook URL is auto-derived from `.gipity.json` in your app directory (or
+  pass `--webhook-url` explicitly).
+- **A Script Include** (`GipitySync`) that POSTs a changed record's fields to
+  the webhook URL.
+- **A Business Rule per table** (`async_always`, so the push never blocks the
+  ServiceNow user's save), wired to call `GipitySync`. The condition
+  `gs.getUserName() != '<your service account>'` is the loop-prevention
+  mechanism: a write Gipity itself made (via `writeRecord()`, which
+  authenticates as that same service account) is never pushed back - only
+  changes made by other ServiceNow users/processes are. **This means the
+  service account from setup step 1 must be dedicated to this integration** -
+  if it's shared with real users doing real work, their changes won't sync
+  either. Deletes are out of scope (`sn_records` has no tombstone concept).
+
+The shared secret travels inside the JSON body (`{ secret, record }`), not a
+header - Gipity's function runtime only forwards a small allowlist of headers
+to function code, so a custom header would be silently dropped before
+`sn-webhook` ever saw it.
+
+ServiceNow Business Rules are inherently per-table, so adding a new table
+later means re-running this script with the fuller `--tables` list (existing
+rules are matched by name and updated in place, not duplicated).
+
 ## Use it
 
 ```js
@@ -123,8 +162,10 @@ ORDER BY sn_updated_on DESC;
 - **Functions**: `sn-pull` (`auth: user`, invoked by the cron workflow below -
   the cron dispatch runs server-side and bypasses the HTTP auth gate entirely;
   `auth: user` only closes the direct-HTTP path so a random caller can't
-  trigger repeated polls against your instance) and `sn-write` (`auth: user`,
-  called from your app code).
+  trigger repeated polls against your instance), `sn-write` (`auth: user`,
+  called from your app code), and `sn-webhook` (`auth: public` - the real-time
+  sync receiver; verifies the shared secret embedded in the request body
+  before writing anything).
 - **Workflow**: `01-poll-servicenow.yaml` - cron, every 5 minutes, calls `sn-pull`.
   Table selection and credentials are runtime config (secrets), so this file
   needs no per-app editing; it's kit-owned (re-adding the kit at a newer
@@ -132,18 +173,12 @@ ORDER BY sn_updated_on DESC;
 - **Table**: `sn_records` - one row per `(sn_table, sys_id)`, raw ServiceNow
   fields in `data jsonb` (not typed columns - ServiceNow tables are arbitrary
   and their schema is unknown ahead of time; admins add custom fields per
-  instance).
-- **Setup script**: `scripts/connect.mjs` - automates ServiceNow-side setup
-  (grant-type property, OAuth application + entity profile, live verification)
-  and stores the resulting secrets. See "Setup (this app)" above.
-
-## What's not here yet
-
-Real-time sync (a ServiceNow Business Rule pushing changes to a Gipity webhook
-the instant they happen, instead of waiting for the next poll) is designed but
-not built. It needs a downloadable ServiceNow Update Set (Script Include +
-Business Rule + System Properties) that isn't part of this kit's installable
-files - watch this README for updates once it ships.
+  instance). `origin` records how each row arrived (`pull`, `write`, or `webhook`).
+- **Setup scripts**: `scripts/connect.mjs` (OAuth/pull setup - grant-type
+  property, OAuth application + entity profile, live token-exchange
+  verification) and `scripts/connect-realtime.mjs` (real-time sync setup -
+  Script Include, Business Rule per table, webhook properties). Both store
+  their resulting secrets automatically. See "Setup" above.
 
 ## Notes
 
