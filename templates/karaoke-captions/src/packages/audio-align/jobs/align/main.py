@@ -50,7 +50,10 @@ Output shape (set via `ctx.set_output`, stored as the run's `output` field):
       ...
     ],
     "phrases": [{ "text": "...", "start_ms": ..., "end_ms": ..., "word_idx_start": ..., "word_idx_end": ... }, ...],
-    "metadata": { "duration_ms": ..., "sample_rate": 16000, "used_demucs": true, "refined_onsets": true, "unaligned_count": 0 }
+    "warnings": [],                       # non-empty when the alignment looks unreliable overall,
+                                          # e.g. most words low-confidence (lyrics/audio mismatch)
+    "metadata": { "duration_ms": ..., "sample_rate": 16000, "used_demucs": true, "refined_onsets": true,
+                  "unaligned_count": 0, "low_confidence_count": 0, "low_confidence_ratio": 0.0 }
   }
 
 Every input display word emits exactly one entry in `words[]` (the 1:1 mapping
@@ -505,16 +508,36 @@ def main() -> None:
         })
         cursor += n
 
+    # ── 7. Aggregate mismatch signal ───────────────────────────────────────
+    # Per-word confidence is easy to ignore; when most of the words are weak
+    # the real story is usually "these lyrics are not what is sung" (wrong
+    # version of the song, ad-libs, paraphrased lines). Surface that as a
+    # top-level warning so callers can't mistake a bad alignment for a good one.
+    low_conf_count = sum(1 for w in words if w["aligned"] and w["confidence"] < 0.5)
+    low_conf_ratio = round(low_conf_count / len(words), 4) if words else 0.0
+    warnings: list[str] = []
+    if len(words) >= 10 and low_conf_ratio > 0.4:
+        warnings.append(
+            f"{low_conf_count} of {len(words)} words ({low_conf_ratio:.0%}) aligned with "
+            "confidence < 0.5. The lyrics likely do not match what is actually sung "
+            "(wrong song version, ad-libs, or paraphrased lines). Timings may still "
+            "land roughly, but verify against the audio - or transcribe the track "
+            "(app-transcribe / the transcribe service) and diff it against your lyrics."
+        )
+
     ctx.progress(1.0, "done")
     ctx.set_output({
         "words": words,
         "phrases": phrases,
+        "warnings": warnings,
         "metadata": {
             "duration_ms": int(duration_s * 1000),
             "sample_rate": sr,
             "used_demucs": not skip_demucs,
             "refined_onsets": refine_onsets,
             "unaligned_count": unaligned_count,
+            "low_confidence_count": low_conf_count,
+            "low_confidence_ratio": low_conf_ratio,
         },
     })
 

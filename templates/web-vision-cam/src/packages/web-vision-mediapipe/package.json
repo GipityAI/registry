@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Browser vision kit for Gipity apps: MediaPipe Tasks (gesture, pose, object detection) wrapped in one camera + render-loop API. Web only - runs fully client-side, no server, no upload.",
   "gipity": {
     "kit": true,

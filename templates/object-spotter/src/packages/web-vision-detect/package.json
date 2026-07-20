@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
+  },
   "description": "Browser object-detection kit for Gipity apps: YOLOX (Apache-2.0) on ONNX Runtime Web - WebGPU-accelerated with WASM fallback, 80 COCO classes, bring-your-own custom YOLO/YOLOX ONNX model. Web only - runs fully client-side, no server, no upload.",
   "gipity": {
     "kit": true,

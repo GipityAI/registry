@@ -123,14 +123,19 @@ The two are mutually exclusive — pass `phonetic_lyrics` *or* `corrections`, no
     { "text": "line one", "start_ms": 1234, "end_ms": 2100, "word_idx_start": 0, "word_idx_end": 2 },
     ...
   ],
+  "warnings": [],
   "metadata": {
     "duration_ms":    180000,
     "sample_rate":    16000,
     "used_demucs":    true,
-    "refined_onsets": true
+    "refined_onsets": true,
+    "low_confidence_count": 0,
+    "low_confidence_ratio": 0.0
   }
 }
 ```
+
+`warnings` is non-empty when the alignment looks unreliable as a whole: if more than 40% of the words align with confidence below 0.5, the kit assumes the lyrics don't match what's actually sung and says so. Don't ship timings that carry a warning without listening first; transcribe the track and diff against your lyrics if in doubt.
 
 ## Verify it works
 
@@ -176,7 +181,7 @@ L4 at $0.80/hr underlying + 100% margin = ~$0.013 per minute of compute. A 3-min
 
 ## Limitations / known gaps
 
-- **Lyric phrasing must match the audio.** MMS_FA assumes the lyrics ARE what's sung. If a singer ad-libs words not in the lyrics, alignment drifts after that point. The output's `confidence` field flags low-confidence words (< 0.5) — useful for surfacing edits in a UI.
+- **Lyric phrasing must match the audio.** MMS_FA assumes the lyrics ARE what's sung. If a singer ad-libs words not in the lyrics, alignment drifts after that point. The output's `confidence` field flags low-confidence words (< 0.5) — useful for surfacing edits in a UI. When most of the track comes back weak (over 40% of words under 0.5) the run's `warnings` array says so explicitly: treat that as "wrong lyrics", not "rough timings".
 - **Demucs is opinionated.** If your input is already vocal-isolated (a cappella, dry vocal stem), set `skip_demucs: true` to avoid the unnecessary GPU work.
 - **on_complete chaining** is supported — set `on_complete: <function-name>` in the job definition and the platform fires that function with `{ run_guid, status, output, error, duration_ms, job_name }` when the run terminates. Useful for chaining alignment → render pipelines without browser polling.
 
