@@ -6,8 +6,8 @@
  * Every Part has physics properties, appearance, and a 3x3x3 sub-voxel shape.
  * Parts are dynamic (gravity-affected) by default. Set anchored=true to fix in place.
  *
- * Exports: workspace, createPart, removePart, setProperty, getPart, getParts,
- *          queryParts, detachPart, createSpawnPoint, SHAPES, updateParts
+ * Exports: workspace, createPart, removePart, setProperty, getPart, getPartByBody,
+ *          getParts, queryParts, detachPart, createSpawnPoint, SHAPES, updateParts
  */
 import { scene, THREE } from './world.js';
 import * as physics from './physics.js';
@@ -310,6 +310,19 @@ function setProperty(partOrId, key, value) {
 function getPart(id) {
   return workspace.parts.get(id) || null;
 }
+
+/** Get the Part that owns a Rapier RigidBody, or null if the body isn't a Part
+ *  (ground plane, addStaticBox walls, the player). Bodies are tagged at
+ *  creation, so this is a Map lookup - never scan getParts() for this. */
+function getPartByBody(body) {
+  if (!body) return null;
+  const id = body._gip3dwPartId;
+  return id ? (workspace.parts.get(id) || null) : null;
+}
+
+// Teach physics.castRay how to resolve a hit body back to its Part, so every
+// ray hit arrives as { point, distance, collider, body, part }.
+physics.setPartResolver(getPartByBody);
 
 /** Get all parts as an array */
 function getParts() {
@@ -811,6 +824,7 @@ export {
   removePart,
   setProperty,
   getPart,
+  getPartByBody,
   getParts,
   queryParts,
   detachPart,

@@ -4,6 +4,11 @@ version: 1
 #   files    - the game frontend (src/) -> CDN
 #   realtime - multiplayer room, reconciled every deploy (created if missing,
 #              left alone if it already exists). No out-of-band step needed.
+#              Building a solo/offline game? Leave this phase exactly as
+#              shipped. It only registers a room name - no server runs, no
+#              credits are spent, and it counts against no plan limit unless a
+#              client actually connects. Turn multiplayer off in
+#              src/js/config.js instead; nothing here needs to change.
 
 deploy:
   phases:

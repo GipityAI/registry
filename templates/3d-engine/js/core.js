@@ -5,7 +5,7 @@
  * Game code imports from this file:
  *   import { world, assets, physics, player, network, ui, THREE } from './core.js';
  */
-const TEMPLATE_VERSION = 118;
+const TEMPLATE_VERSION = 119;
 
 // Re-export all modules
 import { scene, camera, renderer, clock, THREE, lighting } from './world.js';
