@@ -8,12 +8,13 @@ Web push notifications for your app, including **iOS home-screen web apps** (iOS
 gipity add notify
 ```
 
-This wires `@gipity/notify` into your import map, scaffolds a PWA `manifest.webmanifest`, and ships the service worker + icons under `src/packages/notify/`.
+This wires `@gipity/notify` into your import map and ships the service worker + icons under `src/packages/notify/`. If the app has no PWA `manifest.webmanifest` yet, one is scaffolded (every Gipity template already generates one at install).
 
 ## Use it (two lines in your page)
 
 ```html
-<!-- in <head>: lets iOS install the app to the Home Screen (required for iOS push) -->
+<!-- in <head>, only if not already there (Gipity templates ship it): lets iOS
+     install the app to the Home Screen (required for iOS push) -->
 <link rel="manifest" href="manifest.webmanifest">
 
 <!-- anywhere: defines and renders the button -->
@@ -51,4 +52,4 @@ gipity notify subs                   # how many devices are subscribed, per user
 
 - **iOS** only delivers push to web apps **installed to the Home Screen** (Apple's rule) on **iOS 16.4+**. Desktop Chrome/Edge/Firefox and Android Chrome work in a normal tab.
 - The JS API is also available directly: `import { enableNotify, disableNotify, getNotifyState } from '@gipity/notify'`.
-- Edit `src/packages/notify/sw-notify.js` to change the notification icon or click behavior; edit `src/manifest.webmanifest` to set your app name and icons.
+- Edit `src/packages/notify/sw-notify.js` to change the notification icon or click behavior. The app name, colors, and Home Screen icons live in `src/manifest.webmanifest` - regenerate them any time with `gipity brand set` (e.g. `--emoji`, `--color`).

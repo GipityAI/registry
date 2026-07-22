@@ -4,18 +4,14 @@
   <meta charset="UTF-8">
   <!-- Apply the saved Gipity theme before styles load (no flash). Set via Gipity.setTheme('dark'|'light'|'blue'). -->
   <script>(function(){try{var t=localStorage.getItem('gipity-theme');if(t==='light'||t==='blue')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Outreach Agent - a personal outreach funnel governed by an AI agent on Gipity. It enriches each contact, drafts a personalized email you approve, learns from your comments, and auto-sends on a schedule.">
-  <title>Outreach Agent</title>
-  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
-  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{HEAD_BLOCK}}
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
   <link rel="stylesheet" href="./css/gipity-theme.css">
   <link rel="stylesheet" href="./css/styles.css">
   <script type="importmap">
   { "imports": {} }
   </script>
-  <script defer crossorigin="anonymous" src="https://media.gipity.ai/client/v1/gipity.js" data-app="{{PROJECT_GUID}}"></script>
+  {{ANALYTICS_SCRIPT}}
 </head>
 <body>
   <!-- Signed-out gate -->
