@@ -1,8 +1,9 @@
 # {{TITLE}}
 
 A full-stack web app on Gipity - frontend + serverless API + database. This
-template is intentionally blank: the wiring is in place and deploys green, so you
-build your app by adding to it, never by deleting a demo.
+template is empty by design: every deploy phase is already wired and deploys
+green with zero functions, zero migrations and zero tests. Nothing here is a
+demo you have to clean up - there is only code to add.
 
 ## Quick Start
 
@@ -15,33 +16,49 @@ gipity test              # Run all API tests
 
 ```
 src/             Frontend (HTML/CSS/JS) → served from CDN
-functions/       Serverless API endpoints
-migrations/      SQL schema (idempotent, runs once per migration)
-tests/           API tests (run with gipity test)
-gipity.yaml      Deploy manifest - controls all three phases
+functions/       Serverless API endpoints (create files as you need them)
+migrations/      SQL schema - each file runs once, in filename order
+workflows/       Scheduled/triggered YAML workflows (create it when you add one)
+tests/           API tests in tests/api/<name>.test.js (run with gipity test)
+gipity.yaml      Deploy manifest - every phase is already wired
 ```
 
-## What ships
+Every phase is declared and every directory is optional: a phase whose directory
+is empty is simply skipped, so `gipity deploy dev` is green from the first
+minute and stays green as you fill them in.
 
-- `functions/example.js` - a one-line `{ ok: true }` function so the API works
-  immediately. The homepage calls it via `Gipity.fn('example')` to confirm the
-  backend is reachable.
-- `migrations/001-example.sql` - a commented-out example table. Uncomment it or
-  replace it to define your schema.
-- `src/` - a blank page wired to the client SDK.
+## Tests
+
+`gipity test` runs `tests/api/*.test.js`. `test` and `assert` are globals - do
+not import them. Three things to know before writing DB tests:
+
+- Tests run against a throwaway copy of your database, reset once per RUN, not
+  per test - rows an earlier test inserted are still there. Assert on rows you
+  can identify (your own marker), never on a table's total contents.
+- `ctx.testId` is stable per FILE, so it keeps files from colliding; add your
+  own suffix when one test needs exclusive rows.
+- `ctx.fn.call()` is unauthenticated and THROWS on an `auth: user` function
+  (assert that gate with `assert.rejects`); use `ctx.fn.callAs(ctx.users.alice,
+  name, params)` for the signed-in path.
 
 ## Build your app
 
-1. Add a table in `migrations/` (or edit `001-example.sql`).
-2. Write functions in `functions/<name>.js` and declare them in `gipity.yaml`
-   under `function_definitions`.
+1. Define your schema as `migrations/001-<name>.sql`. Give each table a
+   `short_guid VARCHAR(20) PRIMARY KEY` (make one with `guid('item')` in a
+   function); arrays and nested objects go in a `JSONB` column.
+2. Write functions in `functions/<name>.js`. Deploy auto-declares each new file
+   in `gipity.yaml` as `auth: public` - you only edit that entry to change auth,
+   tables, fetch_domains, or services.
 3. Call them from `src/js/main.js` with `Gipity.fn('<name>', body)`.
-4. `gipity deploy dev`, then `gipity test`.
+4. To run something on a schedule, drop a `workflows/<name>.yaml` with
+   `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so
+   `gipity deploy` creates it and arms the schedule (see the `workflow` skill).
+5. `gipity deploy dev`, then `gipity test`.
 
 ## Calling the API
 
 ```bash
-curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/example \
+curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/<function_name> \
   -H 'Content-Type: application/json' -d '{}'
 ```
 

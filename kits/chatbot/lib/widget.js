@@ -263,7 +263,10 @@ export class ChatbotWidget extends HTMLElement {
     this._bot.on('error', (err) => {
       this._streaming = false;
       this._currentAssistantEl = null;
-      this._showError(err.message);
+      // Visitors get the short apology; the actionable detail goes to the
+      // console, where `gipity page inspect` picks it up.
+      console.error('[chatbot]', err.message);
+      this._showError(err.visitorMessage || err.message);
       this._updateSendButton();
     });
     this._bot.on('reset', () => {

@@ -20,14 +20,18 @@ chatbot/
 
 ### 1) Default widget — bubble in the corner
 
+Installing the kit scaffolds `src/js/chatbot.config.js` (a commented starting config). Edit it, then paste these into your page:
+
 ```html
 <chatbot-widget id="bot"></chatbot-widget>
 <script type="module">
   import { mount } from '@gipity/chatbot';
-  import config from './chatbot.config.js';
-  mount('#bot', config);
+  import config from './js/chatbot.config.js';
+  mount('#bot', config);   // (selector | element, config) → the widget element
 </script>
 ```
+
+The launcher is a round button in the corner showing 💬 unless you set `ui.launcherIcon` to an image URL. Assistant replies render `**bold**`, `*italic*`, `` `code` `` and ```` ``` ```` fences; all other markdown is HTML-escaped and shown literally.
 
 ### 2) Headless engine — bring your own UI
 
@@ -88,7 +92,7 @@ export default {
     placement: 'bottom-right',              // bottom-right | bottom-left | inline | fullscreen
     theme: 'match-app',                     // match-app | light | dark | auto
     primaryColor: null,                     // override CSS --primary
-    launcherIcon: null,
+    launcherIcon: null,                     // null = 💬 emoji; a URL renders <img>
   },
 
   storage: {

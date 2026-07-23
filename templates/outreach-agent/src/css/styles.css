@@ -63,7 +63,6 @@ button.danger { background: #7a2e22; }
 .queue-item .head { display: flex; justify-content: space-between; gap: var(--space-md); margin-bottom: var(--space-sm); }
 .queue-item .rationale { font-style: italic; color: var(--text-muted); font-size: var(--text-sm); border-left: 2px solid var(--border); padding-left: var(--space-sm); margin: var(--space-sm) 0; }
 .queue-item textarea { width: 100%; min-height: 120px; font-family: inherit; }
-.queue-item input[type=text] { width: 100%; }
 .actions { display: flex; gap: var(--space-sm); flex-wrap: wrap; margin-top: var(--space-sm); }
 .draft-body { white-space: pre-wrap; }
 

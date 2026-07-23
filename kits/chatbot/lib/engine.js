@@ -31,6 +31,30 @@ const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min; token is good for ~15
 export { ChatbotConfigError };
 
 /**
+ * Turn an /services/llm failure into an error that says what to DO about it,
+ * plus a `visitorMessage` the widget can show a real end-user (the developer
+ * detail goes to the console, never into the chat bubble).
+ *
+ * The one failure worth naming: a signed-out visitor hitting an app whose llm
+ * service is still in `user_pays` mode gets 401 LOGIN_REQUIRED. Installing this
+ * kit declares `llm: owner_pays` in gipity.yaml, so this only happens when the
+ * app was never redeployed after `gipity add chatbot`, or the mode was changed
+ * back by hand.
+ */
+function buildServiceError(status, errText) {
+  let message = `chatbot: LLM call failed (${status}): ${errText}`;
+  let visitorMessage = 'Sorry, I had trouble answering just then. Please try again.';
+  if (status === 401 && /LOGIN_REQUIRED/.test(errText)) {
+    message = 'chatbot: the LLM service is in `user_pays` mode, so signed-out visitors are told to log in. '
+      + 'A public chatbot must be owner-paid: run `gipity deploy dev` (installing this kit declares '
+      + '`llm: owner_pays` under the `services` phase in gipity.yaml), or set that phase by hand if it was removed.';
+  }
+  const err = new Error(message);
+  err.visitorMessage = visitorMessage;
+  return err;
+}
+
+/**
  * Build a chatbot engine from a config object.
  *
  * Throws ChatbotConfigError synchronously if the config is invalid. URL-based
@@ -173,7 +197,7 @@ export function createChatbot(rawConfig) {
 
     if (!res.ok) {
       const errText = await res.text().catch(() => '');
-      const err = new Error(`chatbot: LLM call failed (${res.status}): ${errText}`);
+      const err = buildServiceError(res.status, errText);
       emit('error', err);
       throw err;
     }
