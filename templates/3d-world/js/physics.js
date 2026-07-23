@@ -97,7 +97,16 @@ function removeBody(body) {
   world.removeRigidBody(body);
 }
 
-/** Cast a ray. Returns { point, distance, collider } or null.
+// Body -> Part resolver. primitives.js installs this at import time so every
+// ray hit carries the Part it hit - no scanning getParts() to map a collider
+// back to a Part. Stays a hook (not an import) to keep physics.js the lower
+// layer with no dependency on the Part system.
+let partResolver = null;
+function setPartResolver(fn) { partResolver = fn; }
+
+/** Cast a ray. Returns { point, distance, collider, body, part } or null.
+ *  `part` is the Part that was hit, or null for non-Part scenery (ground,
+ *  walls built with addStaticBox). `body` is its Rapier RigidBody.
  *  excludeBody: optional RigidBody to ignore (e.g. the player's own body) */
 function castRay(origin, direction, maxDistance = 100, excludeBody = null) {
   const ray = new rapier.Ray(origin, direction);
@@ -119,10 +128,13 @@ function castRay(origin, direction, maxDistance = 100, excludeBody = null) {
   }
   if (!hit) return null;
   const point = ray.pointAt(hit.timeOfImpact);
+  const body = hit.collider.parent ? hit.collider.parent() : null;
   return {
     point: { x: point.x, y: point.y, z: point.z },
     distance: hit.timeOfImpact,
     collider: hit.collider,
+    body,
+    part: (partResolver && body) ? partResolver(body) : null,
   };
 }
 
@@ -329,6 +341,7 @@ export {
   addTrigger,
   removeBody,
   castRay,
+  setPartResolver,
   step,
   rapier,
   eventQueue,

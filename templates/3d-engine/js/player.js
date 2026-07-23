@@ -19,7 +19,8 @@
  *   - Camera modes: orbit (default), firstPerson, topDown, fixed
  *
  * Exports: initPlayer, updatePlayer, getPosition, setPosition,
- *          getAimDirection, getAimOrigin, aimRaycast, playerMesh, inputState, velocity
+ *          getAimDirection, getAimOrigin, aimRaycast, grab, release, getHeldPart,
+ *          playerMesh, inputState, velocity
  */
 import { scene, camera, renderer, THREE } from './world.js';
 import * as physics from './physics.js';
@@ -577,6 +578,9 @@ function updatePlayer(dt) {
     camera.position.z += (targetZ - camera.position.z) * CAM_LERP * dt;
     camera.lookAt(playerMesh.position.x, lookY, playerMesh.position.z);
   }
+
+  // Carried Part follows the crosshair (after the camera settled this frame).
+  updateHeldPart();
 }
 
 /** Get player world position */
@@ -616,9 +620,14 @@ function getAimOrigin() {
 
 /** Cast the crosshair aim ray into the physics world with `reach` measured
  *  from the PLAYER, not the camera (see getAimOrigin). Excludes the player's
- *  own body. Returns castRay's { point, distance, collider } or null when
- *  nothing the player could reach is under the crosshair. Use for "place /
- *  pick the block the player is looking at" interactions. */
+ *  own body. Returns { point, distance, collider, body, part } or null when
+ *  nothing the player could reach is under the crosshair. `hit.part` is the
+ *  Part under the crosshair (null for ground/scenery) - use it directly:
+ *    const hit = aimRaycast(10);
+ *    // grab() returns false for the ground / anchored scenery, so this one
+ *    // line reads as "pick the block up, or place a new one where I'm aiming".
+ *    if (hit && !grab(hit.part)) createPart({ position: hit.point, ... });
+ */
 function aimRaycast(reach = 50) {
   const origin = getAimOrigin();
   const playerPos = getPosition();
@@ -629,6 +638,82 @@ function aimRaycast(reach = 50) {
   const distFromPlayer = Math.hypot(
     hit.point.x - playerPos.x, hit.point.y - playerPos.y, hit.point.z - playerPos.z);
   return distFromPlayer <= reach ? hit : null;
+}
+
+// --- Carrying a Part (pick up / put down / throw) ---
+// The held Part becomes a kinematic body pinned in front of the crosshair, so
+// it still shoves other blocks while you carry it, then goes dynamic again on
+// release. This is the whole pick-up-stack-throw loop: grab() + release().
+let heldPart = null;
+let heldDistance = 0;
+
+/** Pick up a Part and carry it in front of the player. Pair with aimRaycast:
+ *    const hit = aimRaycast(10);
+ *    if (hit?.part) grab(hit.part);
+ *  Anchored Parts (the ground, walls, anything fixed) are refused, so aiming at
+ *  the floor can't lift the world - clear `anchored` first if you meant it.
+ *  opts.distance overrides how far in front it floats (default: clear of the
+ *  player's own body). Returns true if the Part was picked up. */
+function grab(part, opts = {}) {
+  if (!part || !part._body || part.anchored) return false;
+  if (heldPart) release();
+  const size = part.size || { x: 1, y: 1, z: 1 };
+  const clearance = Math.max(size.x, size.y, size.z) / 2 + PLAYER_HALF_WIDTH + 1.0;
+  heldDistance = opts.distance != null ? opts.distance : clearance;
+  heldPart = part;
+  physics.setBodyType(part._body, 'kinematic');
+  return true;
+}
+
+/** Put down / throw whatever is held. `opts.throwSpeed` (world units/sec along
+ *  the crosshair, mass-independent) turns a drop into a throw:
+ *    release();                     // set it down
+ *    release({ throwSpeed: 40 });   // hurl it at the tower
+ *  Returns the released Part, or null if nothing was held. */
+function release(opts = {}) {
+  const part = heldPart;
+  if (!part) return null;
+  heldPart = null;
+  if (!part._body || !isBodyAlive(part._body)) return part;
+  physics.setBodyType(part._body, 'dynamic');
+  const speed = opts.throwSpeed || 0;
+  const aim = getAimDirection();
+  // Inherit the player's own motion so a block thrown while running keeps up.
+  part._body.setLinvel({
+    x: velocity.x + aim.x * speed,
+    y: aim.y * speed,
+    z: velocity.z + aim.z * speed,
+  }, true);
+  part._body.setAngvel({ x: 0, y: 0, z: 0 }, true);
+  return part;
+}
+
+/** The Part currently being carried, or null. Use for a toggle:
+ *    if (getHeldPart()) release({ throwSpeed: 30 });
+ *    else { const hit = aimRaycast(10); if (hit?.part) grab(hit.part); } */
+function getHeldPart() {
+  return heldPart;
+}
+
+function isBodyAlive(body) {
+  return typeof body.isValid !== 'function' || body.isValid();
+}
+
+// Pin the held Part in front of the crosshair each frame (called at the end of
+// updatePlayer, once the camera for this frame is settled).
+function updateHeldPart() {
+  if (!heldPart) return;
+  if (!heldPart._body || !isBodyAlive(heldPart._body)) { heldPart = null; return; }
+  const p = getPosition();
+  const aim = getAimDirection();
+  heldPart._body.setNextKinematicTranslation({
+    x: p.x + aim.x * heldDistance,
+    y: p.y + aim.y * heldDistance,
+    z: p.z + aim.z * heldDistance,
+  });
+  // Face the block the way the player is facing, so carried blocks stack square.
+  const half = yaw / 2;
+  heldPart._body.setNextKinematicRotation({ x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) });
 }
 
 // --- Input: Keyboard ---
@@ -809,6 +894,9 @@ export {
   getAimDirection,
   getAimOrigin,
   aimRaycast,
+  grab,
+  release,
+  getHeldPart,
   buildPlayerModel,
   animatePlayerModel,
   playerMesh,
