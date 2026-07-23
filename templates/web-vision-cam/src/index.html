@@ -2,12 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">{{DESCRIPTION_META}}
-  <meta property="og:title" content="{{TITLE}}">{{OG_DESCRIPTION}}
-  <meta property="og:type" content="website">
-  <title>{{TITLE}}</title>
-  <link rel="icon" type="image/png" sizes="192x192" href="./images/favicon-192.png">
-  <link rel="icon" type="image/x-icon" href="./images/favicon.ico">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">{{HEAD_BLOCK}}
   <link rel="stylesheet" href="./css/styles.css">
   <!-- The vision kit + MediaPipe are pre-wired here. `gipity add` would do this
        for you when installing a kit; in a starter the wiring ships ready. -->
@@ -20,7 +15,6 @@
     }
   }
   </script>
-  {{JSON_LD_BLOCK}}
   {{ANALYTICS_SCRIPT}}
 </head>
 <body>

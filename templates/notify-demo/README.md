@@ -26,6 +26,6 @@ gipity notify subs               # how many devices are subscribed
 
 - `functions/send-ping/index.js` — what gets sent (declare `services: ['notify']` to use `notify()`).
 - `src/js/main.js` / `src/index.html` — the UI.
-- `src/manifest.webmanifest` — app name + Home Screen icon.
+- `src/manifest.webmanifest` — app name + Home Screen icon (generated at install; refresh with `gipity brand set`).
 
 Send to a specific user from any function: `await notify({ to: userGuid, notification: { title, body, url } })`.
