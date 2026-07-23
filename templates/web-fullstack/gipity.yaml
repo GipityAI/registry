@@ -35,21 +35,43 @@ deploy:
       type: static
       source: src
 
-    # Database migrations - runs in idempotent order
+    # Database migrations - each migrations/*.sql runs once, in filename order.
+    # Write yours as migrations/001-<name>.sql; the phase is skipped while the
+    # directory is empty. Give tables a `short_guid VARCHAR(20) PRIMARY KEY`
+    # (make one with guid('item') in a function) and index what you filter on.
+    # Don't INSERT reference/catalog rows in a migration - the `gipity test` DB
+    # reset truncates them. Use a seed dir (`seed:` here) or `test: preserve:`.
     - name: database
       type: sql
       source: migrations
       database: {{DATABASE}}
 
-    # Serverless functions
-    # New functions are auto-added here. Edit entries to customize permissions.
+    # Serverless functions. Deploy auto-declares any new functions/<name>.js
+    # here as `auth: public` - you edit an entry ONLY to change something.
     # Fields: name, auth (public|user|member), tables, fetch_domains, services
+    # Skipped while the directory is empty; deleting a file takes its endpoint down.
     - name: functions
       type: functions
       source: functions
-      function_definitions:
-        - name: example
-          auth: public
+
+    # Scheduled / triggered workflows. Already wired: drop a file in workflows/
+    # and `gipity deploy` creates it and arms its schedule - nothing to add here.
+    # Skipped while the directory is empty. A daily job is one file:
+    #
+    #   # workflows/morning-digest.yaml
+    #   name: morning-digest
+    #   trigger: schedule          # or record.after_insert / webhook / manual
+    #   cron: "0 7 * * *"          # UTC; add `timezone: America/New_York` for local
+    #   steps:
+    #     - name: build
+    #       step_type: function    # calls functions/build-digest.js with full db access
+    #       config: { name: build-digest }
+    #
+    # An `llm` step (prompt:, no config) runs as your default agent automatically.
+    # See the `workflow` skill for step types, foreach, conditions, and approvals.
+    - name: workflows
+      type: workflows
+      source: workflows
 
     # Records API - expose a DB table as auto CRUD endpoints
     #   (GET/POST/PUT/DELETE {{API_BASE}}/api/{{PROJECT_GUID}}/records/<table>).

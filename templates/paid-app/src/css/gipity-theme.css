@@ -144,6 +144,22 @@ button, input, select, textarea {
   border-radius: var(--radius);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
 }
+/* Form fields fill their container. Water sizes a textarea to its box
+   (`textarea:not([cols]) { width: 100% }`) but gives `input`/`select` no width at
+   all, so they fall back to the UA's ~20-character intrinsic width while still
+   being `display: block` — a plain form renders a stubby subject field stacked
+   above a full-width body box. Match them so plain semantic markup lays out right
+   with no per-element CSS. `size=` (like Water's `cols=`) is the opt-out for a
+   deliberately short field, and :where() keeps specificity at 0,0,1 so any app
+   rule wins. Water's 6px margin-right would overflow a 100%-wide field, so it's
+   zeroed here for the same reason Water zeroes it on textarea. */
+input:where(:not([type='checkbox'], [type='radio'], [type='range'], [type='color'],
+                 [type='submit'], [type='button'], [type='reset'], [type='image'], [size])),
+select:where(:not([size])) {
+  width: 100%;
+  box-sizing: border-box;
+  margin-right: 0;
+}
 /* Pill buttons — the standard Gipity button shape (matches the gipity.ai
    login page and the Sign-in-with-Gipity pages). Extra horizontal padding so
    labels don't crowd the rounded ends. */

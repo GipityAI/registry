@@ -38,3 +38,22 @@ deploy:
       function_definitions:
         - name: example
           auth: public
+
+    # Scheduled / triggered workflows. Already wired: drop a file in workflows/
+    # and `gipity deploy` creates it and arms its schedule - nothing to add here.
+    # Skipped while the directory is empty. A daily job is one file:
+    #
+    #   # workflows/morning-digest.yaml
+    #   name: morning-digest
+    #   trigger: schedule          # or webhook / manual
+    #   cron: "0 7 * * *"          # UTC; add `timezone: America/New_York` for local
+    #   steps:
+    #     - name: build
+    #       step_type: function    # calls functions/build-digest.js with full context
+    #       config: { name: build-digest }
+    #
+    # An `llm` step (prompt:, no config) runs as your default agent automatically.
+    # See the `workflow` skill for step types, foreach, conditions, and approvals.
+    - name: workflows
+      type: workflows
+      source: workflows

@@ -6,7 +6,7 @@
   "scripts": {
     "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
   },
-  "description": "Drop-in chatbot for Gipity apps: configurable persona, scope guardrails (allowed/refused with refusal examples), static knowledge (20k token budget), streaming LLM responses, suggested-prompt chips. Headless engine + bubble widget; bring your own UI if you want.",
+  "description": "Drop-in chatbot for Gipity apps: configurable persona, scope guardrails (allowed/refused with refusal examples), static knowledge (20k token budget), streaming LLM responses, suggested-prompt chips. On install it scaffolds src/js/chatbot.config.js - edit it, then mount('#bot', config) in your page. Headless engine + bubble widget; bring your own UI if you want.",
   "gipity": {
     "kit": true,
     "engineAgnostic": true,
@@ -21,6 +21,19 @@
       "importMap": {
         "@gipity/chatbot": "./packages/chatbot/index.js",
         "@gipity/chatbot/": "./packages/chatbot/"
+      },
+      "scaffold": {
+        "src/js/chatbot.config.js": "examples/chatbot.config.js"
+      },
+      "deployPhase": {
+        "name": "services",
+        "type": "services",
+        "service_definitions": [
+          {
+            "service": "llm",
+            "billing_mode": "owner_pays"
+          }
+        ]
       }
     }
   }
