@@ -1,4 +1,6 @@
-// App configuration - identity, constants, and feature flags
+// App configuration - identity, constants, tunables, and feature flags.
+// One home for values you read from more than one place (list sizes, poll
+// intervals, limits) - edit here and it changes everywhere.
 // Import: import { config } from './config.js';
 
 export const config = {
