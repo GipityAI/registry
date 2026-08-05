@@ -17,6 +17,10 @@
   /* Gipity brand palette — ONE knob: every orange below derives from --primary. */
   --primary: #fea60b;
   --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
+  /* Label color on --primary surfaces (buttons). Dark, NOT --text-bright: white
+     on the orange is ~1.9:1 (fails WCAG AA); dark holds 4.5:1+ on all three theme
+     accents. If you rebrand --primary to a DARK accent, set this light too. */
+  --button-text: #1a1a1a;
 
   /* Surface colors (custom components + Water's panels/inputs/code) */
   --surface: #202020;
@@ -28,7 +32,7 @@
   --background: var(--surface);         /* inputs, code, table stripe */
   --background-alt: var(--surface-alt);
   --text-main: #e6e6f0;                 /* body text (Gipity cream) */
-  --text-bright: #fffeff;               /* headings, button text */
+  --text-bright: #fffeff;               /* headings (buttons use --button-text) */
   --links: var(--primary);              /* links */
   --focus: color-mix(in srgb, var(--primary) 60%, transparent); /* focus ring */
   --border: #333333;
@@ -168,6 +172,10 @@ button, input[type="submit"], input[type="button"], input[type="reset"] {
   border-radius: 999px;
   padding-left: 18px;
   padding-right: 18px;
+  /* Water's dark build puts near-white text on the button, which is ~1.9:1
+     against the orange --button-base — an out-of-the-box WCAG AA failure on
+     every template. Pair the accent with the dark label color instead. */
+  color: var(--button-text);
 }
 /* Water's dark build HARDCODES button:hover to near-black (#040a0f) instead of
    honoring its own --button-hover variable, so the orange rebrand above vanishes on
