@@ -11,6 +11,12 @@ const loadingBar = document.getElementById('loading-bar');
 const loadingStatus = document.getElementById('loading-status');
 const hud = document.getElementById('hud');
 
+// True when a key event belongs to a form field the user is typing in
+// (high-score name entry, chat box). Hotkey handlers must ignore those keys.
+function isTypingTarget(el) {
+  return el instanceof Element && (el.closest('input, textarea, select') !== null || el.isContentEditable);
+}
+
 /** Update loading progress (0-1) and status text */
 function updateLoadingProgress(progress, statusText) {
   if (loadingBar) loadingBar.style.width = `${Math.round(progress * 100)}%`;
@@ -154,6 +160,7 @@ class InfoPanel {
     // Toggle key
     if (options.toggleKey) {
       this._toggleHandler = (e) => {
+        if (isTypingTarget(e.target)) return;
         if (e.code === options.toggleKey) { this.toggle(); e.preventDefault(); }
       };
       window.addEventListener('keydown', this._toggleHandler);
@@ -303,6 +310,7 @@ function initDebugPanel() {
 
   // Toggle with U or backtick
   window.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e.target)) return;
     if (e.code === 'KeyU' || e.code === 'Backquote') {
       e.preventDefault();
       debugVisible = !debugVisible;

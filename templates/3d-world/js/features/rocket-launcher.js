@@ -445,6 +445,9 @@ export function create(config, deps) {
   function onMouseDown(e) { if (e.button === 0) mouseHeld = true; }
   function onMouseUp(e) { if (e.button === 0) mouseHeld = false; }
   function onKeyDown(e) {
+    // Ignore keys typed into form fields (name entry, chat) - the debug
+    // toggle must not fire while the user is typing.
+    if (e.target instanceof Element && (e.target.closest('input, textarea, select') !== null || e.target.isContentEditable)) return;
     if (e.code === config.debugKey) {
       debugMode = !debugMode;
       if (!debugMode) clearDebugLines();

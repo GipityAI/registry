@@ -31,6 +31,27 @@ const config = {
   },
 };
 
+// Let players type into DOM form fields overlaid on the game (high-score
+// name entry, chat boxes) while it runs. Phaser registers its keys (WASD,
+// Space, arrows) as "captured": its window-level listener preventDefault()s
+// them wherever focus is, so a focused <input> would never receive those
+// letters. Key events that target a form field stop here (document sits
+// between the field and window on the bubble path, and the field's own
+// handlers have already run), and gaining focus clears held-down keys so
+// the game doesn't keep moving on a key it never sees released.
+const isFormField = (el) =>
+  el instanceof Element && (el.closest('input, textarea, select') !== null || el.isContentEditable);
+for (const type of ['keydown', 'keyup']) {
+  document.addEventListener(type, (e) => {
+    if (isFormField(e.target)) e.stopPropagation();
+  });
+}
+document.addEventListener('focusin', (e) => {
+  if (isFormField(e.target)) {
+    for (const scene of game.scene.getScenes(true)) scene.input?.keyboard?.resetKeys();
+  }
+});
+
 // Exported, not just constructed: `gipity page eval` can reach the live instance
 // with `(await import('./js/config.js')).game` — index.html loads this as a
 // module, so the import resolves from the module cache and returns THIS game

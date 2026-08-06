@@ -729,9 +729,19 @@ function updateHeldPart() {
 }
 
 // --- Input: Keyboard ---
+
+// True when a key event belongs to a form field the user is typing in
+// (high-score name entry, chat box). Game input must ignore those keys -
+// otherwise WASD moves the player and Space is preventDefault'd while the
+// user is trying to type their name.
+function isTypingTarget(el) {
+  return el instanceof Element && (el.closest('input, textarea, select') !== null || el.isContentEditable);
+}
+
 function setupKeyboard() {
   const keys = {};
   window.addEventListener('keydown', (e) => {
+    if (isTypingTarget(e.target)) return;
     keys[e.code] = true;
     updateInputFromKeys(keys);
     if (e.code === 'Space') { inputState.jump = true; e.preventDefault(); }
@@ -751,10 +761,22 @@ function setupKeyboard() {
     }
   });
   window.addEventListener('keyup', (e) => {
+    if (isTypingTarget(e.target)) return;
     keys[e.code] = false;
     updateInputFromKeys(keys);
     if (e.code === 'KeyE') inputState.action = false;
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') inputState.sprint = false;
+  });
+  // A form field gaining focus steals the keyup from the game (the guard
+  // above drops it), so clear held keys - without this the player keeps
+  // walking on a key the game never sees released.
+  window.addEventListener('focusin', (e) => {
+    if (!isTypingTarget(e.target)) return;
+    for (const code of Object.keys(keys)) keys[code] = false;
+    updateInputFromKeys(keys);
+    inputState.jump = false;
+    inputState.action = false;
+    inputState.sprint = false;
   });
 }
 
