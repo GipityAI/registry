@@ -58,32 +58,22 @@ await confirmMerge(candidates[0].id);
 
 Pasted lists: `importContacts('manual', [{ email, name, company }, ...])`.
 
-## Gmail harvest (optional, cost-flagged — fast-follow)
+## Gmail harvest (optional)
 
 `contact-harvest` is the **save side** and works today: POST a JSON blob of found
-people and they fold in as `source='gmail'`. The **read side** — an LLM that scans
-the connected inbox — is an app-level workflow you add, e.g.:
+people and they fold in as `source='gmail'`:
 
-```yaml
-# workflows/harvest-contacts.yaml  (you add this in your app)
-steps:
-  - id: harvest
-    type: llm
-    tool_filter: [gmail_search, gmail_read]
-    prompt: |
-      Search Gmail (e.g. 'in:sent newer_than:90d') for real human contacts —
-      founders/builders/operators, not newsletters or automated senders. Return
-      strict JSON: {"contacts":[{"email":string,"name":string}]}. Max 25.
-  - id: save
-    type: function
-    function: contact-harvest
-    body: { harvest: "{{ steps.harvest.output }}" }
+```bash
+gipity fn call contact-harvest '{"harvest":{"contacts":[{"email":"ada@example.com","name":"Ada"}]}}'
 ```
 
-**Cost:** the inbox scan costs LLM tokens per run, so trigger it **manually**
-(`gipity workflow run harvest-contacts`), not on a schedule. Gmail's own API is
-free (quota-limited). A cheaper deterministic sender-frequency pre-pass is a good
-future optimization.
+The **read side** (scanning the connected inbox for real people) is not a workflow
+step yet: workflow LLM steps can use `db_query`, `records`, `web_search`,
+`web_fetch`, `http` and `memory`, but not Gmail. Until a Gmail workflow tool
+exists, run the scan from your coding agent: search and read mail with
+`gipity gmail search 'in:sent newer_than:90d'` / `gipity gmail read <id>`, pick out
+the founders/builders/operators (not newsletters or automated senders), and POST
+them with the call above.
 
 ## Optional scoring helper
 

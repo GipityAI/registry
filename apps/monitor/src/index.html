@@ -1,0 +1,996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Apply the saved theme before stylesheets load, so there's no theme flash
+       (mirrors js/theme.js; key 'gipity-theme'). -->
+  <script>(function(){try{var t=localStorage.getItem('gipity-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='blue')?t:'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{HEAD_BLOCK}}
+  <link rel="stylesheet" href="./css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script type="importmap">
+  { "imports": {} }
+  </script>
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <header class="monitor-header">
+    <div class="brand">
+      <img class="brand-logo" src="./images/egg-192.png" alt="" width="36" height="36" />
+      <div>
+        <h1>{{TITLE}}</h1>
+        <div class="live-pulse" id="live-pulse" hidden>
+          <span class="dot"></span>
+          <span id="live-count">0</span> live now
+        </div>
+      </div>
+    </div>
+    <div class="controls">
+      <label>
+        <span class="control-label">Range</span>
+        <select id="range">
+          <option value="1h">1 hour</option>
+          <option value="24h" selected>24 hours</option>
+          <option value="7d">7 days</option>
+          <option value="30d">30 days</option>
+          <option value="1y">1 year</option>
+        </select>
+      </label>
+      <label>
+        <span class="control-label">Project</span>
+        <select id="project-filter">
+          <option value="">All projects</option>
+        </select>
+      </label>
+      <div class="theme-seg" id="theme-seg" role="group" aria-label="Theme">
+        <button type="button" class="theme-seg-btn" data-theme-set="dark">Dark</button>
+        <button type="button" class="theme-seg-btn" data-theme-set="light">Light</button>
+        <button type="button" class="theme-seg-btn" data-theme-set="blue">Blue</button>
+      </div>
+      <label>
+        <span class="control-label">Auto</span>
+        <select id="auto-refresh" aria-label="Auto-refresh interval">
+          <option value="0">Off</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+        </select>
+      </label>
+      <button id="refresh" aria-label="Refresh">Refresh</button>
+      <span id="freshness" class="freshness" aria-live="polite"></span>
+    </div>
+  </header>
+
+  <div id="auth-gate" hidden>
+    <div class="gate-card">
+      <img class="gate-logo" src="./images/egg-192.png" alt="" width="72" height="72" />
+      <h2>{{TITLE}}</h2>
+      <p class="gate-lede">Your projects, deploys, logs, spend and account on Gipity, in one place.</p>
+      <button id="signin">Sign in with Gipity</button>
+    </div>
+  </div>
+
+  <main id="dashboard" hidden>
+    <nav class="sidebar" id="tabs">
+      <div class="sidebar-group">
+        <button data-tab="projects" class="active" aria-current="page"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg><span class="nav-text">Projects</span></button>
+        <button data-tab="overview"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 12 7 12 10 5 14 19 17 12 21 12"/></svg><span class="nav-text">Overview</span></button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Observe</h4>
+        <button data-tab="traffic"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg><span class="nav-text">Traffic</span></button>
+        <button data-tab="activity"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg><span class="nav-text">Activity</span></button>
+        <button data-tab="errors"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 2 21h20L12 3z"/><line x1="12" y1="10" x2="12" y2="15"/><line x1="12" y1="17.5" x2="12" y2="18"/></svg><span class="nav-text">Errors</span><span class="nav-badge" id="errors-badge" hidden></span></button>
+        <button data-tab="chats"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="nav-text">Chats</span></button>
+        <button data-tab="audit"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/></svg><span class="nav-text">Audit</span></button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Project</h4>
+        <button data-tab="compute"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1"/><rect x="10" y="10" width="4" height="4"/><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/></svg><span class="nav-text">Compute</span></button>
+        <button data-tab="data"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span class="nav-text">Data</span></button>
+        <button data-tab="services"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="nav-text">Services</span></button>
+        <button data-tab="hosting"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg><span class="nav-text">Hosting</span></button>
+      </div>
+      <div class="sidebar-group">
+        <h4 class="sidebar-label">Account</h4>
+        <button data-tab="plan"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span class="nav-text">Plan</span></button>
+        <button data-tab="spend"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="nav-text">Usage</span></button>
+        <button data-tab="devices"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></svg><span class="nav-text">Devices</span></button>
+        <button data-tab="alerts"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="nav-text">Alerts</span></button>
+        <button data-tab="secrets"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="nav-text">Secrets</span></button>
+        <button data-tab="account"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span class="nav-text">Account</span></button>
+      </div>
+    </nav>
+    <div class="v-splitter" id="sidebar-splitter" aria-hidden="true"></div>
+
+    <div class="main-content">
+
+
+    <!-- ── Overview tab (default landing) ─────────────────────── -->
+    <!-- ── Projects tab (default landing) ─────────────────────── -->
+    <section class="tab-panel" data-tab="projects">
+      <div class="tab-desc-wrap"><p class="tab-lede">Every project you own: where it is served and how its last deploys went, phase by phase. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Every project you own: where it is served and how its last deploys went, phase by phase (files, database, functions, jobs, workflows). <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Active projects on this account."><span class="card-label">Projects</span><span class="card-value" id="projects-count">-</span></div>
+        <div class="card" title="Projects deployed to dev or prod at least once."><span class="card-label">Deployed</span><span class="card-value" id="projects-deployed">-</span></div>
+        <div class="card" title="Projects whose most recent deploy failed."><span class="card-label">Last deploy failed</span><span class="card-value" id="projects-failing">-</span></div>
+      </div>
+      <div class="panel">
+        <h3>Projects</h3>
+        <table class="data-table" id="table-projects"><thead><tr><th>Project</th><th>Dev</th><th>Prod</th><th>Last deploy</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-tab="overview" hidden>
+      <div class="cards ov-tiles">
+        <div class="card tile" id="ov-tile-errors" title="Errors captured across your deployed apps in this window, with the trend beneath.">
+          <span class="card-label">Errors</span><span class="card-value" id="ov-errors">-</span>
+          <span class="tile-note" hidden></span>
+          <div class="spark-box"><canvas id="ov-spark-errors"></canvas></div>
+        </div>
+        <div class="card tile" id="ov-tile-failed-fns" title="Function invocations that returned an error in this window.">
+          <span class="card-label">Failed functions</span><span class="card-value" id="ov-failed-fns">-</span>
+          <span class="tile-note" hidden></span>
+        </div>
+        <div class="card tile" id="ov-tile-live" title="Distinct visitor sessions active in the last 5 minutes.">
+          <span class="card-label">Live now</span><span class="card-value" id="ov-live">-</span>
+          <span class="tile-note" hidden></span>
+        </div>
+        <div class="card tile" id="ov-tile-credits" title="Credits used in the last 30 days across all services. 1 credit = $0.001.">
+          <span class="card-label">Credits · 30d</span><span class="card-value" id="ov-credits">-</span>
+          <span class="tile-note" hidden></span>
+          <div class="spark-box"><canvas id="ov-spark-credits"></canvas></div>
+        </div>
+        <div class="card tile" id="ov-tile-storage" title="Physical bytes stored in Gipity Storage - what you're billed for.">
+          <span class="card-label">Storage</span><span class="card-value" id="ov-storage">-</span>
+          <span class="tile-note" hidden></span>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Needs attention</h3>
+        <ol class="attn-list" id="ov-attention"><li class="attn-quiet">Loading...</li></ol>
+      </div>
+      <div class="grid-2">
+        <div class="panel chart-panel"><h3>Page views</h3><div class="chart-box"><canvas id="chart-ov-traffic"></canvas></div></div>
+        <div class="panel chart-panel"><h3>Service calls</h3><div class="chart-box"><canvas id="chart-ov-services"></canvas></div></div>
+      </div>
+      <div class="panel">
+        <h3>Recent deploys</h3>
+        <ol class="attn-list" id="ov-deploys"><li class="attn-quiet">Loading...</li></ol>
+      </div>
+    </section>
+
+    <!-- ── Traffic tab ─────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="traffic" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. <span class="try-it">Try it on any external page: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code></span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Total page views your deployed apps recorded in this window."><span class="card-label">Page views</span><span class="card-value" id="traffic-pageviews">-</span></div>
+        <div class="card" title="Distinct browsing sessions. A session ends after ~30 min of inactivity."><span class="card-label">Sessions</span><span class="card-value" id="traffic-sessions">-</span></div>
+        <div class="card" title="Distinct sessions active in the last 5 minutes."><span class="card-label">Live now</span><span class="card-value" id="traffic-live">-</span></div>
+        <div class="card" title="Pages that were the only page in their session - likely landing-and-leave traffic."><span class="card-label">Bounce-y paths</span><span class="card-value" id="traffic-distinct-paths">-</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Page views over time</h3>
+        <div class="chart-box"><canvas id="chart-traffic"></canvas></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Top pages</h3>
+          <table class="data-table" id="table-paths"><thead><tr><th>Path</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Top referrers</h3>
+          <table class="data-table" id="table-referrers"><thead><tr><th>Referrer</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Browsers</h3>
+          <table class="data-table compact" id="table-browsers"><thead><tr><th>Browser</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Devices</h3>
+          <table class="data-table compact" id="table-devices"><thead><tr><th>Device</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Languages</h3>
+          <table class="data-table compact" id="table-languages"><thead><tr><th>Language</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="traffic">Download CSV</button></div>
+    </section>
+
+    <!-- ── Activity tab ──────────────────────────────────────────── -->
+    <!-- Unified per-app timeline: JS errors, failed function calls, failed
+         services, optional page views. Same data as `gipity logs app`, visual
+         instead of CLI. Each entry shows breadcrumbs + network context +
+         server-side function row (when correlated) inline. -->
+    <section class="tab-panel" data-tab="activity" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Everything happening in your deployed apps right now - JS errors, failed function calls, failed service calls, and (optionally) page views - merged into one chronological timeline. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Everything happening in your deployed apps right now - JS errors, failed function calls, failed service calls, and (optionally) page views - merged into one chronological timeline. Equivalent to <code>gipity logs app</code> in the CLI. Auto-captured fetch failures show response body + breadcrumbs + the server function row that broke. <span class="try-it">Hard-refresh your app, click around, then refresh this tab.</span></p></div></div>
+      <div class="activity-toolbar">
+        <label class="inline">Severity
+          <select id="activity-severity">
+            <option value="all" selected>All</option>
+            <option value="error">Errors only</option>
+            <option value="network">Network failures</option>
+            <option value="warn">Warnings</option>
+          </select>
+        </label>
+        <label class="inline">Show
+          <select id="activity-types">
+            <option value="errors,functions,services" selected>Errors + failed fn + failed services</option>
+            <option value="errors,functions,services,traffic">+ page views</option>
+            <option value="errors">JS errors only</option>
+            <option value="functions">Function failures only</option>
+            <option value="services">Service failures only</option>
+          </select>
+        </label>
+        <input type="search" id="activity-search" placeholder="Filter (message / fn name / path)..." />
+        <span class="muted small" id="activity-status"></span>
+      </div>
+      <div class="panel">
+        <ol id="activity-timeline" class="activity-timeline"><li class="muted small">Loading...</li></ol>
+      </div>
+    </section>
+
+    <!-- ── Errors tab ──────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="errors" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">JavaScript errors thrown by your deployed apps - captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">JavaScript errors thrown by your deployed apps - captured from <code>window.onerror</code> and <code>unhandledrejection</code>, deduped by hour so a single bug doesn't drown the list. <span class="try-it">Try it: in your app, <code>throw new Error('test from monitor')</code> and refresh this tab.</span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Sum of every error occurrence in this window - includes repeats of the same bug."><span class="card-label">Total errors</span><span class="card-value" id="errors-total">-</span></div>
+        <div class="card" title="Distinct errors after deduping by message + stack trace."><span class="card-label">Unique issues</span><span class="card-value" id="errors-unique">-</span></div>
+        <div class="card" title="How many of your deployed apps threw at least one error in this window."><span class="card-label">Affected apps</span><span class="card-value" id="errors-apps">-</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Errors over time</h3>
+        <div class="chart-box"><canvas id="chart-errors"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Issues (most frequent first)</h3>
+        <input type="search" id="errors-search" placeholder="Filter by message..." />
+        <table class="data-table issues" id="table-issues">
+          <thead><tr><th>Message</th><th>Project</th><th class="num">Count</th><th>Last seen</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="errors">Download CSV</button></div>
+    </section>
+
+    <!-- ── Services tab (LLM/Speech/Media/Realtime) ───────────────── -->
+    <section class="tab-panel" data-tab="services" hidden>
+      <div class="sub-tabs">
+        <button data-svc-tab="llm" class="active">LLMs</button>
+        <button data-svc-tab="tts">Speech</button>
+        <button data-svc-tab="media">Media</button>
+        <button data-svc-tab="realtime">Realtime</button>
+        <button data-svc-tab="browser">Browser</button>
+        <button data-svc-tab="search">Search</button>
+      </div>
+
+      <!-- LLMs sub-tab -->
+      <div class="svc-panel" data-svc-panel="llm">
+        <div class="tab-desc-wrap"><p class="tab-lede small">Chat completions, streaming, image input. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Chat completions, streaming, image input. <span class="try-it">Try it: <code>$ gipity ask "What's a Porsche 914?"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-llm-cost">-</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-llm-calls">-</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-llm-p95">-</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-llm-err">-</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-llm-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-llm-calls"></canvas></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top models</h3>
+            <table class="data-table" id="table-svc-llm-models"><thead><tr><th>Model</th><th>Provider</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top end-users by credits used</h3>
+            <table class="data-table" id="table-svc-llm-callers"><thead><tr><th>User</th><th>ID</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent LLM calls</h3>
+          <table class="data-table" id="table-svc-llm-recent"><thead><tr><th>Time</th><th>Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Speech sub-tab -->
+      <div class="svc-panel" data-svc-panel="tts" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Speech - text-to-speech that streams audio in real time. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Speech - text-to-speech that streams audio in real time. <span class="try-it">Try it: <code>$ gipity generate speech "Hello world"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-tts-cost">-</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-tts-calls">-</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-tts-p95">-</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-tts-err">-</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-tts-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-tts-calls"></canvas></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top voices / models</h3>
+            <table class="data-table" id="table-svc-tts-models"><thead><tr><th>Voice / Model</th><th>Provider</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top end-users by credits used</h3>
+            <table class="data-table" id="table-svc-tts-callers"><thead><tr><th>User</th><th>ID</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent speech calls</h3>
+          <table class="data-table" id="table-svc-tts-recent"><thead><tr><th>Time</th><th>Voice / Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Media sub-tab -->
+      <div class="svc-panel" data-svc-panel="media" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Image, sound, music, and video generation + transcription. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Image, sound, music, and video generation + transcription. <span class="try-it">Try it: <code>$ gipity generate image "Porsche 914 in Monaco at sunset"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-media-cost">-</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-media-calls">-</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="svc-media-p95">-</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="svc-media-err">-</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>Credits used over time</h3><div class="chart-box"><canvas id="chart-svc-media-cost"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Calls over time</h3><div class="chart-box"><canvas id="chart-svc-media-calls"></canvas></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>By kind</h3>
+            <table class="data-table" id="table-svc-media-kinds"><thead><tr><th>Service</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Top models</h3>
+            <table class="data-table" id="table-svc-media-models"><thead><tr><th>Model</th><th>Service</th><th class="num">Calls</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent media calls</h3>
+          <table class="data-table" id="table-svc-media-recent"><thead><tr><th>Time</th><th>Service</th><th>Model</th><th>Status</th><th class="num">Latency</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Browser sub-tab (credit_ledger operation='browser') -->
+      <div class="svc-panel" data-svc-panel="browser" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Headless browser sessions - page-inspect, browser_open, screenshots. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Headless browser sessions - page-inspect, browser_open, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page-inspect https://gipity.ai</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-browser-cost">-</span></div>
+          <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-browser-calls">-</span></div>
+          <div class="card" title="Average credits charged per headless browser session."><span class="card-label">Avg credits / call</span><span class="card-value" id="svc-browser-avg">-</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Browser calls over time</h3>
+          <div class="chart-box"><canvas id="chart-svc-browser"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Recent browser calls</h3>
+          <table class="data-table" id="table-svc-browser-recent"><thead><tr><th>Time</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Search sub-tab (credit_ledger group=search → web_search + twitter_search + web_fetch + embedding) -->
+      <div class="svc-panel" data-svc-panel="search" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Search - web, Twitter/X, raw web fetch, and embeddings. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Search - web, Twitter/X, raw web fetch, and embeddings. Tools that read live data from outside Gipity, used by apps and by workflow <code>llm</code> steps. <span class="try-it">Try it: add <code>tools: [web_search]</code> to a workflow <code>llm</code> step</span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-search-cost">-</span></div>
+          <div class="card" title="Sum of web searches + Twitter/X + raw web fetches + embeddings in this window."><span class="card-label">All calls</span><span class="card-value" id="svc-search-calls">-</span></div>
+          <div class="card" title="Subset of Search calls that aren't web search - Twitter/X queries, raw URL fetches, and embedding requests."><span class="card-label">Twitter / fetches</span><span class="card-value" id="svc-search-fetches">-</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Calls over time</h3>
+          <div class="chart-box"><canvas id="chart-svc-search"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Recent search / fetch calls</h3>
+          <table class="data-table" id="table-svc-search-recent"><thead><tr><th>Time</th><th>Kind</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Realtime sub-tab -->
+      <div class="svc-panel" data-svc-panel="realtime" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Realtime - live multiplayer connections, presence, and shared state. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Realtime - live multiplayer connections, presence, and shared state. CCU = currently-connected users; CCU-min = sum of session minutes. <span class="muted">Free in v1 - billed later.</span> <span class="try-it">Try it: <code>$ gipity add realtime</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Concurrently-connected users (CCU) right now across all your Gipity Realtime rooms."><span class="card-label">Live now (CCU)</span><span class="card-value" id="rt-live">-</span></div>
+          <div class="card" title="Total realtime sessions that ended (disconnected) in this window."><span class="card-label">Sessions</span><span class="card-value" id="rt-sessions">-</span></div>
+          <div class="card" title="Average session length (connect → disconnect) in this window."><span class="card-label">Avg duration</span><span class="card-value" id="rt-avg-duration">-</span></div>
+          <div class="card" title="Sum of all session minutes. 10 users × 60 min = 600 CCU-min."><span class="card-label">CCU-minutes</span><span class="card-value" id="rt-ccu-min">-</span></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel chart-panel"><h3>CCU-minutes over time</h3><div class="chart-box"><canvas id="chart-realtime-ccu"></canvas></div></div>
+          <div class="panel chart-panel"><h3>Sessions over time</h3><div class="chart-box"><canvas id="chart-realtime-sessions"></canvas></div></div>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>Top apps by CCU-min</h3>
+            <table class="data-table" id="table-rt-apps"><thead><tr><th>Project</th><th class="num">Sessions</th><th class="num">CCU-min</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div class="panel">
+            <h3>Active rooms now</h3>
+            <table class="data-table" id="table-rt-rooms"><thead><tr><th>Project</th><th class="num">Rooms</th><th class="num">Clients</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Recent sessions</h3>
+          <table class="data-table" id="table-rt-recent"><thead><tr><th>Ended</th><th>Project</th><th>Caller</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="services">Download CSV</button></div>
+    </section>
+
+    <!-- ── Compute tab (Functions / Jobs / Sandbox / Workflows) ───── -->
+    <section class="tab-panel" data-tab="compute" hidden>
+      <div class="sub-tabs">
+        <button data-cmp-tab="functions" class="active">Functions</button>
+        <button data-cmp-tab="jobs">Jobs</button>
+        <button data-cmp-tab="sandbox">Sandbox</button>
+        <button data-cmp-tab="workflows">Workflows</button>
+        <button data-cmp-tab="tests">Tests</button>
+      </div>
+
+      <!-- Functions sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="functions">
+        <div class="tab-desc-wrap"><p class="tab-lede small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Serverless functions invoked at <code>/api/&lt;appGuid&gt;/fn/&lt;name&gt;</code>. Fast (millisecond) execution. <span class="try-it">Try it: <code>$ gipity fn call &lt;function-name&gt;</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Total times your serverless functions ran in this window."><span class="card-label">Invocations</span><span class="card-value" id="fn-invocations">-</span></div>
+          <div class="card" title="95th-percentile response latency. 95% of calls finish at or below this number."><span class="card-label">Latency p95</span><span class="card-value" id="fn-p95">-</span></div>
+          <div class="card" title="Percent of calls that returned an error status."><span class="card-label">Error rate</span><span class="card-value" id="fn-err-rate">-</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Invocations over time</h3>
+          <div class="chart-box"><canvas id="chart-functions"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Functions</h3>
+          <table class="data-table" id="table-functions"><thead><tr><th>Function</th><th>Project</th><th class="num">Calls</th><th class="num">Avg duration</th><th class="num">Errors</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent invocations</h3>
+          <table class="data-table" id="table-fn-recent"><thead><tr><th>Time</th><th>Function</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Jobs sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="jobs" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Jobs: long-running compute with CPU and GPU tiers, for ML inference, video encoding, and batch processing. Click a run for its output and logs. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Jobs - long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job run &lt;name&gt;</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Job runs in this window (all tiers)."><span class="card-label">Runs</span><span class="card-value" id="job-runs">-</span></div>
+          <div class="card" title="Runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="job-failures">-</span></div>
+          <div class="card" title="Mean wall-clock duration across all runs in this window."><span class="card-label">Avg duration</span><span class="card-value" id="job-avg">-</span></div>
+          <div class="card" title="95th-percentile job duration. 95% of runs finish at or below this."><span class="card-label">p95 duration</span><span class="card-value" id="job-p95">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>Top jobs</h3>
+          <table class="data-table" id="table-jobs-top"><thead><tr><th>Job</th><th>Tier</th><th class="num">Runs</th><th class="num">Failures</th><th class="num">Avg ms</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent runs</h3>
+          <table class="data-table" id="table-jobs-recent"><thead><tr><th>Time</th><th>Job</th><th>Tier</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Sandbox sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="sandbox" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Sandboxed code execution: JS/Python/Bash with media + data tools pre-installed. Used when an agent runs ad-hoc code on your behalf. <span class="try-it">Try it: <code>$ gipity sandbox run "echo hello"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="sbx-cost">-</span></div>
+          <div class="card" title="Number of sandbox script executions in this window."><span class="card-label">Executions</span><span class="card-value" id="sbx-calls">-</span></div>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Sandbox executions over time</h3>
+          <div class="chart-box"><canvas id="chart-sandbox"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Recent sandbox calls</h3>
+          <table class="data-table" id="table-sandbox-recent"><thead><tr><th>Time</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Workflows sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="workflows" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Multi-step pipelines triggered by schedule, webhook, record change, or manual run. Click a run to see each step's output. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Multi-step pipelines triggered by schedule, webhook, record change, or manual run. Deterministic steps cost nothing; <code>llm</code> steps call a model with the tools the step declares. A heartbeat is a scheduled workflow with one <code>llm</code> step. <span class="try-it">Try it: <code>$ gipity workflow create --heartbeat</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Workflows currently enabled (schedule / webhook / manual triggers)."><span class="card-label">Active workflows</span><span class="card-value" id="wf-active">-</span></div>
+          <div class="card" title="Workflow runs that started in this window."><span class="card-label">Runs</span><span class="card-value" id="wf-runs">-</span></div>
+          <div class="card" title="Workflow runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="wf-failures">-</span></div>
+          <div class="card" title="Mean wall-clock duration across all workflow runs in this window."><span class="card-label">Avg duration</span><span class="card-value" id="wf-avg">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>Workflows</h3>
+          <table class="data-table" id="table-workflows-top"><thead><tr><th>Workflow</th><th>Trigger</th><th>Active</th><th class="num">Runs</th><th class="num">Failures</th><th>Last run</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent runs</h3>
+          <table class="data-table" id="table-workflows-recent"><thead><tr><th>Started</th><th>Workflow</th><th>Trigger</th><th>Status</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Tests sub-tab -->
+      <div class="cmp-panel" data-cmp-panel="tests" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Runs of your project's <code>tests/*.test.js</code> against the deployed functions. Click a run to see each test. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Runs of your project's <code>tests/*.test.js</code> against the deployed functions, in a sandbox with its own test database. <span class="try-it">Try it: <code>$ gipity test</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Test runs started in this window."><span class="card-label">Runs</span><span class="card-value" id="tests-runs">-</span></div>
+          <div class="card" title="Runs that ended failed (a failing test or a runner error)."><span class="card-label">Failed runs</span><span class="card-value" id="tests-failed-runs">-</span></div>
+          <div class="card" title="Individual tests executed across those runs."><span class="card-label">Tests run</span><span class="card-value" id="tests-count">-</span></div>
+          <div class="card" title="Individual tests that failed across those runs."><span class="card-label">Tests failed</span><span class="card-value" id="tests-failed">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>Recent runs</h3>
+          <table class="data-table" id="table-tests-recent"><thead><tr><th>Started</th><th>Project</th><th>Status</th><th class="num">Passed</th><th class="num">Failed</th><th class="num">Duration</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Data tab (Files + DB sub-tabs) ──────────────────────── -->
+    <section class="tab-panel" data-tab="data" hidden>
+      <div class="sub-tabs">
+        <button data-data-tab="files" class="active">Files</button>
+        <button data-data-tab="browse">Browse</button>
+        <button data-data-tab="db">DB</button>
+      </div>
+
+      <!-- Browse sub-tab -->
+      <div class="data-panel" data-data-panel="browse" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Browse a project's files, read them, and restore an earlier version. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Browse a project's files, read them, and restore an earlier version. Every write keeps the previous version, within your retention policy. <span class="try-it">Try it: <code>$ gipity file ls</code></span></p></div></div>
+        <div class="panel">
+          <div class="browse-crumbs" id="browse-crumbs"></div>
+          <table class="data-table" id="table-browse"><thead><tr><th>Name</th><th class="num">Size</th><th>Modified</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- Files sub-tab -->
+      <div class="data-panel" data-data-panel="files">
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Storage - your project files: the agent's working dir, deployed app source, and user-uploaded media. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Storage - your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Physical bytes actually stored in Gipity Storage - this is what you're billed for. Retained file versions are included; a blob shared by copies or identical files is counted once."><span class="card-label">Billed (stored)</span><span class="card-value" id="files-size">-</span></div>
+          <div class="card" title="What you have right now: the current version of every live file."><span class="card-label">Live size</span><span class="card-value" id="files-live">-</span></div>
+          <div class="card" title="Total file count across all your projects (live files)."><span class="card-label">Files</span><span class="card-value" id="files-count">-</span></div>
+          <div class="card" title="Total across every retained version, before dedup. Old versions are kept so you can always roll back."><span class="card-label">With versions</span><span class="card-value" id="files-versioned">-</span></div>
+          <div class="card" title="Bytes saved because copies and identical files share a single object in storage."><span class="card-label">Dedup saved</span><span class="card-value" id="files-dedup">-</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="files-cost-30d">-</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h3>Version retention</h3>
+          </div>
+          <p class="muted small retention-lede" id="retention-summary">Loading version retention policy...</p>
+          <p class="muted small retention-lede">Lowering these keeps less version history and reduces your storage bill. The current version of every file is always kept.</p>
+          <form id="retention-form" class="retention-form">
+            <label>Days
+              <input type="number" id="retention-days" min="1" step="1" />
+            </label>
+            <label>Copies
+              <input type="number" id="retention-count" min="1" step="1" />
+            </label>
+            <button type="submit" class="primary-btn" id="retention-save">Save</button>
+            <button type="button" class="link-btn" id="retention-reset">Reset to plan default</button>
+            <span id="retention-status" class="muted small"></span>
+          </form>
+        </div>
+        <div class="panel chart-panel">
+          <h3>Credits used over time</h3>
+          <div class="chart-box"><canvas id="chart-storage-cost"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Top projects by file storage</h3>
+          <table class="data-table" id="table-storage-projects"><thead><tr><th>Project</th><th class="num">Files</th><th class="num">Size</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Recent storage charges</h3>
+          <table class="data-table" id="table-storage-charges"><thead><tr><th>Day</th><th>Kind</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+      <!-- DB sub-tab -->
+      <div class="data-panel" data-data-panel="db" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity DB - one Postgres database per project. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity DB - one Postgres database per project. Includes tables, indexes, and materialized views. <span class="try-it">Try it: <code>$ gipity db query "SELECT version()"</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Total bytes of your Postgres databases (tables + indexes + materialized views)."><span class="card-label">Total size</span><span class="card-value" id="db-size">-</span></div>
+          <div class="card" title="Number of distinct Postgres databases across your projects."><span class="card-label">Databases</span><span class="card-value" id="db-schemas">-</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="db-cost-30d">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>By project / database</h3>
+          <table class="data-table" id="table-db-schemas">
+            <thead><tr><th>Project</th><th>Database</th><th class="num">Tables</th><th class="num">Size</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="panel">
+          <h3>Recent DB storage charges</h3>
+          <table class="data-table" id="table-db-charges"><thead><tr><th>Day</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Hosting tab (Deploys / Domains / CDN) ─────────────────── -->
+    <section class="tab-panel" data-tab="hosting" hidden>
+      <div class="sub-tabs">
+        <button data-hosting-tab="deploys" class="active">Deploys</button>
+        <button data-hosting-tab="domains">Domains</button>
+        <button data-hosting-tab="cdn">CDN</button>
+      </div>
+
+      <!-- Deploys sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="deploys">
+        <div class="tab-desc-wrap"><p class="tab-lede small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps - phases that ran, what was emitted. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps - phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p></div></div>
+        <div class="panel chart-panel">
+          <h3>Deploys over time</h3>
+          <div class="chart-box"><canvas id="chart-hosting-deploys"></canvas></div>
+        </div>
+        <div class="panel">
+          <h3>Recent deploys</h3>
+          <table class="data-table" id="table-hosting-deploys">
+            <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>IP</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Domains sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="domains" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Custom domains pointing at your deployed apps. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Custom domains pointing at your deployed apps. Free with any paid plan - Gipity auto-issues Let's Encrypt certs. <span class="try-it">Try it: <code>$ gipity domain add myapp.com</code></span></p></div></div>
+        <div class="cards">
+          <div class="card" title="Custom domains attached to any of your projects."><span class="card-label">Total</span><span class="card-value" id="dom-total">-</span></div>
+          <div class="card" title="Domains successfully verified and serving traffic."><span class="card-label">Active</span><span class="card-value" id="dom-active">-</span></div>
+          <div class="card" title="Domains waiting for DNS verification."><span class="card-label">Pending</span><span class="card-value" id="dom-pending">-</span></div>
+          <div class="card" title="Domains stuck in verification - usually a DNS misconfiguration."><span class="card-label">Failed</span><span class="card-value" id="dom-failed">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>Custom domains</h3>
+          <table class="data-table" id="table-domains">
+            <thead><tr><th>Domain</th><th>Project</th><th>Status</th><th>Verified</th><th>Added</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- CDN sub-tab -->
+      <div class="hosting-panel" data-hosting-panel="cdn" hidden>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity CDN - your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity CDN - your deployed app bundles delivered globally at <code>app.gipity.ai</code> + <code>dev.gipity.ai</code>. Live size refreshed every 5 min. <strong>Not currently metered</strong> - we absorb the storage + egress cost for v1.</p></div></div>
+        <div class="cards">
+          <div class="card" title="Total bytes of your deployed app bundles served by Gipity CDN."><span class="card-label">Total size</span><span class="card-value" id="cdn-size">-</span></div>
+          <div class="card" title="Total file count served by Gipity CDN across all your deployed apps."><span class="card-label">Objects</span><span class="card-value" id="cdn-objects">-</span></div>
+          <div class="card" title="Distinct projects with at least one active CDN deploy (dev or prod)."><span class="card-label">Deployed projects</span><span class="card-value" id="cdn-projects">-</span></div>
+          <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="cdn-cost-30d">0 (not metered)</span></div>
+        </div>
+        <div class="panel">
+          <h3>By project (prod + dev)</h3>
+          <table class="data-table" id="table-cdn-projects">
+            <thead><tr><th>Project</th><th class="num">Prod size</th><th class="num">Prod objects</th><th class="num">Dev size</th><th class="num">Dev objects</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Usage tab (credit ledger) ───────────────────────────── -->
+    <section class="tab-panel" data-tab="spend" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">The full credit ledger - every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">The full credit ledger - every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p></div></div>
+      <div class="cards">
+        <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="spend-credits">-</span></div>
+        <div class="card" title="Distinct credit-ledger rows in this window - one row per billed event."><span class="card-label">Charges</span><span class="card-value" id="spend-charges">-</span></div>
+        <div class="card" title="Operation with the most credits used in this window."><span class="card-label">Top category</span><span class="card-value" id="spend-top-cat">-</span></div>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Credits used over time</h3>
+        <div class="chart-box"><canvas id="chart-spend"></canvas></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>By operation</h3>
+          <table class="data-table" id="table-spend-ops"><thead><tr><th>Operation</th><th class="num">Charges</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>By project</h3>
+          <table class="data-table" id="table-spend-projects"><thead><tr><th>Project</th><th class="num">Charges</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Recent charges</h3>
+        <table class="data-table" id="table-spend-recent"><thead><tr><th>Time</th><th>Operation</th><th>Model</th><th>Project</th><th class="num">Credits</th></tr></thead><tbody></tbody></table>
+      </div>
+    </section>
+
+    <!-- ── Plan tab (subscription + balance) ─────────────────────── -->
+    <section class="tab-panel" data-tab="plan" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your subscription tier, included monthly credits, live balance, and how long that balance will last at your current usage. <span class="try-it">Try it: <code>$ gipity plan</code></span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Your current subscription tier, monthly price, and included credits per cycle."><span class="card-label">Plan</span><span class="card-value" id="plan-name">-</span></div>
+        <div class="card" title="Live balance across all active grants (subscription cycle, top-ups, and bonus credits)."><span class="card-label">Credits remaining</span><span class="card-value" id="plan-remaining">-</span></div>
+        <div class="card" title="Mean daily credit usage over the last 30 days."><span class="card-label">Avg used per day</span><span class="card-value" id="plan-burn">-</span></div>
+        <div class="card" title="Estimated days until your balance hits 0 at the current daily rate."><span class="card-label">Days to empty</span><span class="card-value" id="plan-days">-</span></div>
+        <div class="card" title="Active agent API tokens (gip_at_*) for headless agents and CI. Manage with: gipity token create / list / revoke."><span class="card-label">API tokens</span><span class="card-value" id="plan-tokens">-</span></div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Plan limits</h3>
+          <table class="data-table compact" id="table-plan-limits"><thead><tr><th>Limit</th><th class="num">Value</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Balance detail</h3>
+          <table class="data-table compact" id="table-plan-balance"><thead><tr><th>Metric</th><th class="num">Value</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Billing</h3>
+          <button type="button" id="billing-portal" class="link-btn" title="Cancel or renew, update your card, download invoices">Manage billing</button>
+        </div>
+        <p id="billing-notice" class="small" hidden></p>
+        <p id="billing-error" class="small detail-error"></p>
+        <table class="data-table compact" id="table-plan-products"><thead><tr><th>Plan or pack</th><th>Kind</th><th class="num">Price</th><th></th></tr></thead><tbody></tbody></table>
+        <p class="muted small">Checkout is handled by Stripe. CLI: <code>gipity credits buy</code></p>
+      </div>
+      <div class="panel">
+        <h3>Recent grants &amp; top-ups</h3>
+        <table class="data-table" id="table-plan-grants">
+          <thead><tr><th>Granted</th><th>Source</th><th class="num">Granted</th><th class="num">Used</th><th class="num">Remaining</th><th>Expires</th><th class="num">$</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Chats tab ────────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="chats" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Coding-agent sessions recorded on this account: titles, project, last activity. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Coding-agent sessions recorded on this account: titles, project, last activity. Click a row to see the messages. Recording is off by default, per project. <span class="try-it">Try it: <code>$ gipity init --capture</code></span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Distinct conversations on this account that this window touches."><span class="card-label">Conversations</span><span class="card-value" id="chats-count">-</span></div>
+      </div>
+      <div class="panel">
+        <h3>Recent conversations</h3>
+        <table class="data-table" id="table-chats">
+          <thead><tr><th>Title</th><th>Project</th><th class="num">Tokens</th><th class="num">Time</th><th>Last activity</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="chats">Download CSV</button></div>
+    </section>
+
+    <!-- ── Devices tab (paired CC/Codex devices + dispatches + sessions) ── -->
+    <section class="tab-panel" data-tab="devices" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Local coding agents (Claude Code, Codex, Grok) paired to this account via <code>gipity connect</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Local coding agents (Claude Code, Codex, Grok) paired to this account via <code>gipity connect</code>. Devices receive prompts dispatched from the web CLI's <code>cc&gt;</code> mode and stream their session transcript back here. <span class="try-it">Try it: <code>$ gipity connect</code> on your laptop, then <code>/cc</code> in the web CLI.</span></p></div></div>
+      <div class="cards">
+        <div class="card" title="Local coding agents (Claude Code, Codex, Grok) paired to your account."><span class="card-label">Active devices</span><span class="card-value" id="rmt-devices">-</span></div>
+        <div class="card" title="Prompts sent from the web CLI to a paired device in this window."><span class="card-label">Dispatches</span><span class="card-value" id="rmt-dispatches">-</span></div>
+        <div class="card" title="Dispatches still waiting for a device to pick them up."><span class="card-label">Pending</span><span class="card-value" id="rmt-pending">-</span></div>
+        <div class="card" title="Remote sessions opened from paired devices in this window."><span class="card-label">Sessions</span><span class="card-value" id="rmt-sessions">-</span></div>
+      </div>
+      <div class="panel">
+        <h3>Paired devices</h3>
+        <table class="data-table" id="table-rmt-devices">
+          <thead><tr><th>Name</th><th>Platform</th><th>Status</th><th>Last seen</th><th>Paired</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Recent dispatches</h3>
+        <table class="data-table" id="table-rmt-dispatches">
+          <thead><tr><th>Time</th><th>Device</th><th>Project</th><th>Kind</th><th>Status</th><th>Message</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Recent remote sessions</h3>
+        <table class="data-table" id="table-rmt-sessions">
+          <thead><tr><th>Started</th><th>Title</th><th>Source</th><th>Project</th><th>cwd</th><th>State</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── Alerts tab ───────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="alerts" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold - plus an optional daily/weekly digest with all the cards from each tab. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Get an email when LLM spend, function calls, errors, or auth failures cross a threshold - plus an optional daily/weekly digest with all the cards from each tab. <span class="try-it">Configure here; the schedule checks every 5 minutes.</span></p></div></div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Email digest</h3>
+        </div>
+        <p class="muted small">Receive a summary email with the dashboard totals + top errors on a regular cadence.</p>
+        <form id="digest-form" class="digest-form">
+          <label>Cadence
+            <select id="digest-cadence">
+              <option value="off">Off</option>
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+            </select>
+          </label>
+          <label>Email
+            <input type="email" id="digest-email" maxlength="255" />
+          </label>
+          <button type="submit" class="primary-btn">Save</button>
+          <span id="digest-status" class="muted small"></span>
+        </form>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3>Alerts</h3>
+          <button id="new-alert-btn" class="primary-btn">+ New alert</button>
+        </div>
+        <p class="muted small">
+          Send yourself an email when LLM spend, function calls, auth failures, or app errors spike.
+          The checker evaluates every 5 minutes; each alert has its own window and cooldown.
+        </p>
+        <table class="data-table" id="table-alerts">
+          <thead>
+            <tr>
+              <th>Kind</th>
+              <th>Project</th>
+              <th class="num">Threshold</th>
+              <th class="num">Window</th>
+              <th class="num">Last observed</th>
+              <th>Last fired</th>
+              <th>State</th>
+              <th>Email</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <dialog id="alert-form-dialog" class="alert-dialog">
+        <form id="alert-form" method="dialog">
+          <h3 id="alert-form-title">New alert</h3>
+          <input type="hidden" id="alert-id" />
+          <label>Kind
+            <select id="alert-kind" required>
+              <option value="llm_spend">LLM spend (USD)</option>
+              <option value="function_rate">Function call rate</option>
+              <option value="auth_failures">Auth failures</option>
+              <option value="error_rate">App error count</option>
+            </select>
+          </label>
+          <label>Project
+            <select id="alert-project">
+              <option value="">All projects</option>
+            </select>
+          </label>
+          <label>Threshold
+            <input type="number" step="0.01" min="0.01" id="alert-threshold" required />
+            <span class="hint" id="alert-threshold-hint">USD over the window</span>
+          </label>
+          <label>Window (minutes)
+            <input type="number" min="5" max="10080" step="1" id="alert-window" value="60" required />
+            <span class="hint">5 = 5 min · 60 = 1 hour · 1440 = 1 day</span>
+          </label>
+          <label>Cooldown (minutes)
+            <input type="number" min="5" max="10080" step="1" id="alert-cooldown" value="60" />
+            <span class="hint">Don't re-fire within this many minutes</span>
+          </label>
+          <label>Email
+            <input type="email" id="alert-email" required maxlength="255" />
+          </label>
+          <label class="check">
+            <input type="checkbox" id="alert-active" checked />
+            Active
+          </label>
+          <div class="dialog-actions">
+            <button type="button" id="alert-cancel">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- ── Secrets tab ──────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="secrets" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Encrypted API keys, tokens, and passwords for your apps - stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Encrypted API keys, tokens, and passwords for your apps - stored AES-256-GCM at rest, write-only (values never leave the server), and read inside functions via <code>secrets.get('NAME')</code>. <span class="try-it">Never hardcode a key in source - store it here instead.</span></p></div></div>
+      <div class="sub-tabs">
+        <button data-secret-scope="project" class="active">This project</button>
+        <button data-secret-scope="account">Account-wide</button>
+      </div>
+      <div class="panel">
+        <div class="panel-head">
+          <h3 id="secrets-scope-title">Project secrets</h3>
+          <button id="new-secret-btn" class="primary-btn">+ New secret</button>
+        </div>
+        <p class="muted small" id="secrets-scope-hint"></p>
+        <table class="data-table" id="table-secrets">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Value</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <dialog id="secret-form-dialog" class="alert-dialog">
+        <form id="secret-form" method="dialog">
+          <h3 id="secret-form-title">New secret</h3>
+          <label>Name
+            <input type="text" id="secret-name" required maxlength="100" placeholder="OPENAI_API_KEY" />
+            <span class="hint">UPPER_SNAKE_CASE (letters, digits, underscores)</span>
+          </label>
+          <label>Value
+            <input type="text" id="secret-value" required autocomplete="off" placeholder="sk-..." />
+            <span class="hint">Stored encrypted; never shown again after saving</span>
+          </label>
+          <div class="dialog-actions">
+            <button type="button" id="secret-cancel">Cancel</button>
+            <button type="submit" class="primary-btn">Save</button>
+          </div>
+        </form>
+      </dialog>
+    </section>
+
+    <!-- ── Account tab ──────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="account" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">Your account, the API tokens that act as you, and closing the account. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your account, the API tokens that act as you, and closing the account. Account-wide secrets live on the <a href="#secrets">Secrets</a> tab. <span class="try-it">Try it: <code>$ gipity token create</code></span></p></div></div>
+      <div class="grid-2">
+        <div class="panel">
+          <h3>Profile</h3>
+          <table class="data-table compact"><tbody id="acct-profile"></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>New API token</h3>
+          <p class="muted small">A token acts as your whole account. Give headless agents and CI their own, and revoke it when done.</p>
+          <form id="acct-token-form" class="inline-form">
+            <label>Name <input type="text" id="acct-token-name" maxlength="100" placeholder="ci-deploy" /></label>
+            <label>Expires in days <input type="number" id="acct-token-days" min="1" max="3650" step="1" placeholder="never" /></label>
+            <button type="submit" class="primary-btn">Create token</button>
+            <span id="acct-token-status" class="small detail-error"></span>
+          </form>
+          <div id="acct-token-new" class="token-reveal" hidden>
+            <p class="small">Copy it now. It is not shown again.</p>
+            <code id="acct-token-value" class="mono"></code>
+            <button type="button" id="acct-token-copy" class="link-btn">Copy</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>API tokens</h3>
+        <table class="data-table" id="table-acct-tokens"><thead><tr><th>Token</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="panel danger-panel">
+        <h3>Delete account</h3>
+        <p class="small">Deletes every project, file, database, function, workflow and secret on this account. This cannot be undone.</p>
+        <form id="acct-delete-form" class="inline-form">
+          <label>Type your account name to confirm <input type="text" id="acct-delete-confirm" autocomplete="off" /></label>
+          <button type="submit" id="acct-delete-btn" class="danger-btn">Delete my account</button>
+          <span id="acct-delete-status" class="small detail-error"></span>
+        </form>
+      </div>
+    </section>
+
+    <!-- ── Audit tab ────────────────────────────────────────────── -->
+    <section class="tab-panel" data-tab="audit" hidden>
+      <div class="sub-tabs">
+        <button data-audit="auth" class="active">Auth</button>
+        <button data-audit="upload">Uploads</button>
+        <button data-audit="secret">Secrets</button>
+      </div>
+      <div class="panel chart-panel">
+        <h3>Events over time</h3>
+        <div class="chart-box"><canvas id="chart-audit"></canvas></div>
+      </div>
+      <div class="panel">
+        <h3>Recent events</h3>
+        <table class="data-table" id="table-audit">
+          <thead><tr><th>Time</th><th>Event</th><th>Detail</th><th>IP</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="tab-footer"><button class="export-csv-btn" data-export="audit">Download CSV</button></div>
+    </section>
+
+    </div><!-- /.main-content -->
+    <dialog id="detail-dialog" class="alert-dialog detail-dialog" aria-labelledby="detail-title">
+      <div class="detail-head">
+        <h3 id="detail-title"></h3>
+        <button type="button" id="detail-close" class="link-btn" aria-label="Close">Close</button>
+      </div>
+      <div id="detail-body"></div>
+    </dialog>
+  </main>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

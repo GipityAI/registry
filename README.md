@@ -2,65 +2,76 @@
 
 The catalog of things [Gipity](https://gipity.ai) apps can `add` — project templates and reusable kits. This is what `gipity add <name>` pulls from.
 
-## Two kinds of things
+## Three kinds of things
 
-### Templates
+Each kind has its own directory. `gipity add <name>` dispatches on which one a name belongs to.
 
-A **template** installs a whole app. Run `gipity add <template>` in an empty project; it lays down `src/`, framework wiring, and any starter content. One template per project.
+### Templates - [`templates/`](templates/)
 
-Templates are further split by `kind`:
-
-- **`kind: 'template'`** — minimal framework wiring. No demo content. Start here to build something new.
-- **`kind: 'starter'`** — a complete working demo. Useful as a playable reference; meant to be replaced or extended.
-
-| Key | Kind | What |
-|------|------|-------|
-| [`web-simple`](templates/web-simple/) | template | Static frontend-only web app — landing page, dashboard, simple game. No backend. |
-| [`3d-engine`](templates/3d-engine/) | template | Minimal 3D multiplayer wiring — Three.js + Rapier physics + Colyseus, no gameplay. |
-| [`web-fullstack`](templates/web-fullstack/) | template | Web app with backend API + database — blank fullstack wiring (frontend + functions + migrations) that deploys green. |
-| [`web-vision-cam`](templates/web-vision-cam/) | starter | Fullscreen camera app with on-device gesture/pose/object detection. |
-| [`2d-game`](templates/2d-game/) | starter | 2D Phaser 3 game — platformer/arcade/puzzle. |
-| [`3d-world`](templates/3d-world/) | starter | Playable 3D multiplayer rocket-launcher demo, built on `3d-engine`. |
-| [`api`](templates/api/) | template | Pure API backend (no frontend) — blank wiring with one example function and a passing test. |
-
-### Kits
-
-A **kit** installs a reusable building block into an *existing* app. Files land under `src/packages/<kit>/`, with the import map and `gipity.yaml` wired up automatically. Many kits per project.
+Minimal framework wiring for an **empty** project: it lays down `src/` and the wiring, deploys green, and has nothing to delete. Start here to build something new. One per project.
 
 | Key | What |
-|------|-------|
-| [`realtime`](kits/realtime/) | Multiplayer / presence / shared state — channels, host election, server-persisted sync. Engine-agnostic. |
-| [`web-vision-mediapipe`](kits/web-vision-mediapipe/) | Browser computer vision — gesture, body pose, object detection via MediaPipe. Client-side only. |
+|-----|------|
+| [`web-simple`](templates/web-simple/) | Static frontend-only web app - landing page, dashboard, simple game. No backend. |
+| [`web-fullstack`](templates/web-fullstack/) | Web app with a backend API and database - frontend shell, `functions/`, `migrations/`. |
+| [`api`](templates/api/) | Pure API backend (no frontend) - one example function and a passing test. |
+| [`3d-engine`](templates/3d-engine/) | Minimal 3D multiplayer wiring - Three.js + Rapier physics + Colyseus, no gameplay. |
+
+### Apps - [`apps/`](apps/)
+
+A **complete, working app** for an empty project: run it as-is, learn from it, then extend or replace it. A demo or a vertical; it doesn't have to be production-ready. One per project.
+
+| Key | What |
+|-----|------|
+| [`web-vision-cam`](apps/web-vision-cam/) | Fullscreen camera app with on-device gesture/pose/object detection. |
+| [`object-spotter`](apps/object-spotter/) | Camera app that boxes, labels and counts objects in real time. |
+| [`2d-game`](apps/2d-game/) | 2D Phaser 3 game - platformer/arcade/puzzle. |
+| [`3d-world`](apps/3d-world/) | Playable 3D multiplayer rocket-launcher demo, built on `3d-engine`. |
+| [`karaoke-captions`](apps/karaoke-captions/) | Audio + lyrics to word-synced karaoke captions (GPU job). |
+| [`paid-app`](apps/paid-app/) | Storefront that charges real money via Stripe. |
+| [`notify-demo`](apps/notify-demo/) | Web push notifications demo. |
+| [`monitor`](apps/monitor/) | The per-account dashboard (auto-installed; add your own copy to customize). |
+| [`app-itsm`](apps/app-itsm/) | IT service management (hidden from listings). |
+| [`outreach-agent`](apps/outreach-agent/) | Outreach-email funnel - incomplete, hidden from listings. |
+
+### Kits - [`kits/`](kits/)
+
+A **reusable building block** added into an *existing* app. Files land under `src/packages/<kit>/`, with the import map and `gipity.yaml` wired up automatically. Many kits per project.
+
+| Key | What |
+|-----|------|
+| [`realtime`](kits/realtime/) | Multiplayer / presence / shared state - channels, host election, server-persisted sync. Engine-agnostic. |
+| [`web-vision-mediapipe`](kits/web-vision-mediapipe/) | Browser computer vision - gesture, body pose, object detection via MediaPipe. Client-side only. |
+| [`web-vision-detect`](kits/web-vision-detect/) | High-accuracy browser object detection - YOLOX on ONNX Runtime Web. Client-side only. |
+| [`chatbot`](kits/chatbot/) | Drop-in chatbot - persona, scope guardrails, static knowledge, streaming. |
+| [`audio-align`](kits/audio-align/) | Forced audio alignment: audio + lyrics to word-level timing (GPU job). |
+| [`i18n`](kits/i18n/) | Multi-language - language picker, locale persistence, RTL, translation lookup. |
+| [`contacts`](kits/contacts/) | Contact data layer - imports, de-duplication with provenance, tags, search. Needs a database template. |
+| [`integrations/servicenow`](kits/integrations/servicenow/) | ServiceNow tables as a data source - polling pull, write-back, optional webhook sync. |
+| [`stripe`](kits/stripe/) | Charge end-users via Stripe Connect - checkout, subscriptions, billing portal. |
+| [`notify`](kits/notify/) | Web push notifications (Gipity Notify), including iOS home-screen web apps. |
 
 ## How `gipity add` resolves a name
 
 ```
-gipity add web-simple --title "My app"   # template — needs an empty project
-gipity add realtime                       # kit — installs into the current app
+gipity add web-simple --title "My app"   # template - needs an empty project
+gipity add 2d-game                        # app - needs an empty project
+gipity add realtime                       # kit - installs into the current app
 ```
 
-Dispatch is by catalog membership: a name in the templates table installs a whole app; a name in the kits table installs into the existing one. The catalog itself is defined in code at [`platform/packages/shared/src/constants.ts`](https://github.com/GipityAI/registry) in the main Gipity repo — keep this README and that source in sync when adding entries.
+The catalog is defined in code in the main Gipity repo (`platform/packages/shared/src/constants.ts`, `TEMPLATES` with `kind: 'template' | 'app'`, and `KITS`); each entry's `dir` is its path in this repo. Keep this README and that source in sync when adding entries.
 
 ## Repo layout
 
 ```
 registry/
-├── templates/        # whole-app scaffolds
-│   ├── _shared/      # canonical source for non-kit code reused across templates
-│   ├── web-simple/
-│   ├── 3d-engine/
-│   ├── 3d-world/
-│   ├── web-fullstack/
-│   ├── web-vision-cam/
-│   ├── 2d-game/
-│   ├── api/
-│   └── README.md     # user-facing template docs
-└── kits/             # reusable building blocks
-    ├── realtime/
-    └── web-vision-mediapipe/
+├── templates/   # blank wiring for a new app
+├── apps/        # complete working apps
+├── kits/        # building blocks for an existing app
+└── _shared/     # canonical non-kit code synced into templates and apps
 ```
 
-The `_shared/` directory holds canonical files (e.g. the `gipity-theme.css` brand theme used by the Water.css templates) that get synced into each consuming template. Run `npx tsx platform/scripts/sync-registry.ts` after editing any file under `_shared/` or any kit referenced by a template; CI uses `--check` to fail on drift.
+`_shared/` holds canonical files (e.g. the `gipity-theme.css` brand theme used by the Water.css templates) that are synced into each consumer. Run `npx tsx platform/scripts/sync-registry.ts` after editing anything under `_shared/` or a kit that ships inside a template or app; CI uses `--check` to fail on drift.
 
 ## Contributing
 

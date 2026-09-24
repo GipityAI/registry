@@ -7,13 +7,13 @@ Templates and kits are designed to be edited and added to. This guide covers the
 - A Gipity account and the CLI (`npm install -g gipity && gipity init`)
 - A clone of the main Gipity repo alongside this one — the catalog metadata (`TEMPLATES` and `KITS` arrays) and the dev/sync scripts live there. This repo holds only the source files for each template and kit.
 
-## Editing an existing template
+## Editing an existing template or app
 
-From inside the linked dev app directory, run `gipity add <path-to-the-template> --force` followed by `gipity deploy dev`. The CLI walks the template directory, POSTs a payload, and the server runs the same `installTemplate` pipeline a real user hits — placeholder substitution (`{{TITLE}}`, `{{PROJECT_GUID}}`, `{{DESCRIPTION_META}}`...), favicon generation, deploy-checksum tracking. ~1-2 s round trip.
+From inside the linked dev app directory, run `gipity add <path-to-the-template-or-app> --force` followed by `gipity deploy dev`. The CLI walks the template directory, POSTs a payload, and the server runs the same `installTemplate` pipeline a real user hits - placeholder substitution (`{{TITLE}}`, `{{PROJECT_GUID}}`, `{{DESCRIPTION_META}}`...), favicon generation, deploy-checksum tracking. ~1-2 s round trip.
 
 ```bash
 cd ~/GipityProjects/my-test-app
-gipity add /home/me/Gipity/registry/templates/3d-world --force
+gipity add /home/me/Gipity/registry/apps/3d-world --force
 gipity deploy dev
 ```
 
@@ -21,11 +21,11 @@ For multi-client / realtime work, after the deploy use `just multi-test <url>` f
 
 ### Editing a kit
 
-Kits still install through the server's bundled catalog via `gipity add <kit-name>`. A kit edit requires the server to be redeployed (`just deploy-server-fast` from `platform/`) before `gipity add <kit-name>` picks up the new version. If the kit is bundled inside a template (e.g. `audio-align` inside `karaoke-captions`), iterate on the template instead — the kit ships as part of the template payload.
+Kits still install through the server's bundled catalog via `gipity add <kit-name>`. A kit edit requires the server to be redeployed (`just deploy-server-fast` from `platform/`) before `gipity add <kit-name>` picks up the new version. If the kit is bundled inside an app (e.g. `audio-align` inside `karaoke-captions`), iterate on the app instead - the kit ships as part of its payload.
 
-## Adding a new template
+## Adding a new template or app
 
-1. Create the directory under `registry/templates/<key>/`. Pick a short, literal key (`web-simple`, `3d-engine`) — no `-template` / `-starter` suffix.
+1. Create the directory: `registry/templates/<key>/` for blank wiring, `registry/apps/<key>/` for a complete working app. Pick a short, literal key (`web-simple`, `3d-engine`) - no `-template` / `-app` suffix.
 2. In the main Gipity repo, add an entry to `TEMPLATES` in `platform/packages/shared/src/constants.ts`:
    ```ts
    {
@@ -33,21 +33,21 @@ Kits still install through the server's bundled catalog via `gipity add <kit-nam
      label: 'Display name',
      description: 'One-line description shown in help text.',
      pickHint: 'Concrete examples a user might describe in their own words.',
-     dir: 'your-key',     // matches the directory you created
+     dir: 'templates/your-key',  // or 'apps/your-key' - the directory you created
      visible: true,
-     kind: 'template',    // or 'starter' for a working demo
+     kind: 'template',           // or 'app' for a complete working app
    },
    ```
-3. Add the user-facing copy in `registry/templates/README.md`.
+3. Add a row to `registry/README.md` and to `registry/templates/README.md` or `registry/apps/README.md`.
 4. Add tests — the [Testing](#testing) section below details what's required.
 5. The `registry-layout.test.ts` guard will verify the directory exists and is non-empty. If you forget step 1, this fails immediately.
 
-### `kind: 'template'` vs `'starter'`
+### `kind: 'template'` vs `'app'`
 
-- **template** — blank wiring only. No gameplay, no business logic. The user (or their agent) writes everything on top. Use for new builds.
-- **starter** — a complete, working demo. The user can run it as-is, then replace or extend pieces. Use as a playable reference.
+- **template** (`templates/`) - blank wiring only. No gameplay, no business logic. The user (or their agent) writes everything on top. Use for new builds.
+- **app** (`apps/`) - a complete, working app: a demo or a vertical. The user can run it as-is, then replace or extend pieces. It doesn't have to be production-ready; say so in its description if it isn't.
 
-Keep keys flat. The `kind` field carries the distinction — don't bake it into the key name.
+Keep keys flat. The `kind` field and the directory carry the distinction - don't bake it into the key name.
 
 ## Adding a new kit
 
@@ -58,11 +58,11 @@ A kit is an npm-style package that gets copied into an app's `src/packages/<key>
 3. A `README.md` in the kit directory explaining the kit's API.
 4. Tests covering kit-install behavior. See `platform/server/src/__tests__/kit-install.test.ts` for the unit test pattern; e2e behavior is exercised by `add-e2e.test.ts`.
 
-If a kit is meant to ship pre-installed in a specific template (like `realtime` in the 3D templates), wire that up in `platform/scripts/sync-registry.ts` so the kit is mirrored into the template at sync time.
+If a kit is meant to ship pre-installed in a template or app (like `realtime` in `3d-engine` and `3d-world`), wire that up in `platform/scripts/sync-registry.ts` so the kit is mirrored into the template at sync time.
 
 ## The sync gate
 
-`registry/templates/_shared/` is the canonical source for non-kit code reused across templates (currently the `gipity-theme.css` brand theme used by the Water.css templates `web-simple` and `web-fullstack`). Same for kits that are pre-installed in templates (`realtime` → 3D templates, `web-vision-mediapipe` → `web-vision-cam`).
+`registry/_shared/` is the canonical source for non-kit code reused across templates and apps (currently the `gipity-theme.css` brand theme used by the Water.css templates). Same for kits that are pre-installed (`realtime` into `3d-engine` and `3d-world`, `web-vision-mediapipe` into `web-vision-cam`).
 
 After any edit to `_shared/` or to a synced kit:
 
@@ -102,8 +102,8 @@ E2E_BASE_URL=https://a.gipity.ai \
 ## Pull request checklist
 
 - [ ] Catalog entry added in `platform/packages/shared/src/constants.ts`
-- [ ] Directory created under `registry/templates/` or `registry/kits/`
-- [ ] User-facing docs updated (`registry/templates/README.md` or `registry/kits/<kit>/README.md`)
+- [ ] Directory created under `registry/templates/`, `registry/apps/` or `registry/kits/`
+- [ ] User-facing docs updated (`registry/README.md`, plus `templates/README.md`, `apps/README.md` or `kits/<kit>/README.md`)
 - [ ] Tests added (file-presence assertions for templates; install behavior for kits)
 - [ ] `npx tsx platform/scripts/sync-registry.ts --check` passes
 - [ ] `npm run test:fast` passes (from `platform/server/`)

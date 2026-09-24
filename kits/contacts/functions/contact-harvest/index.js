@@ -3,10 +3,9 @@
 // resolution engine as every other source (source='gmail').
 //
 // SCAFFOLD STATUS: this save side is live and testable today (POST a harvest JSON
-// blob). The LLM step that READS the inbox is the documented fast-follow - an
-// app-level workflow with tool_filter:[gmail_search, gmail_read] that calls this
-// function. That step costs LLM tokens per run (the inbox scan) and is therefore
-// MANUAL-trigger only; Gmail's own API is free/quota-limited. See README.
+// blob). Reading the inbox is not a workflow step yet (workflow LLM steps have no
+// Gmail tool); the README shows filling it from a coding agent with
+// `gipity gmail search/read` + `gipity fn call contact-harvest`.
 import { resolveMember, makeEnsureActor, assertCanWrite } from '../_lib/contacts/members.js';
 import { importRows } from '../_lib/contacts/write-core.js';
 

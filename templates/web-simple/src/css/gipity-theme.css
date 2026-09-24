@@ -1,5 +1,5 @@
 /* gipity-theme.css — the canonical Gipity brand + polish layer for Water.css apps.
-   SINGLE SOURCE OF TRUTH: registry/templates/_shared/css/gipity-theme.css.
+   SINGLE SOURCE OF TRUTH: registry/_shared/css/gipity-theme.css.
    The per-template copies are synced by scripts/sync-registry.ts — DON'T edit a
    copy; edit the source and re-run `npx tsx scripts/sync-registry.ts`.
 

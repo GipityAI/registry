@@ -1,0 +1,528 @@
+/**
+ * Monitor: sidebar-nav dashboard orchestrator, and the web app you sign in to.
+ * - Auth gate via Sign in with Gipity (cookie).
+ * - Projects (default landing: every project, its URLs and deploy state) and
+ *   Overview (health verdict) sit above three groups:
+ *   - Observe: Traffic / Activity / Errors / Chats / Audit            (event streams)
+ *   - Project: Compute / Data / Services / Hosting                    (resources)
+ *   - Account: Plan / Usage / Devices / Alerts / Secrets / Account    (account state)
+ * - URL hash preserves the active tab + sub-tab across reloads.
+ * - Range + Project filters re-render the active tab on change.
+ */
+import { api } from './api.js';
+import { signIn, isSignedIn } from './auth.js';
+import { renderProjectsTab } from './tabs/projects.js';
+import { renderOverviewTab } from './tabs/overview.js';
+import { renderTrafficTab } from './tabs/traffic.js';
+import { renderActivityTab } from './tabs/activity.js';
+import { renderErrorsTab } from './tabs/errors.js';
+import { renderServicesTab } from './tabs/services.js';
+import { renderChatsTab } from './tabs/chats.js';
+import { renderAuditTab } from './tabs/audit.js';
+import { renderAlertsTab } from './tabs/alerts.js';
+import { renderSecretsTab } from './tabs/secrets.js';
+import { renderComputeTab } from './tabs/compute.js';
+import { renderDataTab } from './tabs/data.js';
+import { renderHostingTab } from './tabs/hosting.js';
+import { renderSpendTab } from './tabs/spend.js';
+import { renderPlanTab } from './tabs/plan.js';
+import { renderDevicesTab } from './tabs/devices.js';
+import { renderAccountTab } from './tabs/account.js';
+import { deployAnnotationPlugin, crosshairPlugin, applyChartTheme } from './chart-helpers.js';
+import { initThemePicker } from './theme.js';
+import { setRenderer, beginTabLoad, endTabLoad, showTabError, initCardTips, hashPath, setHashPath } from './ui.js';
+
+// Globally register the deploy-annotation overlay so each tab just needs to
+// set `chart.$annotations` from the timeseries response, and apply the Monitor
+// chart theme (readable tick / grid colors on the dark surface).
+// eslint-disable-next-line no-undef
+if (typeof Chart !== 'undefined') Chart.register(deployAnnotationPlugin, crosshairPlugin);
+applyChartTheme();
+
+const $ = (id) => document.getElementById(id);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+let currentTab = 'projects';
+let currentAuditType = 'auth';
+
+// Feature flag: unread-style error count on the Errors nav item, driven by the
+// stats already fetched for Overview (no extra polling of its own).
+const SHOW_ERRORS_BADGE = true;
+
+// Persisted view state - survive reloads so the dashboard reopens the way the
+// user left it (sidebar width already persists via its own key below).
+const KEY_RANGE = 'monitor.range';
+const KEY_PROJECT = 'monitor.project';
+const KEY_AUTO = 'monitor.autoRefresh';
+
+function currentFilters() {
+  // The picker's value is ALWAYS a project short_guid. Both `appGuid` and
+  // `projectId` below hold that same string - `projectId` is a historical
+  // alias kept so legacy tab call-sites still destructure cleanly.
+  //
+  // WARNING: the `projectId` alias is a contract trap. The integer project_id
+  // never appears in the client. When wiring a client helper, ALWAYS send the
+  // value as `app_guid=...` on the wire. The server resolves short_guid →
+  // numeric id via `resolveProjectFilter` (see platform CLAUDE.md "Project
+  // filter contract"). Helpers that send `project_id=<shortguid>` instead
+  // silently fail Zod coercion - chats + audit shipped that way and the
+  // picker quietly stopped working on those tabs.
+  const guid = $('project-filter').value || undefined;
+  return { range: $('range').value, appGuid: guid, projectId: guid };
+}
+
+function showTab(name) {
+  currentTab = name;
+  $$('.sidebar button').forEach((b) => {
+    const active = b.dataset.tab === name;
+    b.classList.toggle('active', active);
+    if (active) b.setAttribute('aria-current', 'page');
+    else b.removeAttribute('aria-current');
+  });
+  $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== name; });
+  // Preserve `#services/<sub>` when re-clicking Services - only clobber the
+  // hash when actually switching to a different top-level tab. setHashPath
+  // keeps the `?project=...&range=...` filter params either way.
+  const baseHash = hashPath().split('/')[0];
+  if (baseHash !== name) setHashPath(name);
+  renderActiveTab();
+}
+
+// ── Deep-linkable filters ────────────────────────────────────────────────────
+// The hash carries the filters too: `#<tab>[/<sub>]?project=<slug|guid>&range=<r>`.
+// Reads accept a project slug, short_guid, or name; writes prefer the slug
+// (readable URLs). Filter writes use history.replaceState so dragging the
+// selects around doesn't pollute history or re-fire hashchange.
+
+/** slug → guid + name lookups, filled by populateProjectFilter. */
+let projectLookup = [];
+
+/** The ?query params currently in the hash. */
+function hashParams() {
+  const raw = location.hash.slice(1);
+  const q = raw.indexOf('?');
+  return new URLSearchParams(q === -1 ? '' : raw.slice(q + 1));
+}
+
+/** Resolve a `project=` param (slug, short_guid, or name) to a picker guid. */
+function resolveProjectParam(value) {
+  if (!value) return '';
+  const v = value.toLowerCase();
+  const hit = projectLookup.find(
+    (p) => p.short_guid === value || p.slug?.toLowerCase() === v || p.name?.toLowerCase() === v,
+  );
+  return hit?.short_guid ?? '';
+}
+
+/** Mirror the current Range + Project selection into the hash query. */
+function syncHashFilters() {
+  const params = hashParams();
+  const guid = $('project-filter').value;
+  const slug = projectLookup.find((p) => p.short_guid === guid)?.slug;
+  if (guid) params.set('project', slug || guid);
+  else params.delete('project');
+  params.set('range', $('range').value);
+  const query = params.toString();
+  history.replaceState(null, '', `#${hashPath()}${query ? `?${query}` : ''}`);
+}
+
+// CSV export per tab - only tabs that surface a flat list endpoint where
+// "export this view" makes sense. The button lives at the bottom of the tab,
+// as a muted link; tabs absent from this map don't render a CSV control.
+const CSV_ENDPOINTS = {
+  traffic:  { path: '/account/logs/traffic' },
+  errors:   { path: '/account/logs/errors' },
+  services: { path: '/account/logs/services' },
+  chats:    { path: '/account/logs/chats' },
+  audit:    { path: '/account/logs/audit' },
+};
+
+function downloadCsv(signal) {
+  const entry = CSV_ENDPOINTS[signal];
+  if (!entry) return;
+  const filters = currentFilters();
+  const params = new URLSearchParams();
+  if (filters.appGuid) params.set('app_guid', filters.appGuid);
+  if (filters.range) params.set('range', filters.range);
+  if (signal === 'audit') params.set('type', currentAuditType);
+  for (const [k, v] of Object.entries(entry.extra || {})) params.set(k, v);
+  params.set('format', 'csv');
+  // A fetch, not a navigation: the API only takes the session cookie on
+  // requests that carry this page's Origin, and a navigation carries none.
+  api.downloadCsv(`${entry.path}?${params.toString()}`, `${signal}.csv`).catch((err) => {
+    if (err.message === 'UNAUTHENTICATED') showAuthGate();
+    else console.error('[monitor] CSV export failed', err);
+  });
+}
+
+const TAB_RENDERERS = {
+  projects: renderProjectsTab,
+  overview: renderOverviewTab,
+  traffic: renderTrafficTab,
+  activity: renderActivityTab,
+  errors: renderErrorsTab,
+  services: renderServicesTab,
+  compute: renderComputeTab,
+  data: renderDataTab,
+  hosting: renderHostingTab,
+  spend: renderSpendTab,
+  plan: renderPlanTab,
+  chats: renderChatsTab,
+  devices: renderDevicesTab,
+  audit: renderAuditTab,
+  alerts: renderAlertsTab,
+  secrets: renderSecretsTab,
+  account: renderAccountTab,
+};
+
+let rendering = false;
+let lastUpdatedAt = null;
+
+function updateFreshness() {
+  const el = $('freshness');
+  if (!el || !lastUpdatedAt) return;
+  const s = Math.max(0, Math.round((Date.now() - lastUpdatedAt) / 1000));
+  el.textContent = s < 60 ? `Updated ${s}s ago` : `Updated ${Math.round(s / 60)}m ago`;
+}
+
+function updateErrorsBadge(n) {
+  const badge = $('errors-badge');
+  if (!badge || !SHOW_ERRORS_BADGE) return;
+  badge.textContent = n > 99 ? '99+' : String(n);
+  badge.hidden = !(n > 0);
+}
+
+async function renderActiveTab() {
+  const render = TAB_RENDERERS[currentTab];
+  if (!render) return;
+  // Honour a `#audit/<type>` hash on every render (not just first load) so
+  // "needs attention"-style links can target a specific audit view.
+  if (currentTab === 'audit') {
+    const sub = hashPath().split('/')[1];
+    if (['auth', 'upload', 'secret'].includes(sub) && sub !== currentAuditType) {
+      currentAuditType = sub;
+      $$('[data-audit]').forEach((b) => b.classList.toggle('active', b.dataset.audit === sub));
+    }
+  }
+  const panel = document.querySelector(`.tab-panel[data-tab="${currentTab}"]`);
+  const refreshBtn = $('refresh');
+  const filters = currentTab === 'audit'
+    ? { ...currentFilters(), type: currentAuditType }
+    : currentFilters();
+  rendering = true;
+  refreshBtn.disabled = true;
+  refreshBtn.classList.add('busy');
+  beginTabLoad(panel);
+  try {
+    const out = await render(api, filters);
+    if (currentTab === 'overview' && out && typeof out.errorCount === 'number') {
+      updateErrorsBadge(out.errorCount);
+    }
+    lastUpdatedAt = Date.now();
+    updateFreshness();
+  } catch (err) {
+    if (err.message === 'UNAUTHENTICATED') { showAuthGate(); return; }
+    console.error('[monitor] tab render failed', err);
+    showTabError(panel, err);
+  } finally {
+    rendering = false;
+    endTabLoad(panel);
+    refreshBtn.classList.remove('busy');
+    refreshBtn.disabled = false;
+  }
+}
+
+// ── Auto-refresh + live pulse ──────────────────────────────────────────────
+// Off / 30s / 60s, persisted. Refreshes the ACTIVE tab only, and only while
+// the page is visible. The header live-pulse (realtime CCU) updates on the
+// same cadence - plus once at load - so "N live now" stays honest.
+let autoTimer = null;
+
+/** Errors badge on the sidebar, whatever tab is open: Overview refreshes it
+ *  as it renders, this seeds it on load (Projects is the landing tab). */
+async function refreshErrorsBadge() {
+  try {
+    const { range, appGuid } = currentFilters();
+    updateErrorsBadge((await api.stats(range, appGuid)).data.cards.errors ?? 0);
+  } catch { /* decorative - never surface an error for the badge */ }
+}
+
+async function updateLivePulse() {
+  try {
+    const res = await api.realtimeLive();
+    $('live-count').textContent = String(res.data.live_ccu ?? 0);
+    $('live-pulse').hidden = false;
+  } catch { /* decorative - never surface an error for the pulse */ }
+}
+
+function applyAutoRefresh() {
+  const secs = Number($('auto-refresh').value) || 0;
+  localStorage.setItem(KEY_AUTO, String(secs));
+  if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+  if (!secs) return;
+  autoTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible' || rendering || $('dashboard').hidden) return;
+    renderActiveTab();
+    updateLivePulse();
+  }, secs * 1000);
+}
+
+async function populateProjectFilter() {
+  try {
+    // Use /account/logs/projects (lists every project the user owns) rather
+    // than /apps (which only returns projects with telemetry rows).
+    const res = await api.projects();
+    projectLookup = res.data;
+    const sel = $('project-filter');
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All projects</option>';
+    for (const p of res.data) {
+      const opt = document.createElement('option');
+      opt.value = p.short_guid;
+      opt.textContent = p.name;
+      sel.appendChild(opt);
+    }
+    // Precedence: a `?project=` deep-link param (resolvable only now that the
+    // options exist), else the in-page selection, else the persisted one - and
+    // only when that project still exists in the list.
+    const fromHash = resolveProjectParam(hashParams().get('project'));
+    const want = fromHash || current || localStorage.getItem(KEY_PROJECT) || '';
+    if (want && Array.from(sel.options).some((o) => o.value === want)) sel.value = want;
+  } catch (err) {
+    if (err.message === 'UNAUTHENTICATED') showAuthGate();
+    else console.error('[monitor] projects failed', err);
+  }
+}
+
+function showAuthGate() {
+  $('auth-gate').hidden = false;
+  $('dashboard').hidden = true;
+}
+function showDashboard() {
+  $('auth-gate').hidden = true;
+  $('dashboard').hidden = false;
+}
+
+/**
+ * Wire the sidebar splitter - drag the 2px rail to resize the nav, persist the
+ * width to localStorage. Clamps between a sensible min (140px, labels still
+ * fit) and max (320px, beyond which the nav becomes a left panel).
+ */
+function initSidebarSplitter() {
+  const sidebar = document.querySelector('.sidebar');
+  const splitter = $('sidebar-splitter');
+  if (!sidebar || !splitter) return;
+  const MIN = 140, MAX = 320, KEY = 'monitor.sidebarWidth';
+  const saved = parseInt(localStorage.getItem(KEY) || '', 10);
+  if (saved >= MIN && saved <= MAX) sidebar.style.width = `${saved}px`;
+
+  let dragging = false;
+  // The sidebar's left edge can't move during a drag, so it's measured once on
+  // mousedown. Measuring inside the mousemove handler instead would force a
+  // synchronous relayout of the whole dashboard (tables + charts) on every
+  // pointer event, and the drag locks up the browser.
+  let originLeft = 0;
+  // Latest pointer x, applied once per frame - pointer events fire far faster
+  // than the browser paints, so writing the width on each one just queues
+  // relayouts that are discarded before anyone sees them.
+  let pendingX = 0;
+  let hasPendingX = false;
+  let rafId = 0;
+
+  const applyPending = () => {
+    rafId = 0;
+    if (!hasPendingX) return;
+    const next = Math.min(MAX, Math.max(MIN, pendingX - originLeft));
+    sidebar.style.width = `${next}px`;
+  };
+
+  splitter.addEventListener('mousedown', (ev) => {
+    dragging = true;
+    hasPendingX = false;
+    originLeft = sidebar.getBoundingClientRect().left;
+    splitter.classList.add('dragging');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    ev.preventDefault();
+  });
+  window.addEventListener('mousemove', (ev) => {
+    if (!dragging) return;
+    pendingX = ev.clientX;
+    hasPendingX = true;
+    if (!rafId) rafId = requestAnimationFrame(applyPending);
+  });
+  window.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    // Land the final pointer position even if its frame hasn't run yet.
+    if (rafId) cancelAnimationFrame(rafId);
+    applyPending();
+    splitter.classList.remove('dragging');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    const w = parseInt(sidebar.style.width, 10);
+    if (w >= MIN && w <= MAX) localStorage.setItem(KEY, String(w));
+  });
+}
+
+async function init() {
+  setRenderer(renderActiveTab);
+  initSidebarSplitter();
+
+  // Tab clicks
+  $$('.sidebar button').forEach((btn) => {
+    btn.addEventListener('click', () => showTab(btn.dataset.tab));
+  });
+
+  // Restore Range: a `?range=` deep-link param wins, else the persisted one.
+  // (Project restores in populateProjectFilter once the options exist.)
+  const rangeParam = hashParams().get('range');
+  const savedRange = rangeParam || localStorage.getItem(KEY_RANGE);
+  if (savedRange && $('range').querySelector(`option[value="${savedRange}"]`)) {
+    $('range').value = savedRange;
+  }
+
+  // Hash routing
+  // Initial tab from URL hash. `<tab>/<sub>` deep-links into a sub-tab -
+  // services/compute/data/hosting handle their own sub part; audit's is here.
+  // Filter params (`?project=...&range=...`) ride behind the path - see
+  // hashParams()/syncHashFilters().
+  const [baseTab, subPart] = hashPath().split('/');
+  if (baseTab in TAB_RENDERERS) {
+    currentTab = baseTab;
+    $$('.sidebar button').forEach((b) => b.classList.toggle('active', b.dataset.tab === baseTab));
+    $$('.tab-panel').forEach((p) => { p.hidden = p.dataset.tab !== baseTab; });
+  }
+  if (baseTab === 'audit' && ['auth', 'upload', 'secret'].includes(subPart)) {
+    currentAuditType = subPart;
+    $$('[data-audit]').forEach((b) => b.classList.toggle('active', b.dataset.audit === subPart));
+  }
+  window.addEventListener('hashchange', () => {
+    const name = hashPath().split('/')[0];
+    if (name && name !== currentTab) showTab(name);
+  });
+
+  // Audit sub-tabs - mirror the other sub-tab strips: reflect the selection
+  // in the hash (`#audit/<type>`) so reloads land on the same view.
+  $$('[data-audit]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      $$('[data-audit]').forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentAuditType = btn.dataset.audit;
+      if (hashPath().split('/')[0] === 'audit') setHashPath(`audit/${currentAuditType}`);
+      if (currentTab === 'audit') renderActiveTab();
+    });
+  });
+
+  // Theme picker - re-read the CSS tokens into Chart.js defaults and re-render
+  // the active tab so the charts (which can't resolve CSS var()s) follow the theme.
+  initThemePicker(() => {
+    applyChartTheme();
+    renderActiveTab();
+  });
+
+  // Filter changes - persist, then re-render.
+  $('refresh').addEventListener('click', () => renderActiveTab());
+  $('range').addEventListener('change', () => {
+    localStorage.setItem(KEY_RANGE, $('range').value);
+    syncHashFilters();
+    renderActiveTab();
+  });
+  $('project-filter').addEventListener('change', () => {
+    localStorage.setItem(KEY_PROJECT, $('project-filter').value);
+    syncHashFilters();
+    renderActiveTab();
+  });
+
+  // Auto-refresh + freshness ticker
+  const savedAuto = localStorage.getItem(KEY_AUTO);
+  if (savedAuto && $('auto-refresh').querySelector(`option[value="${savedAuto}"]`)) {
+    $('auto-refresh').value = savedAuto;
+  }
+  $('auto-refresh').addEventListener('change', applyAutoRefresh);
+  applyAutoRefresh();
+  setInterval(updateFreshness, 1000);
+
+  // Per-tab CSV buttons live inside each tab footer; one delegated listener
+  // covers all of them so new tabs only need the button markup.
+  document.querySelectorAll('.export-csv-btn').forEach((btn) => {
+    btn.addEventListener('click', () => downloadCsv(btn.dataset.export));
+  });
+
+  // Convert card `title=` explanations into focusable ⓘ tooltips (keyboard +
+  // touch reachable, unlike native title bubbles).
+  initCardTips();
+
+  // Delegated interactions that any tab can emit without its own wiring:
+  //   .row-link[data-goto]      → navigate to `<tab>` or `<tab>/<sub>`, with
+  //                               optional data-search prefilling a filter box
+  //                               and data-set-project driving the global picker
+  //   .info-toggle              → expand/collapse the tab's full description
+  //   .copy-chip[data-copy]     → copy a Try-it command to the clipboard
+  document.addEventListener('click', (ev) => {
+    const link = ev.target.closest('.row-link[data-goto]');
+    if (link) {
+      if (link.dataset.setProject !== undefined) {
+        const sel = $('project-filter');
+        if (Array.from(sel.options).some((o) => o.value === link.dataset.setProject)) {
+          sel.value = link.dataset.setProject;
+          localStorage.setItem(KEY_PROJECT, sel.value);
+        }
+      }
+      if (link.dataset.search !== undefined) {
+        const box = $('activity-search');
+        if (box) box.value = link.dataset.search;
+      }
+      const path = link.dataset.goto;
+      // setHashPath keeps any `?project=...&range=...` filter params intact.
+      if (hashPath() !== path) setHashPath(path);
+      const base = path.split('/')[0];
+      // hashchange only fires showTab on a base-tab change; same-tab
+      // navigations (sub-tab or filter tweaks) re-render explicitly.
+      if (base === currentTab || !base) renderActiveTab();
+      return;
+    }
+    const toggle = ev.target.closest('.info-toggle');
+    if (toggle) {
+      const info = toggle.closest('.tab-desc-wrap')?.querySelector('.tab-info');
+      if (info) {
+        info.hidden = !info.hidden;
+        toggle.setAttribute('aria-expanded', String(!info.hidden));
+      }
+      return;
+    }
+    const chip = ev.target.closest('.copy-chip[data-copy]');
+    if (chip) {
+      navigator.clipboard?.writeText(chip.dataset.copy).then(() => {
+        chip.classList.add('copied');
+        setTimeout(() => chip.classList.remove('copied'), 1200);
+      }).catch(() => { /* clipboard unavailable - the command is still visible */ });
+    }
+  });
+
+  // Sign-in
+  $('signin').addEventListener('click', async () => {
+    try {
+      await signIn();
+      showDashboard();
+      await populateProjectFilter();
+      await renderActiveTab();
+      updateLivePulse();
+      refreshErrorsBadge();
+    } catch (err) {
+      alert(`Sign-in failed: ${err.message}`);
+    }
+  });
+
+  if (await isSignedIn()) {
+    showDashboard();
+    await populateProjectFilter();
+    await renderActiveTab();
+    updateLivePulse();
+    refreshErrorsBadge();
+  } else {
+    showAuthGate();
+  }
+}
+
+init();
