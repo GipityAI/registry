@@ -1,13 +1,46 @@
 /**
  * Sign-in-with-Gipity flow for the Monitor app.
  *
- * We don't need an app token because we read /account/logs/* which is
- * session-cookie-authenticated. We use the SiwG popup just to land the
- * session cookie on the platform API host, then the API client uses
- * credentials: 'include' for subsequent requests.
+ * Monitor is a normal app in your account. It reads and manages your account
+ * through the platform API by proving two things on every call: which app is
+ * asking (its app token, X-App-Token) and who is looking (the session cookie).
+ * The platform honors that only when the viewer owns this app and granted it
+ * the Account scope, so your Monitor reaches your account and nobody else's
+ * app ever can.
  */
 const APP_GUID = '{{PROJECT_GUID}}';
 const API_BASE = '{{API_BASE}}';
+
+// Identity (1) + Account (128). Account is only ever granted to an app you own.
+const PERMISSIONS = 1 | 128;
+
+// Refresh the app token a minute before it expires.
+const TOKEN_REFRESH_BUFFER_MS = 60_000;
+let tokenCache = null;
+let tokenInflight = null;
+
+/** This app's token (public; it names the app, not the viewer). Cached, single-flight. */
+export async function appToken() {
+  if (tokenCache && tokenCache.expiresAt - TOKEN_REFRESH_BUFFER_MS > Date.now()) return tokenCache.token;
+  if (tokenInflight) return tokenInflight;
+  tokenInflight = (async () => {
+    try {
+      const started = Date.now();
+      const res = await fetch(`${API_BASE}/api/token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app: APP_GUID }),
+      });
+      if (!res.ok) throw new Error(`App token request failed (${res.status})`);
+      const { data } = await res.json();
+      tokenCache = { token: data.token, expiresAt: started + data.expiresIn * 1000 };
+      return data.token;
+    } finally {
+      tokenInflight = null;
+    }
+  })();
+  return tokenInflight;
+}
 
 /**
  * Open the consent/login popup, wait for the postMessage handshake from
@@ -17,7 +50,7 @@ const API_BASE = '{{API_BASE}}';
  */
 export function signIn() {
   return new Promise((resolve, reject) => {
-    const url = `${API_BASE}/api/auth/login?app=${encodeURIComponent(APP_GUID)}&permissions=1&mode=popup`;
+    const url = `${API_BASE}/api/auth/login?app=${encodeURIComponent(APP_GUID)}&permissions=${PERMISSIONS}&mode=popup`;
     const popup = window.open(url, 'gipity_signin', 'width=480,height=640');
     if (!popup) {
       reject(new Error('Popup blocked'));
@@ -50,10 +83,13 @@ export function signIn() {
   });
 }
 
-/** Probe whether the session cookie is valid by hitting a cheap authed endpoint. */
+/** Probe whether this viewer can use Monitor (signed in, owns it, granted Account). */
 export async function isSignedIn() {
   try {
-    const res = await fetch(`${API_BASE}/account/logs/stats?range=1h`, { credentials: 'include' });
+    const res = await fetch(`${API_BASE}/account/logs/stats?range=1h`, {
+      credentials: 'include',
+      headers: { 'X-App-Token': await appToken() },
+    });
     return res.status === 200;
   } catch {
     return false;

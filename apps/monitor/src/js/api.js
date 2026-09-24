@@ -1,14 +1,20 @@
 /**
- * Thin client for the platform API. Uses the session cookie (Sign in with
- * Gipity) via `credentials: 'include'`. The platform only accepts that cookie
- * as the account from the platform's own origin, so these calls work from the
- * system Monitor and 401 from anywhere else. Every route here is one the CLI
+ * Thin client for the platform API. Every call sends this app's token
+ * (X-App-Token) with the session cookie (`credentials: 'include'`); the
+ * platform acts as the viewer's account only when the viewer owns this app and
+ * granted it the Account scope (see auth.js). Every route here is one the CLI
  * calls too: if Monitor can do it, `gipity` can.
  */
+import { appToken } from './auth.js';
+
 const API_BASE = '{{API_BASE}}';
 
+async function authHeaders(extra = {}) {
+  return { 'X-App-Token': await appToken(), ...extra };
+}
+
 async function getJson(path) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: await authHeaders() });
   if (res.status === 401) throw new Error('UNAUTHENTICATED');
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   return res.json();
@@ -16,7 +22,7 @@ async function getJson(path) {
 
 /** GET a file-shaped response (CSV) and hand it to the browser as a download. */
 async function download(path, filename) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
+  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: await authHeaders() });
   if (res.status === 401) throw new Error('UNAUTHENTICATED');
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   const url = URL.createObjectURL(await res.blob());
@@ -31,7 +37,7 @@ async function send(method, path, body) {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    headers: await authHeaders({ 'Content-Type': 'application/json' }),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) throw new Error('UNAUTHENTICATED');
