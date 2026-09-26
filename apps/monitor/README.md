@@ -33,4 +33,4 @@ src/
 
 ## Editing
 
-This template is the source of the system Monitor. To try a change, install it into a test project (`gipity add <path-to-this-dir> --force`, then `gipity deploy dev`); the page loads there, but account data only loads where Monitor is served from the platform origin.
+This app is the source of every account's own Monitor (each account gets a copy at signup). To try a change, install it into a test project (`gipity add <path-to-this-dir> --force`, then `gipity deploy dev`) and sign in as that project's owner: Monitor reads the account through the owner-only Account scope, so it loads data only for the owner. After a server deploy ships a change, `scripts/update-app-copies.ts monitor --apply` (platform) updates every copy its owner hasn't edited.
