@@ -1,0 +1,41 @@
+{
+  "name": "@gipity/leaderboard",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "description": "Game leaderboards: boards declared in a migration with server-side plausibility checks (score bounds, official rulesets, checkpoint splits, rate limits), personal bests for all time and per ISO week, around-me and friends views, attached ghost recordings, and owner moderation (remove, ban, reset). Works from a web game (Gipity.fn) or any client over HTTPS, e.g. a Godot game signed in with Steam.",
+  "gipity": {
+    "kit": true,
+    "engineAgnostic": true,
+    "install": {
+      "importMap": {
+        "@gipity/leaderboard": "./packages/leaderboard/index.js",
+        "@gipity/leaderboard/": "./packages/leaderboard/"
+      },
+      "functions": true,
+      "migrations": true,
+      "deployPhase": {
+        "name": "functions",
+        "type": "functions",
+        "source": "functions",
+        "function_definitions": [
+          {
+            "name": "leaderboard-submit",
+            "auth": "user",
+            "tables": ["lb_boards", "lb_entries", "lb_ghosts", "lb_bans", "lb_submissions"]
+          },
+          {
+            "name": "leaderboard-read",
+            "auth": "public",
+            "tables": ["lb_boards", "lb_entries", "lb_ghosts", "lb_bans"]
+          },
+          {
+            "name": "leaderboard-admin",
+            "auth": "member",
+            "tables": ["lb_boards", "lb_entries", "lb_ghosts", "lb_bans", "lb_submissions"]
+          }
+        ]
+      }
+    }
+  }
+}
