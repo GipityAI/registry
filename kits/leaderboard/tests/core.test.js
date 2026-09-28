@@ -6,7 +6,7 @@
  * real database; see VERIFY.md.
  */
 import assert from 'node:assert/strict';
-import { isoWeek, resolvePeriod, isBetter, orderSql, base64Bytes, clampInt, validateSubmission } from '../functions/_lib/leaderboard/core.js';
+import { isoWeek, periodKey, periodKind, boardPeriods, submissionPeriods, resolvePeriod, isBetter, rankOrderSql, aheadSql, base64Bytes, clampInt, validateSubmission } from '../functions/_lib/leaderboard/core.js';
 
 let failed = 0;
 function test(name, fn) {
@@ -23,23 +23,67 @@ test('isoWeek follows ISO-8601 year boundaries', () => {
   assert.equal(isoWeek(new Date('2024-12-30T00:00:00Z')), '2025-W01'); // Monday belongs to the next ISO year
 });
 
-test('resolvePeriod: all, week, explicit key; junk is refused', () => {
-  const now = new Date('2026-09-28T12:00:00Z');
-  assert.equal(resolvePeriod(undefined, now), 'all');
-  assert.equal(resolvePeriod('all', now), 'all');
-  assert.equal(resolvePeriod('week', now), '2026-W40');
-  assert.equal(resolvePeriod('2026-W01', now), '2026-W01');
-  assert.throws(() => resolvePeriod("all'; DROP TABLE lb_entries;--", now), /Unknown period/);
+const NOW = new Date('2026-09-28T12:00:00Z');
+
+test('periodKey for every kind', () => {
+  assert.equal(periodKey('all', NOW), 'all');
+  assert.equal(periodKey('day', NOW), '2026-09-28');
+  assert.equal(periodKey('week', NOW), '2026-W40');
+  assert.equal(periodKey('month', NOW), '2026-09');
+  assert.equal(periodKey('season', NOW, 'Summer Cup'), 'season:Summer Cup');
+  assert.equal(periodKey('season', NOW, null), null);
+  assert.throws(() => periodKey('year', NOW), /Unknown period kind/);
 });
 
-test('isBetter and orderSql respect sort direction', () => {
-  assert.equal(isBetter('asc', 100, 200), true);
-  assert.equal(isBetter('asc', 200, 100), false);
-  assert.equal(isBetter('desc', 200, 100), true);
-  assert.equal(isBetter('asc', 100, 100), false); // a tie never replaces the earlier run
-  assert.equal(orderSql('desc'), 'DESC');
-  assert.equal(orderSql('asc'), 'ASC');
-  assert.equal(orderSql('ASC; DROP'), 'ASC');
+test('periodKind recognizes stored keys', () => {
+  assert.deepEqual(['all', '2026-09-28', '2026-W40', '2026-09', 'season:S1', 'nope'].map(periodKind),
+    ['all', 'day', 'week', 'month', 'season', null]);
+});
+
+test('boards keep all + week by default, in a fixed order', () => {
+  assert.deepEqual(boardPeriods({}), ['all', 'week']);
+  assert.deepEqual(boardPeriods({ periods: ['season', 'day', 'all'] }), ['all', 'day', 'season']);
+});
+
+test('a submission counts toward every period the board keeps; no running season skips it', () => {
+  const b = { periods: ['all', 'day', 'week', 'month', 'season'] };
+  assert.deepEqual(submissionPeriods(b, NOW, 'S1').map(p => p.key), ['all', '2026-09-28', '2026-W40', '2026-09', 'season:S1']);
+  assert.deepEqual(submissionPeriods(b, NOW, null).map(p => p.kind), ['all', 'day', 'week', 'month']);
+});
+
+test('resolvePeriod: kinds, explicit keys, defaults, and readable refusals', () => {
+  const weekly = { periods: ['all', 'week'] };
+  assert.equal(resolvePeriod(undefined, weekly, NOW), 'all');
+  assert.equal(resolvePeriod('week', weekly, NOW), '2026-W40');
+  assert.equal(resolvePeriod('2026-W01', weekly, NOW), '2026-W01');
+  assert.throws(() => resolvePeriod('day', weekly, NOW), /doesn't keep day rankings. This board keeps: all, week/);
+  assert.throws(() => resolvePeriod("all'; DROP TABLE lb_entries;--", weekly, NOW), /Unknown period/);
+  const daily = { periods: ['day'] };
+  assert.equal(resolvePeriod(undefined, daily, NOW), '2026-09-28');
+  const seasonal = { periods: ['season'] };
+  assert.equal(resolvePeriod('season', seasonal, NOW, 'S2'), 'season:S2');
+  assert.equal(resolvePeriod('season:S1', seasonal, NOW, 'S2'), 'season:S1');
+  assert.throws(() => resolvePeriod('season', seasonal, NOW, null), /No season is running/);
+});
+
+test('isBetter: score by the board sort, then the tiebreak, and a full tie never replaces', () => {
+  const times = { sort: 'asc' };
+  assert.equal(isBetter(times, { score: 100 }, { score: 200 }), true);
+  assert.equal(isBetter(times, { score: 200 }, { score: 100 }), false);
+  assert.equal(isBetter(times, { score: 100 }, { score: 100 }), false);
+  const points = { sort: 'desc', tiebreak_sort: 'asc' };  // most points, then fastest
+  assert.equal(isBetter(points, { score: 900, tiebreak: 90 }, { score: 800, tiebreak: 10 }), true);
+  assert.equal(isBetter(points, { score: 900, tiebreak: 50 }, { score: 900, tiebreak: 60 }), true);
+  assert.equal(isBetter(points, { score: 900, tiebreak: 60 }, { score: 900, tiebreak: 50 }), false);
+  assert.equal(isBetter(points, { score: 900, tiebreak: 50 }, { score: 900, tiebreak: 50 }), false);
+});
+
+test('ranking SQL is whitelisted and includes the tiebreak only when the board has one', () => {
+  assert.equal(rankOrderSql({ sort: 'asc' }), 'e.score ASC');
+  assert.equal(rankOrderSql({ sort: 'desc', tiebreak_sort: 'asc' }), 'e.score DESC, e.tiebreak ASC NULLS LAST');
+  assert.equal(rankOrderSql({ sort: 'x; DROP', tiebreak_sort: 'y' }), 'e.score ASC, e.tiebreak ASC NULLS LAST');
+  assert.equal(aheadSql({ sort: 'asc' }), '(o.score < e.score)');
+  assert.equal(aheadSql({ sort: 'desc', tiebreak_sort: 'asc' }), '(o.score > e.score OR (o.score = e.score AND o.tiebreak < e.tiebreak))');
 });
 
 test('base64Bytes measures decoded size and rejects non-base64', () => {
@@ -86,6 +130,15 @@ test('splits must match the board, increase, and end at the score', () => {
   rejects(board(), ok({ splits: [10400, 21010, 31000] }), /last split must equal the score/);
   rejects(board(), ok({ splits: [-5, 21010, 31250] }), /positive/);
   assert.equal(validateSubmission(board({ splits: null }), ok({ splits: undefined })).splits, null);
+});
+
+test('tiebreak is required on tiebreak boards and refused elsewhere', () => {
+  const tb = board({ tiebreak_sort: 'asc' });
+  assert.equal(validateSubmission(tb, ok({ tiebreak: 42 })).tiebreak, 42);
+  rejects(tb, ok(), /tiebreak must be an integer/);
+  rejects(tb, ok({ tiebreak: 1.5 }), /tiebreak must be an integer/);
+  rejects(board(), ok({ tiebreak: 42 }), /has no tiebreak/);
+  assert.equal(validateSubmission(board(), ok()).tiebreak, null);
 });
 
 test('ghosts are size-capped base64', () => {

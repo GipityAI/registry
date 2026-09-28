@@ -3,6 +3,7 @@
 // submissions. Kit-owned (sealed). Boards themselves are declared in a
 // migration, not here.
 import { resolvePeriod, clampInt, MAX_PAGE } from '../_lib/leaderboard/core.js';
+import { currentSeason } from '../_lib/leaderboard/seasons.js';
 
 export default async function leaderboardAdmin(ctx, { db }) {
   const b = ctx.body || {};
@@ -44,10 +45,12 @@ export default async function leaderboardAdmin(ctx, { db }) {
 
   if (action === 'reset') {
     if (!b.board) return { error: "'board' is required." };
+    const board = await db.findOne('lb_boards', { board: String(b.board) });
+    if (!board) return { error: `No board '${b.board}'.` };
     const params = [String(b.board)];
     let where = 'board = $1';
     if (b.period != null) {
-      try { params.push(resolvePeriod(b.period)); } catch (err) { return { error: err.message }; }
+      try { params.push(resolvePeriod(b.period, board, new Date(), await currentSeason(db))); } catch (err) { return { error: err.message }; }
       where += ` AND period = $${params.length}`;
     }
     if (b.ruleset != null) { params.push(String(b.ruleset)); where += ` AND ruleset = $${params.length}`; }
@@ -64,12 +67,12 @@ export default async function leaderboardAdmin(ctx, { db }) {
     if (b.rejectedOnly) where.push('accepted = FALSE');
     const limit = clampInt(b.limit, 50, 1, MAX_PAGE);
     const { rows } = await db.query(
-      `SELECT id, board, ruleset, user_guid, score, accepted, reason, game_version, created_at
+      `SELECT id, board, ruleset, user_guid, score, tiebreak, accepted, reason, game_version, created_at
          FROM lb_submissions ${where.length ? 'WHERE ' + where.join(' AND ') : ''}
         ORDER BY created_at DESC LIMIT ${limit}`,
       params,
     );
-    return { submissions: rows.map(r => ({ ...r, score: r.score == null ? null : Number(r.score) })) };
+    return { submissions: rows.map(r => ({ ...r, score: r.score == null ? null : Number(r.score), tiebreak: r.tiebreak == null ? null : Number(r.tiebreak) })) };
   }
 
   return { error: `Unknown action '${action}'. Use remove, ban, unban, bans, reset or submissions.` };

@@ -5,9 +5,12 @@
  *   APP_GUID=p_xxx node kits/leaderboard/tests/e2e.mjs
  *
  * The app needs: the kit installed and deployed, `gipity project auth app` (or
- * `both`), and two boards with no ruleset restriction:
- *   ('e2e:time', 'asc', 1000, 600000, NULL, NULL, 256) and
- *   ('e2e:points', 'desc', 0, 1000000, NULL, NULL, 256).
+ * `both`), and these boards and season (see VERIFY.md for the migration):
+ *   e2e:time     asc, 1000-600000, max_ghost_bytes 256
+ *   e2e:points   desc, 0-1000000, max_ghost_bytes 256
+ *   e2e:tie      desc, tiebreak_sort asc (most points, then fastest)
+ *   e2e:daily    asc, periods {day, month} (no all-time board)
+ *   e2e:season   desc, periods {all, season}, plus a season 'E2E Season' running now
  * Each run ranks in its own ruleset, so runs never see each other's entries.
  */
 import assert from 'node:assert/strict';
@@ -71,9 +74,11 @@ await test('submissions rank ascending, ties share a rank, and ties keep submiss
 
 await test('a slower run keeps the personal best; a faster one moves the player up', async () => {
   const slower = await time(ada, 35000);
-  assert.deepEqual([slower.accepted, slower.improved.allTime, slower.personalBest, slower.rank], [true, false, 30000, 2]);
+  assert.deepEqual([slower.accepted, slower.improved.all, slower.personalBest, slower.rank], [true, false, 30000, 2]);
   const faster = await time(di, 20000);
-  assert.deepEqual([faster.improved.allTime, faster.improved.week, faster.rank], [true, true, 1]);
+  assert.deepEqual(faster.improved, { all: true, week: true });
+  assert.equal(faster.rank, 1);
+  assert.equal(faster.period, 'all');
 });
 
 await test('a new best without a ghost replaces a run that had one', async () => {
@@ -128,6 +133,56 @@ await test('descending boards rank highest first', async () => {
   await pts(ada, 100); await pts(bo, 900); await pts(cy, 500); await pts(ada, 50);
   const r = await top('e2e:points');
   assert.deepEqual(r.entries.map(e => [e.displayName, e.score]), [['Bo', 900], ['Cy', 500], ['Ada', 100]]);
+});
+
+await test('tiebreak: equal points rank by the second number, and a full tie shares a rank', async () => {
+  const tie = (p, score, tiebreak) => fn('leaderboard-submit', { board: 'e2e:tie', ruleset: RULESET, score, tiebreak }, p.token);
+  await tie(ada, 900, 60);
+  await tie(bo, 900, 50);
+  await tie(cy, 800, 10);
+  const better = await tie(ada, 900, 55);
+  assert.equal(better.improved.all, true);
+  assert.equal(better.rank, 2);
+  await tie(di, 900, 50);
+  const r = await top('e2e:tie');
+  assert.deepEqual(r.entries.map(e => [e.displayName, e.rank, e.score, e.tiebreak]),
+    [['Bo', 1, 900, 50], ['Di', 1, 900, 50], ['Ada', 3, 900, 55], ['Cy', 4, 800, 10]]);
+  const missing = await fn('leaderboard-submit', { board: 'e2e:tie', ruleset: RULESET, score: 1 }, ed.token);
+  assert.match(missing.reason, /tiebreak must be an integer/);
+});
+
+await test('a daily + monthly board has no all-time ranking and defaults to today', async () => {
+  const r = await fn('leaderboard-submit', { board: 'e2e:daily', ruleset: RULESET, score: 5000 }, ada.token);
+  assert.deepEqual(Object.keys(r.improved), ['day', 'month']);
+  assert.match(r.period, /^\d{4}-\d{2}-\d{2}$/);
+  const today = await top('e2e:daily');
+  assert.equal(today.period, r.period);
+  assert.equal(today.entries[0].displayName, 'Ada');
+  const month = await top('e2e:daily', { period: 'month' });
+  assert.match(month.period, /^\d{4}-\d{2}$/);
+  assert.equal(month.total, 1);
+  const refused = await top('e2e:daily', { period: 'all' });
+  assert.match(refused.error, /doesn't keep all rankings/);
+});
+
+await test('season boards rank within the running season', async () => {
+  const seasons = await fn('leaderboard-read', { action: 'seasons' });
+  assert.equal(seasons.current, 'E2E Season');
+  const r = await fn('leaderboard-submit', { board: 'e2e:season', ruleset: RULESET, score: 77 }, bo.token);
+  assert.deepEqual(r.improved, { all: true, season: true });
+  const s = await top('e2e:season', { period: 'season' });
+  assert.equal(s.period, 'season:E2E Season');
+  assert.equal(s.entries[0].score, 77);
+  const named = await top('e2e:season', { period: 'season:E2E Season' });
+  assert.equal(named.total, 1);
+});
+
+await test('boards report their periods and tiebreak', async () => {
+  const { boards } = await fn('leaderboard-read', { action: 'boards' });
+  const byName = Object.fromEntries(boards.map(b => [b.board, b]));
+  assert.deepEqual(byName['e2e:daily'].periods, ['day', 'month']);
+  assert.equal(byName['e2e:tie'].tiebreak_sort, 'asc');
+  assert.deepEqual(byName['e2e:time'].periods, ['all', 'week']);
 });
 
 await test('cheat checks reject and explain', async () => {

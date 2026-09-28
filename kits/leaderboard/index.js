@@ -4,8 +4,8 @@
  * HTTPS: POST /api/<appGuid>/fn/leaderboard-submit | leaderboard-read.
  *
  *   import { submitScore, top, aroundMe, ghost } from '@gipity/leaderboard';
- *   const r = await submitScore('oval-1:lap', 31250, { splits: [10400, 21010, 31250] });
- *   const { entries } = await top('oval-1:lap', { period: 'week' });
+ *   const r = await submitScore('arcade:score', 48200);
+ *   const { entries } = await top('arcade:score', { period: 'week' });
  */
 
 const G = () => {
@@ -17,12 +17,15 @@ const G = () => {
 
 const read = (body) => G().fn('leaderboard-read', body);
 
-/** Submit a score for the signed-in player. `ghost` is base64 bytes. */
-export function submitScore(board, score, { ruleset, splits, meta, ghost, gameVersion } = {}) {
-  return G().fn('leaderboard-submit', { board, score, ruleset, splits, meta, ghost, gameVersion });
+/** Submit a score for the signed-in player. `tiebreak` is required on boards
+ *  that have one; `ghost` (a replay) is base64 bytes. */
+export function submitScore(board, score, { tiebreak, ruleset, splits, meta, ghost, gameVersion } = {}) {
+  return G().fn('leaderboard-submit', { board, score, tiebreak, ruleset, splits, meta, ghost, gameVersion });
 }
 
-/** Top N. `period`: 'all' (default), 'week', or a week key like '2026-W39'. */
+/** Top N. `period`: 'all', 'day', 'week', 'month', 'season' (the current one of
+ *  each), or a key like '2026-09-28', '2026-W39', '2026-09', 'season:<name>'.
+ *  Defaults to all time when the board keeps it. */
 export function top(board, { ruleset, period, limit, offset } = {}) {
   return read({ action: 'top', board, ruleset, period, limit, offset });
 }
@@ -50,4 +53,9 @@ export function ghost(entryId) {
 /** Every configured board and its rules. */
 export function boards() {
   return read({ action: 'boards' });
+}
+
+/** The running season and recent ones: { current, seasons }. */
+export function seasons() {
+  return read({ action: 'seasons' });
 }

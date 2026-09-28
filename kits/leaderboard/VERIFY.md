@@ -9,6 +9,20 @@
    - `top` for `all`, `week` and an explicit week; `me`; `around`; `ghost`; `boards` (numbers, not strings);
    - `--anon`: reads work, while `leaderboard-submit` and `leaderboard-admin` are refused;
    - `ban` removes the entries and blocks submits; `unban` restores submitting; `reset` with `period: "week"` clears only the week.
-3. With several players, run the live e2e: `APP_GUID=<guid> node kits/leaderboard/tests/e2e.mjs` (its header lists the two boards it needs). It signs in real guest players (the app needs `gipity project auth app`) and checks: ranking for `asc` and `desc`, shared ranks on ties, personal-best updates, ghosts, pagination, `around`, `me`, `friends` by `playerRef`, weekly boards, cheat rejections, and the anonymous/player/member gates.
+3. With several players, run the live e2e: `APP_GUID=<guid> node kits/leaderboard/tests/e2e.mjs` (its header lists the two boards it needs). It signs in real guest players (the app needs `gipity project auth app`) and checks: ranking for `asc` and `desc`, tiebreaks, daily/monthly and season boards, shared ranks on ties, personal-best updates, ghosts, pagination, `around`, `me`, `friends` by `playerRef`, weekly boards, cheat rejections, and the anonymous/player/member gates.
 
-Verified 2026-09-28 against production: steps 1-3 (e2e: 16/16).
+The e2e boards and season, as an app migration:
+
+```sql
+INSERT INTO lb_boards (board, sort, tiebreak_sort, periods, min_score, max_score, max_ghost_bytes) VALUES
+  ('e2e:time',   'asc',  NULL,  ARRAY['all', 'week'],   1000, 600000,  256),
+  ('e2e:points', 'desc', NULL,  ARRAY['all', 'week'],   0,    1000000, 256),
+  ('e2e:tie',    'desc', 'asc', ARRAY['all', 'week'],   0,    1000000, 256),
+  ('e2e:daily',  'asc',  NULL,  ARRAY['day', 'month'],  0,    1000000, 256),
+  ('e2e:season', 'desc', NULL,  ARRAY['all', 'season'], 0,    1000000, 256)
+ON CONFLICT (board) DO NOTHING;
+INSERT INTO lb_seasons (name, starts_at, ends_at) VALUES ('E2E Season', '2026-01-01', '2036-01-01')
+ON CONFLICT (name) DO NOTHING;
+```
+
+Verified 2026-09-28 against production: steps 1-3 (e2e: 20/20, including an upgrade of an existing install onto the periods/tiebreak schema).
