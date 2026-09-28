@@ -9,6 +9,6 @@
    - `top` for `all`, `week` and an explicit week; `me`; `around`; `ghost`; `boards` (numbers, not strings);
    - `--anon`: reads work, while `leaderboard-submit` and `leaderboard-admin` are refused;
    - `ban` removes the entries and blocks submits; `unban` restores submitting; `reset` with `period: "week"` clears only the week.
-3. With several players (guest players via `POST /api/<guid>/auth/guest` after `gipity project auth app`): ranks order correctly for `asc` and `desc`, ties share a rank, `around` windows correctly, and `friends` matches Steam players by `playerRef`.
+3. With several players, run the live e2e: `APP_GUID=<guid> node kits/leaderboard/tests/e2e.mjs` (its header lists the two boards it needs). It signs in real guest players (the app needs `gipity project auth app`) and checks: ranking for `asc` and `desc`, shared ranks on ties, personal-best updates, ghosts, pagination, `around`, `me`, `friends` by `playerRef`, weekly boards, cheat rejections, and the anonymous/player/member gates.
 
-Verified 2026-09-28 on dev: steps 1 and 2. Step 3 needs the app-player sign-in shipped on the server.
+Verified 2026-09-28 against production: steps 1-3 (e2e: 16/16).
