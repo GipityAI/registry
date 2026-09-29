@@ -1,9 +1,10 @@
 // Leaderboard kit - moderation (auth: member, so only the app owner and
 // project members can call it). actions: remove | ban | unban | bans | reset |
-// submissions. Kit-owned (sealed). Boards themselves are declared in a
+// submissions | purge. Kit-owned (sealed). Boards themselves are declared in a
 // migration, not here.
 import { resolvePeriod, clampInt, MAX_PAGE } from '../_lib/leaderboard/core.js';
 import { currentSeason } from '../_lib/leaderboard/seasons.js';
+import { purgePlayer } from '../_lib/leaderboard/purge.js';
 
 export default async function leaderboardAdmin(ctx, { db }) {
   const b = ctx.body || {};
@@ -36,6 +37,14 @@ export default async function leaderboardAdmin(ctx, { db }) {
     if (!b.userGuid) return { error: "'userGuid' is required." };
     const { rowCount } = await db.query('DELETE FROM lb_bans WHERE user_guid = $1', [String(b.userGuid)]);
     return { unbanned: rowCount > 0 };
+  }
+
+  // Erase a player's leaderboard data (entries, submissions, ban, their ghosts),
+  // e.g. for a Gipity-account user who asked to be forgotten. App players are
+  // purged automatically when they delete their account.
+  if (action === 'purge') {
+    if (!b.userGuid) return { error: "'userGuid' is required." };
+    return { purged: String(b.userGuid), ...(await purgePlayer(db, String(b.userGuid))) };
   }
 
   if (action === 'bans') {
@@ -75,7 +84,7 @@ export default async function leaderboardAdmin(ctx, { db }) {
     return { submissions: rows.map(r => ({ ...r, score: r.score == null ? null : Number(r.score), tiebreak: r.tiebreak == null ? null : Number(r.tiebreak) })) };
   }
 
-  return { error: `Unknown action '${action}'. Use remove, ban, unban, bans, reset or submissions.` };
+  return { error: `Unknown action '${action}'. Use remove, ban, unban, bans, reset, submissions or purge.` };
 }
 
 async function pruneGhosts(db) {

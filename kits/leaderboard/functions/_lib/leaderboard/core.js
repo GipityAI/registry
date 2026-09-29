@@ -116,6 +116,73 @@ export function base64Bytes(s) {
   return (s.length / 4) * 3 - pad;
 }
 
+const VERSION_RE = /^v?(\d{1,9})(?:\.(\d{1,9}))?(?:\.(\d{1,9}))?(?:-([0-9A-Za-z.-]{1,30}))?(?:\+[0-9A-Za-z.-]{1,30})?$/;
+
+/**
+ * Parse a game version: major[.minor[.patch]][-prerelease][+build], with an
+ * optional leading 'v'. Missing parts are 0 ('1.4' is 1.4.0). Returns null for
+ * anything else ('latest', '1.x', '1..2', '').
+ */
+export function parseVersion(v) {
+  if (v == null) return null;
+  const m = VERSION_RE.exec(String(v).trim());
+  if (!m) return null;
+  return { parts: [m[1], m[2], m[3]].map(p => (p == null ? 0 : Number(p))), pre: m[4] ?? null };
+}
+
+/**
+ * Compare two parsed versions: negative, zero or positive. Semver order: by
+ * major, minor, patch; a prerelease sorts before its release (1.2.0-beta <
+ * 1.2.0); prereleases compare dot-separated, numbers numerically. Build
+ * metadata is ignored.
+ */
+export function compareVersions(a, b) {
+  for (let i = 0; i < 3; i++) if (a.parts[i] !== b.parts[i]) return a.parts[i] - b.parts[i];
+  if (a.pre === b.pre) return 0;
+  if (a.pre == null) return 1;
+  if (b.pre == null) return -1;
+  const x = a.pre.split('.');
+  const y = b.pre.split('.');
+  for (let i = 0; i < Math.max(x.length, y.length); i++) {
+    if (x[i] == null) return -1;
+    if (y[i] == null) return 1;
+    const nx = /^\d+$/.test(x[i]);
+    const ny = /^\d+$/.test(y[i]);
+    if (nx && ny && Number(x[i]) !== Number(y[i])) return Number(x[i]) - Number(y[i]);
+    if (nx !== ny) return nx ? -1 : 1;
+    if (x[i] !== y[i]) return x[i] < y[i] ? -1 : 1;
+  }
+  return 0;
+}
+
+/** A rejected submission: `message` is the reason and `code` a stable
+ *  identifier the client can switch on (e.g. GAME_VERSION_TOO_OLD). */
+export class SubmissionError extends Error {
+  constructor(code, message) {
+    super(message);
+    this.code = code;
+  }
+}
+
+/**
+ * Enforce the board's `min_game_version`. A run with no version, a garbage
+ * version, or one older than the minimum is refused; the client shows "update
+ * your game" on GAME_VERSION_TOO_OLD.
+ */
+export function checkGameVersion(board, gameVersion) {
+  if (board.min_game_version == null) return;
+  const min = parseVersion(board.min_game_version);
+  if (!min) throw new SubmissionError('BOARD_MISCONFIGURED', `This board's min_game_version '${board.min_game_version}' is not a version like 1.4.2.`);
+  if (gameVersion == null || String(gameVersion).trim() === '') {
+    throw new SubmissionError('GAME_VERSION_TOO_OLD', `This board needs game version ${board.min_game_version} or newer; send gameVersion with the run.`);
+  }
+  const v = parseVersion(gameVersion);
+  if (!v) throw new SubmissionError('GAME_VERSION_INVALID', `gameVersion '${String(gameVersion).slice(0, 40)}' is not a version like 1.4.2.`);
+  if (compareVersions(v, min) < 0) {
+    throw new SubmissionError('GAME_VERSION_TOO_OLD', `Game version ${String(gameVersion).slice(0, 40)} is too old for this board; update to ${board.min_game_version} or newer.`);
+  }
+}
+
 /** Clamp an integer query param. */
 export function clampInt(v, def, min, max) {
   const n = parseInt(v, 10);
@@ -125,7 +192,8 @@ export function clampInt(v, def, min, max) {
 
 /**
  * Check a submission against its board's rules. Returns a normalized entry, or
- * throws an Error whose message is the rejection reason (logged + returned).
+ * throws an Error whose message is the rejection reason (logged + returned);
+ * version rejections are SubmissionErrors carrying a `code`.
  *
  * The server can't see the game, so these are plausibility checks: a score
  * inside the board's bounds, an allowed ruleset, and (when the board requires
@@ -179,6 +247,7 @@ export function validateSubmission(board, body) {
     meta = body.meta;
   }
 
+  checkGameVersion(board, body.gameVersion);
   const gameVersion = body.gameVersion == null ? null : String(body.gameVersion).slice(0, 40);
   return { score, tiebreak, ruleset, splits, ghost, meta, gameVersion };
 }

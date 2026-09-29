@@ -11,6 +11,7 @@
  *   e2e:tie      desc, tiebreak_sort asc (most points, then fastest)
  *   e2e:daily    asc, periods {day, month} (no all-time board)
  *   e2e:season   desc, periods {all, season}, plus a season 'E2E Season' running now
+ *   e2e:version  desc, min_game_version '1.4.2'
  * Each run ranks in its own ruleset, so runs never see each other's entries.
  */
 import assert from 'node:assert/strict';
@@ -183,6 +184,20 @@ await test('boards report their periods and tiebreak', async () => {
   assert.deepEqual(byName['e2e:daily'].periods, ['day', 'month']);
   assert.equal(byName['e2e:tie'].tiebreak_sort, 'asc');
   assert.deepEqual(byName['e2e:time'].periods, ['all', 'week']);
+  assert.equal(byName['e2e:version'].min_game_version, '1.4.2');
+  assert.equal(byName['e2e:time'].min_game_version, null);
+});
+
+await test('min_game_version: old, missing and garbage versions are refused with a code; newer ones rank', async () => {
+  const sub = (gameVersion) => fn('leaderboard-submit', { board: 'e2e:version', ruleset: RULESET, score: 10, gameVersion }, ed.token);
+  for (const [v, code] of [['1.4.1', 'GAME_VERSION_TOO_OLD'], ['1.4.2-beta', 'GAME_VERSION_TOO_OLD'], [undefined, 'GAME_VERSION_TOO_OLD'], ['latest', 'GAME_VERSION_INVALID']]) {
+    const r = await sub(v);
+    assert.deepEqual([r.accepted, r.code], [false, code], `${v}: ${JSON.stringify(r)}`);
+  }
+  const ok = await sub('1.10.0');
+  assert.equal(ok.accepted, true);
+  const r = await top('e2e:version');
+  assert.equal(r.entries[0].gameVersion, '1.10.0');
 });
 
 await test('cheat checks reject and explain', async () => {
@@ -205,10 +220,36 @@ await test('players cannot moderate', async () => {
   assert.equal(r.status, 403);
 });
 
-await test('a deleted player\'s token stops working', async () => {
+await test('offensive guest names are refused; a guest renames with PATCH /auth/player', async () => {
+  const bad = await api('POST', '/auth/guest', { deviceSecret: randomBytes(24).toString('hex'), displayName: 'sh1t lord' });
+  assert.deepEqual([bad.status, bad.error?.code], [400, 'DISPLAY_NAME_REJECTED']);
+  const p = await guest('Cassandra');
+  const renamed = await api('PATCH', '/auth/player', { displayName: 'Scunthorpe Racer' }, p.token);
+  assert.equal(renamed.data.displayName, 'Scunthorpe Racer');
+  const refused = await api('PATCH', '/auth/player', { displayName: 'f u c k' }, p.token);
+  assert.deepEqual([refused.status, refused.error?.code], [400, 'DISPLAY_NAME_REJECTED']);
+});
+
+await test('nobody but the platform can run the purge hook', async () => {
+  assert.equal((await api('POST', '/fn/leaderboard-player-deleted', { userGuid: ada.guid })).status, 401);
+  assert.equal((await api('POST', '/fn/leaderboard-player-deleted', { userGuid: ada.guid }, bo.token)).status, 403);
+  assert.ok((await top('e2e:time')).entries.some(e => e.userGuid === ada.guid));
+});
+
+await test('deleting a player erases their entries and ghosts, and their token stops working', async () => {
   const gone = await guest('Temp');
+  const run = await time(gone, 26000, { ghost: Buffer.from('temp-ghost').toString('base64') });
+  assert.equal(run.accepted, true);
+  assert.ok((await top('e2e:time')).entries.some(e => e.userGuid === gone.guid));
   assert.equal((await api('DELETE', '/auth/player', undefined, gone.token)).status, 200);
   assert.equal((await api('GET', '/auth/player', undefined, gone.token)).status, 401);
+  const after = await top('e2e:time');
+  assert.ok(!after.entries.some(e => e.userGuid === gone.guid || e.displayName === 'Temp'));
+  assert.equal(after.total, 5);
+  const ghost = await fn('leaderboard-read', { action: 'ghost', entryId: run.entryId });
+  assert.match(ghost.error, /No ghost/);
+  const week = await top('e2e:time', { period: 'week' });
+  assert.ok(!week.entries.some(e => e.userGuid === gone.guid));
 });
 
 console.log(failed ? `\n${failed} failed` : '\nall passed');

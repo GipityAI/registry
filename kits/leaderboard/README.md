@@ -1,6 +1,6 @@
 # @gipity/leaderboard
 
-Leaderboards for any game: high scores, best times, speedruns, puzzle solves. Players keep a personal best on each board, ranked all-time, daily, weekly, monthly or by season. The server checks every run for plausibility, and you get around-me and friends views, attached replays, and moderation. It works from a web game and from any native client over HTTPS (for example a Godot game signed in with Steam).
+Leaderboards for any game: high scores, best times, speedruns, puzzle solves. Players keep a personal best on each board, ranked all-time, daily, weekly, monthly or by season. The server checks every run for plausibility (and, if you want, a minimum game version), and you get around-me and friends views, attached replays, moderation, and automatic erasure of players who delete their account. It works from a web game and from any native client over HTTPS (for example a Godot game signed in with Steam).
 
 ## Declare your boards
 
@@ -27,6 +27,7 @@ ON CONFLICT (board) DO UPDATE SET
 | `rulesets` | Official ruleset hashes (e.g. a hash of your difficulty or tuning settings). Only these count. `NULL` accepts any ruleset, and each ranks separately. |
 | `max_ghost_bytes` | Replay size cap (default 65536). |
 | `submit_per_hour` | Per player, per board (default 60). |
+| `min_game_version` | Optional oldest game build whose runs count, e.g. `'1.4.2'`. Runs must send `gameVersion`; a missing or older one is refused with `code: 'GAME_VERSION_TOO_OLD'`, and one that isn't a version with `GAME_VERSION_INVALID`. Compared like semver: `1.10` > `1.9`, missing parts are 0 (`1.4` = `1.4.0`), a prerelease (`1.4.2-beta`) is older than its release, build metadata (`+77`) is ignored. `NULL` accepts any version. |
 
 ### Seasons
 
@@ -51,6 +52,7 @@ import { submitScore, top, aroundMe, friends, ghost, seasons } from '@gipity/lea
 const r = await submitScore('puzzle:classic', 9200, { tiebreak: 61400 });
 // { accepted: true, improved: { all: true, season: true }, period: 'all', personalBest: 9200, rank: 4, entryId }
 // or { accepted: false, reason: 'tiebreak must be an integer on this board (it breaks equal scores).' }
+// or { accepted: false, code: 'GAME_VERSION_TOO_OLD', reason: 'Game version 1.3.0 is too old for this board; update to 1.4.2 or newer.' }
 
 const { entries, total } = await top('arcade:score', { period: 'day', limit: 10 });
 const near = await aroundMe('arcade:score', { radius: 3 });
@@ -89,9 +91,14 @@ gipity fn call leaderboard-admin '{"action":"remove","entryId":"lbe_..."}'
 gipity fn call leaderboard-admin '{"action":"ban","userGuid":"u_...","reason":"impossible score"}'
 gipity fn call leaderboard-admin '{"action":"unban","userGuid":"u_..."}'
 gipity fn call leaderboard-admin '{"action":"reset","board":"arcade:score","period":"day"}'
+gipity fn call leaderboard-admin '{"action":"purge","userGuid":"u_..."}'
 ```
 
-Banning removes the player's entries and hides them from every view.
+Banning removes the player's entries and hides them from every view. `purge` erases a player completely: their entries, submission log, any ban, and the ghosts only they used.
+
+## Deleted players
+
+`leaderboard-player-deleted` is declared with `hooks: [user_deleted]`, so when a player signed in to your app (Steam or guest) deletes their account, the platform runs it before removing them and it purges their leaderboard data, display name included. If it fails, the player is not deleted and the delete call returns an error the game can retry, and you see why in the function's logs (`gipity logs fn leaderboard-player-deleted`). It is `auth: member` and refuses any call the platform didn't make, so no one can use it to erase someone else. Players signed in with a Gipity account are not app players; erase them by hand with `purge`.
 
 ## What the checks can and can't do
 
@@ -99,7 +106,7 @@ The server can't watch the game, so these are plausibility checks: bounds, offic
 
 ## What it ships
 
-- **Functions:** `leaderboard-submit` (user), `leaderboard-read` (public), `leaderboard-admin` (member).
+- **Functions:** `leaderboard-submit` (user), `leaderboard-read` (public), `leaderboard-admin` (member), `leaderboard-player-deleted` (member, `hooks: [user_deleted]`).
 - **Tables:** `lb_boards`, `lb_entries`, `lb_ghosts`, `lb_bans`, `lb_submissions`, `lb_seasons`.
 - **Frontend** (`@gipity/leaderboard`): `submitScore`, `top`, `aroundMe`, `myEntry`, `friends`, `ghost`, `boards`, `seasons`.
 

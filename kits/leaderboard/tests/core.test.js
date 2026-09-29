@@ -6,11 +6,18 @@
  * real database; see VERIFY.md.
  */
 import assert from 'node:assert/strict';
-import { isoWeek, periodKey, periodKind, boardPeriods, submissionPeriods, resolvePeriod, isBetter, rankOrderSql, aheadSql, base64Bytes, clampInt, validateSubmission } from '../functions/_lib/leaderboard/core.js';
+import { isoWeek, periodKey, periodKind, boardPeriods, submissionPeriods, resolvePeriod, isBetter, rankOrderSql, aheadSql, base64Bytes, clampInt, validateSubmission, parseVersion, compareVersions, checkGameVersion, SubmissionError } from '../functions/_lib/leaderboard/core.js';
+import { purgePlayer } from '../functions/_lib/leaderboard/purge.js';
 
 let failed = 0;
+const pending = [];
 function test(name, fn) {
-  try { fn(); console.log(`ok   ${name}`); } catch (err) { failed++; console.log(`FAIL ${name}\n     ${err.message}`); }
+  const done = (err) => { if (err) { failed++; console.log(`FAIL ${name}\n     ${err.message}`); } else console.log(`ok   ${name}`); };
+  try {
+    const r = fn();
+    if (r && typeof r.then === 'function') pending.push(r.then(() => done(), done));
+    else done();
+  } catch (err) { done(err); }
 }
 
 const board = (over = {}) => ({ sort: 'asc', min_score: 10000, max_score: 600000, splits: 3, rulesets: ['official-1'], max_ghost_bytes: 64, ...over });
@@ -153,5 +160,91 @@ test('meta must be a small object', () => {
   rejects(board(), ok({ meta: { big: 'x'.repeat(3000) } }), /under 2000/);
 });
 
+test('parseVersion: major[.minor[.patch]][-pre][+build], missing parts are 0, garbage is null', () => {
+  assert.deepEqual(parseVersion('1.4.2'), { parts: [1, 4, 2], pre: null });
+  assert.deepEqual(parseVersion('v2'), { parts: [2, 0, 0], pre: null });
+  assert.deepEqual(parseVersion('1.4'), { parts: [1, 4, 0], pre: null });
+  assert.deepEqual(parseVersion(' 1.4.2-beta.3+build.77 '), { parts: [1, 4, 2], pre: 'beta.3' });
+  assert.deepEqual(parseVersion(1.2), { parts: [1, 2, 0], pre: null });   // a number sent as JSON
+  for (const bad of ['', 'latest', '1.x', '1..2', '1.2.3.4', '.1', '1.', '-1', 'v', '1.2.3-', "1'; DROP TABLE lb_entries;--", null, undefined, '9999999999']) {
+    assert.equal(parseVersion(bad), null, `expected null for ${JSON.stringify(bad)}`);
+  }
+});
+
+test('compareVersions is numeric, not lexical, and a prerelease precedes its release', () => {
+  const cmp = (a, b) => Math.sign(compareVersions(parseVersion(a), parseVersion(b)));
+  assert.equal(cmp('1.10.0', '1.9.0'), 1);          // lexical compare gets this wrong
+  assert.equal(cmp('1.4', '1.4.0'), 0);
+  assert.equal(cmp('v1.4.0', '1.4.0+build.9'), 0);  // build metadata is ignored
+  assert.equal(cmp('2.0.0', '10.0.0'), -1);
+  assert.equal(cmp('1.2.0-beta', '1.2.0'), -1);
+  assert.equal(cmp('1.2.0-beta.2', '1.2.0-beta.10'), -1);
+  assert.equal(cmp('1.2.0-alpha', '1.2.0-beta'), -1);
+  assert.equal(cmp('1.2.0-1', '1.2.0-alpha'), -1);  // numeric identifiers sort first
+  assert.equal(cmp('1.2.0-beta', '1.2.0-beta.1'), -1);
+  assert.equal(cmp('1.1.9', '1.2.0-beta'), -1);
+});
+
+test('min_game_version refuses missing, garbage and older versions with a code the client can show', () => {
+  const b = board({ min_game_version: '1.4.2' });
+  const code = (body) => { try { validateSubmission(b, body); return 'accepted'; } catch (err) { return err.code ?? err.message; } };
+  assert.equal(code(ok({ gameVersion: '1.4.2' })), 'accepted');
+  assert.equal(code(ok({ gameVersion: '1.10' })), 'accepted');
+  assert.equal(code(ok({ gameVersion: 'v2.0.0-rc.1' })), 'accepted');
+  assert.equal(code(ok({ gameVersion: '1.4.1' })), 'GAME_VERSION_TOO_OLD');
+  assert.equal(code(ok({ gameVersion: '1.4.2-beta' })), 'GAME_VERSION_TOO_OLD');
+  assert.equal(code(ok({ gameVersion: '1.4' })), 'GAME_VERSION_TOO_OLD');
+  assert.equal(code(ok()), 'GAME_VERSION_TOO_OLD');
+  assert.equal(code(ok({ gameVersion: '  ' })), 'GAME_VERSION_TOO_OLD');
+  assert.equal(code(ok({ gameVersion: 'latest' })), 'GAME_VERSION_INVALID');
+  assert.throws(() => validateSubmission(b, ok({ gameVersion: '1.3.9' })), /update to 1\.4\.2 or newer/);
+  assert.ok((() => { try { checkGameVersion(b, '0.9'); } catch (err) { return err instanceof SubmissionError; } })());
+});
+
+test('boards without min_game_version take any version or none; a bad minimum is an owner error', () => {
+  assert.equal(validateSubmission(board(), ok()).gameVersion, null);
+  assert.equal(validateSubmission(board(), ok({ gameVersion: 'nightly' })).gameVersion, 'nightly');
+  assert.throws(() => validateSubmission(board({ min_game_version: 'one' }), ok({ gameVersion: '1.0' })), (err) => err.code === 'BOARD_MISCONFIGURED');
+});
+
+// A stand-in for the function runtime's db: records each statement so the test
+// can check what purgePlayer deletes, scoped to one player. The SQL itself runs
+// against a real database in tests/e2e.mjs.
+function fakeDb(ghostRows) {
+  const calls = [];
+  const db = {
+    calls,
+    query: async (sql, params) => {
+      calls.push({ sql: sql.replace(/\s+/g, ' ').trim(), params });
+      if (sql.startsWith('SELECT DISTINCT ghost_id')) return { rows: ghostRows, rowCount: ghostRows.length };
+      return { rows: [], rowCount: 2 };
+    },
+  };
+  db.tx = async (fn) => { calls.push({ sql: 'BEGIN' }); const r = await fn(db); calls.push({ sql: 'COMMIT' }); return r; };
+  return db;
+}
+
+test('purgePlayer deletes one player\'s entries, submissions and ban in a transaction, and prunes only their orphaned ghosts', async () => {
+  const db = fakeDb([{ ghost_id: 'gho_a' }, { ghost_id: 'gho_b' }]);
+  const r = await purgePlayer(db, 'u_victim');
+  assert.deepEqual(r, { entries: 2, submissions: 2, bans: 2, ghosts: 2 });
+  assert.equal(db.calls[0].sql, 'BEGIN');
+  assert.equal(db.calls.at(-1).sql, 'COMMIT');
+  const deletes = db.calls.filter(c => c.sql.startsWith('DELETE'));
+  assert.deepEqual(deletes.slice(0, 3).map(c => [c.sql.split(' ')[2], c.params]), [
+    ['lb_entries', ['u_victim']], ['lb_submissions', ['u_victim']], ['lb_bans', ['u_victim']],
+  ]);
+  assert.match(deletes[3].sql, /DELETE FROM lb_ghosts g WHERE g.id = ANY\(\$1\) AND NOT EXISTS/);
+  assert.deepEqual(deletes[3].params, [['gho_a', 'gho_b']]);
+});
+
+test('purgePlayer with no ghosts skips the ghost prune', async () => {
+  const db = fakeDb([]);
+  const r = await purgePlayer(db, 'u_clean');
+  assert.equal(r.ghosts, 0);
+  assert.equal(db.calls.filter(c => c.sql.includes('lb_ghosts g')).length, 0);
+});
+
+await Promise.all(pending);
 if (failed) { console.log(`\n${failed} failed`); process.exit(1); }
 console.log('\nall passed');

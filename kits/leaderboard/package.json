@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
-  "description": "Leaderboards for any game: high scores or best times, ranked all-time, daily, weekly, monthly or by named season, with an optional tiebreak score, server-side plausibility checks (score bounds, official rulesets, checkpoint splits, rate limits), around-me and friends views, attached replays, and owner moderation. Works from a web game (Gipity.fn) or any native client over HTTPS.",
+  "description": "Leaderboards for any game: high scores or best times, ranked all-time, daily, weekly, monthly or by named season, with an optional tiebreak score, server-side plausibility checks (score bounds, official rulesets, checkpoint splits, rate limits), around-me and friends views, attached replays, a minimum game version per board, owner moderation, and automatic erasure of a deleted player's data. Works from a web game (Gipity.fn) or any native client over HTTPS.",
   "gipity": {
     "kit": true,
     "engineAgnostic": true,
@@ -33,6 +33,13 @@
             "name": "leaderboard-admin",
             "auth": "member",
             "tables": ["lb_boards", "lb_entries", "lb_ghosts", "lb_bans", "lb_submissions", "lb_seasons"]
+          },
+          {
+            "name": "leaderboard-player-deleted",
+            "auth": "member",
+            "hooks": ["user_deleted"],
+            "tables": ["lb_entries", "lb_ghosts", "lb_bans", "lb_submissions"],
+            "limits": { "max_rows_affected": 100000 }
           }
         ]
       }

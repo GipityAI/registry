@@ -19,7 +19,7 @@ export default async function leaderboardRead(ctx, { db }) {
   const action = b.action || 'top';
 
   if (action === 'boards') {
-    const { rows } = await db.query('SELECT board, sort, tiebreak_sort, periods, min_score, max_score, splits, rulesets FROM lb_boards ORDER BY board');
+    const { rows } = await db.query('SELECT board, sort, tiebreak_sort, periods, min_score, max_score, splits, rulesets, min_game_version FROM lb_boards ORDER BY board');
     // BIGINT columns arrive as strings; scores are safe integers.
     const num = (v) => (v == null ? null : Number(v));
     return { boards: rows.map(r => ({ ...r, periods: boardPeriods(r), min_score: num(r.min_score), max_score: num(r.max_score) })) };

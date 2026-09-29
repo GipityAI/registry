@@ -14,14 +14,14 @@ export default async function leaderboardSubmit(ctx, { db, guid }) {
   const board = await db.findOne('lb_boards', { board: boardKey });
   if (!board) return { error: `No board '${boardKey}'. Declare boards in a migration (see the leaderboard kit README).` };
 
-  const reject = async (reason, score = null) => {
+  const reject = async (reason, score = null, code = null) => {
     await db.query(
       `INSERT INTO lb_submissions (id, board, ruleset, user_guid, score, accepted, reason, game_version)
        VALUES ($1, $2, $3, $4, $5, FALSE, $6, $7)`,
       [guid('lbs'), boardKey, String(b.ruleset ?? '').slice(0, 64), userGuid, Number.isSafeInteger(Number(score)) ? Number(score) : null,
        reason, b.gameVersion == null ? null : String(b.gameVersion).slice(0, 40)],
     );
-    return { accepted: false, reason };
+    return code ? { accepted: false, code, reason } : { accepted: false, reason };
   };
 
   const banned = await db.findOne('lb_bans', { user_guid: userGuid });
@@ -38,7 +38,7 @@ export default async function leaderboardSubmit(ctx, { db, guid }) {
   try {
     run = validateSubmission(board, b);
   } catch (err) {
-    return reject(err.message, b.score);
+    return reject(err.message, b.score, err.code ?? null);
   }
 
   const playerRef = identity ? `${identity.provider}:${identity.id}`.slice(0, 80) : null;
