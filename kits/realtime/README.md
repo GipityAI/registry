@@ -101,10 +101,13 @@ deploy/provisioning mistake, not a game state), `'auth'`, `'offline'`, or
 `'failed'`. Switch on it and show the right message; never leave a spinner on
 "Joining…".
 
-The table handle: `isHost`, `code`, `roomId`, `inviteUrl`, `room` (a full room
-handle), `channel()`, `players()`, `onFull(cb)` (fires immediately when
-already full), `onPeerJoin/onPeerLeave`, `setListing(patch)`, `cancel()`,
-`leave()`. When the table fills, its lobby listing flips to
+The table handle: `isHost()`, `code`, `roomId`, `inviteUrl`, `room` (a full
+room handle), `channel()`, `players()`, `onFull(cb)` (fires immediately when
+already full), `onPeerJoin/onPeerLeave`, `onPeerVisibility(cb)`,
+`setListing(patch)`, `cancel()`, `leave()`, and the host-handoff surface:
+`hostEpoch()`, `onHostChange(cb)`, `setCheckpoint(obj)`, `setSuccessors(ids)`,
+`transferHost(sid)` (see "Host handoff" below). `isHost()` is a function
+since 3.7.0 because the role can move; `if (table.isHost)` is always true. When the table fills, its lobby listing flips to
 `status: 'playing'` automatically — browsers stop steering joiners into it and
 a late `joinByCode` rejects as `'full'` (`seats` is enforced client-side;
 provision `match` with a matching `max_clients` for a server-side cap too).
@@ -126,6 +129,65 @@ the same `party.host()` call **resumes the same table** (same code, players
 still seated) while the server holds it (`host_hold_seconds`, default 60);
 pass `{ fresh: true }` to start a new one. Phones send to it with
 `table.channel('input').sendToHost('press', {...})`. See `examples/couch-controllers.js`.
+
+### Host handoff: when the host can be a phone
+
+A TV rarely goes away, but a phone that hosts (and referees) the game locks its
+screen, takes a call, or runs out of battery, and its page stops running. Opt
+in to **handoff** and the server moves the host role to another player when
+the host is gone, and hands the new host the last state the old one saved:
+
+```js
+// The host (a phone or a TV)
+const table = await party.host({ host: 'Sam', handoff: true, graceSeconds: 5 });
+setInterval(() => table.setCheckpoint(referee.snapshot()), 500);   // <= 64 KB
+table.setSuccessors([sidA, sidB]);          // optional preference order
+table.transferHost(sidA);                   // hand it over now (e.g. leaving)
+
+// Every player that could take over
+const t = await party.joinFromUrl({ canHost: true });
+t.onHostChange(({ hostId, hostEpoch, previousHostId, reason, isMe, checkpoint }) => {
+  if (isMe) referee.resume(checkpoint?.data);   // checkpoint: only for the new host
+});
+t.isHost();      // this page holds the role now
+t.hostEpoch();   // bumped by the server on every host change
+```
+
+- **Gone** means the host's connection closed and did not come back, it sent
+  nothing, or its page was hidden (`document.hidden`), for `graceSeconds`
+  (default: the room's `host_grace_seconds`, 5). The kit heartbeats while it
+  holds the role, so a page that is running never looks silent. A host that
+  reloads and comes back inside the grace keeps the role (`reason: 'resumed'`,
+  and it gets its own checkpoint back).
+- **Successor**, chosen by the server: the first present player in the host's
+  `setSuccessors()` list, else the longest-connected player that joined with
+  `{ canHost: true }` (or `host: true`). Hidden or disconnected players are
+  skipped. With nobody eligible the role waits, as without handoff: the table
+  is kept for `host_hold_seconds` and the host can still come back.
+- **One host per epoch.** Every change bumps `hostEpoch` and is announced to
+  everyone (`onHostChange`, `reason`: `'claimed'` | `'resumed'` |
+  `'transfer'` | `'disconnected'` | `'grace-expired'` | `'hidden'` |
+  `'vacated'`). Everything a host sends is stamped with its epoch, and the
+  server **drops** what a stale host sends (a phone waking up after the
+  handoff, before it has read the news): peers never see it, and the sender's
+  room fires `'undelivered'` with `reason: 'stale-host'`. Messages from the
+  current host arrive with `msg.hostEpoch` set.
+- **The old host comes back as a player** (`isHost()` false). It gets the role
+  back only if the current host calls `transferHost(sid)`.
+- **Checkpoint**: `setCheckpoint(obj)` stores the latest (last write wins,
+  stamped `{ data, serverTs, hostEpoch }`, at most 64 KB of JSON; bigger
+  throws). It is delivered only to the page that receives the role, never to
+  anyone else, so it can hold seeds. It returns `false` (nothing sent) when
+  this page is not the host.
+- The table's lobby listing moves with the role, so the invite link and code
+  keep working after the original host is gone.
+- **Visibility**: the kit reports `document.hidden` changes; every page sees
+  its peers' as `room.peerInfo(sid).visible` and `onPeerVisibility(cb)`
+  (`cb(sid, visible)`), so an app can tell a suspended player from a
+  lagging one.
+
+Turn it on per table with `host({ handoff: true })`, or for every table of a
+room with `host_handoff: true` in gipity.yaml (see `examples/referee-handoff.js`).
 
 **Rejoining after a crash.** A phone whose page died *without* a clean leave
 (the browser crashed, the OS killed the tab) still has its seat held by the
@@ -162,8 +224,11 @@ connect(cfg) → room|null        disconnect()
 isConnected()                   isSynced()      // first state sync landed?
 getRoomId()  getSessionId()     getLastError()
 peers() → Map                   onPeerJoin(cb) / onPeerLeave(cb)  // cb(sid)
-peerInfo(sid) → { sessionId, clientId, displayName }  // clientId: stable per browser
-hostId()  isHost()  onHostChange(cb)   // the server-side host role (join with { host: true })
+peerInfo(sid) → { sessionId, clientId, displayName, visible }  // clientId: stable per browser
+onPeerVisibility(cb)            // cb(sid, visible): a peer's page was hidden or shown
+hostId()  isHost()  hostEpoch() // the server-side host role (join with { host: true })
+onHostChange(cb)                // cb({ hostId, hostEpoch, previousHostId, reason, isMe, checkpoint })
+setCheckpoint(obj)  setSuccessors(ids)  transferHost(sid)   // host only (handoff)
 serverNow()  rtt()  minRtt()  isClockSynced()   // built-in clock sync (__ping)
 channel(name, opts)             channels()
 on(event, cb)                   metrics()  onMetrics(cb, ms)
@@ -186,6 +251,11 @@ The host key that lets a reloaded host page reclaim the role is kept per tab
 (sessionStorage) per app, room and scope, so it works whichever way the host
 joined: `join` (joinOrCreate), `joinExisting`, or `joinById`.
 
+Join options for the role: `{ host: true, handoff, graceSeconds }` to host,
+`{ canHost: true }` to be a possible successor (see "Host handoff").
+`connect()` and the multi-room opens resolve after the server has announced
+the host, so `hostId()` / `isHost()` are right from the start.
+
 **No host?** A `sendToHost()` / `{ to: 'host' }` send while no host is
 connected is dropped by the server, which tells the sender: the room fires
 `'undelivered'` `{ channel, type, to: 'host', reason: 'no-host' }` (a send to
@@ -198,8 +268,9 @@ Every relayed message carries `senderId` and `serverTs`, stamped by the server
 (client values are overwritten, so `senderId` is trustworthy), and
 `messages`-channel sends carry `sentAt` in server-clock ms once the clock has
 synced: input age on arrival is `room.serverNow() - msg.sentAt`. Limits: 10,000
-characters per message or data value, 120 messages/s per client (bursts to
-240), 1,000 data keys and 2 MB of data per room.
+characters per message or data value (a host checkpoint may be 64 KB), 120
+messages/s per client (bursts to 240), 1,000 data keys and 2 MB of data per
+room.
 
 ## Channels
 
@@ -312,15 +383,19 @@ rt.on('reconnecting', () => {});
 rt.on('reconnected',  ({ sessionId }) => {});
 rt.on('lost',         () => {});
 rt.on('channel-open', ({ name, sync }) => {});
-rt.on('undelivered',  ({ channel, type, to, reason }) => {}); // 'no-host' | 'no-recipient'
+rt.on('undelivered',  ({ channel, type, to, reason }) => {});
+  // reason: 'no-host' | 'no-recipient' | 'stale-host' | 'not-host' | 'too-large'
+rt.on('host',         ({ hostId, hostEpoch, previousHostId, reason, isMe }) => {});
 
 rt.metrics();            // { connected, peers, channels, messagesSent, ... }
 rt.onMetrics((m) => updatePanel(m), 1000);
 ch.metrics();            // per-channel counters
 ```
 
-Host changes are observed **per channel**, not on the room: `ch.onHost(cb)` on
-a `store` channel (or `ch.onSynced` / `ch.isHost()` on host-mode `entities`).
+The room's host role is `rt.onHostChange(cb)` (above). A host-authority
+channel elects its own writer among the peers, observed per channel:
+`ch.onHost(cb)` on a `store` channel (or `ch.onSynced` / `ch.isHost()` on
+host-mode `entities`).
 
 ## The demo shapes
 
@@ -352,8 +427,9 @@ rt.channel('cursors',  { sync:'presence' });
 rt.channel('terminal', { sync:'messages' });
 ```
 
-Each has a worked file in `examples/` (`party-game`, `connect-four`, `lobby`,
-`chat-presence`, `whiteboard`, `city-builder`, `agent-ops`, `kanban`, `desktop`).
+Each has a worked file in `examples/` (`party-game`, `couch-controllers`,
+`referee-handoff`, `connect-four`, `lobby`, `chat-presence`, `whiteboard`,
+`city-builder`, `agent-ops`, `kanban`, `desktop`).
 
 ## Resilience
 
@@ -371,6 +447,33 @@ the app token is refreshed before it expires (~15 min TTL — long sessions are
 covered). All timings tunable via `createRealtime({ settings })` — the full
 list with defaults is `DEFAULT_SETTINGS` in `lib/settings.js` (join attempts,
 reconnect window/backoff, presence rate, heartbeat, token TTL, quantization).
+
+### Delivery guarantees during reconnect and handoff
+
+Nothing is queued for a peer that is away, and nothing is replayed:
+
+- **While connected**, messages are delivered once, in order per sender. A
+  message is routed when it reaches the server: `'host'` means whoever holds
+  the role at that moment.
+- **Sent to a peer that is away** (its connection dropped and it is inside its
+  seat hold): a broadcast is simply not delivered to it; a message targeted
+  only at it comes back to the sender as `'undelivered'` (`'no-recipient'`,
+  or `'no-host'` for `sendToHost` while the host is away). After its
+  `'reconnected'` event it gets new messages only; what it missed is gone.
+- **Sent by a page while it is reconnecting**: dropped by the kit, not queued.
+- **Shared state is not lost**: the data map (`store`, `entities` with
+  `server`/`shared` authority) and the player list resync in full after a
+  reconnect, and the current host is re-announced (`onHostChange` fires if a
+  handoff happened while the page was away).
+- **Across a host handoff**: messages that reached the old host before the
+  handoff stay with it and are not redelivered to the new host; `sendToHost`
+  after the handoff goes to the new host. What the old host sends under its
+  old epoch is dropped (`'stale-host'`). The new host starts from the last
+  checkpoint, so anything newer than it (a move the old host received but
+  had not checkpointed) must be resent: players can resend their latest state
+  from `onHostChange`.
+- **A realtime server restart** (a platform deploy) ends every room: pages get
+  `'lost'`; nothing is kept, checkpoints included.
 
 The flip side of the reconnection hold: when the **page itself dies**
 (navigation, tab close), waiting out the seat hold for a reconnect that can never come

@@ -132,5 +132,16 @@ test('close() stops heart-beating without deleting live entries', () => {
   assert.equal(dir.list()[0].status, undefined);
 });
 
+test('release() hands an entry over: it stays listed, this peer stops writing it', () => {
+  const dir = newDir();
+  const pub = dir.publish('m', { host: 'Sam' });
+  pub.release();
+  assert.equal(dir.store.has('m'), true);
+  pub.update({ status: 'x' });             // no longer ours: no-op
+  assert.equal(dir.list()[0].status, undefined);
+  pub.unpublish();                         // nor can we delete the new owner's entry
+  assert.equal(dir.store.has('m'), true);
+});
+
 console.log(`\ndirectory.test.js: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

@@ -25,6 +25,11 @@
  *     read the same directory freshness (no 18s-vs-45s divergence)
  *   - the invite URL is first-class: inviteUrl() builds it, joinFromUrl()
  *     consumes it - a link lands the friend at the same table, no typing
+ *   - the host role can move (opt-in handoff): host({ handoff: true }) and
+ *     peers that join with { canHost: true } let the server hand the role to
+ *     a peer when the host's page goes away or stops running. The new host
+ *     gets the old host's last setCheckpoint() in onHostChange, and takes
+ *     over the table's lobby listing so invite links and codes keep working.
  *
  * Room names (`lobby`, `match` by default) must be provisioned - declare them
  * in gipity.yaml's realtime deploy phase. For hard server-side seat limits,
@@ -63,21 +68,6 @@ function randomCode(length) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-// How long a resuming host waits for the server to confirm it got the host
-// role back (the confirmation arrives right after the join).
-const HOST_CONFIRM_WAIT_MS = 2000;
-
-/** Resolve true once `room` is confirmed host, false after `ms`. */
-function waitForHost(room, ms) {
-  return new Promise((resolve) => {
-    let off = () => {};
-    const timer = setTimeout(() => { off(); resolve(room.isHost()); }, ms);
-    off = room.onHostChange(() => {
-      if (room.isHost()) { clearTimeout(timer); off(); resolve(true); }
-    });
-  });
-}
 
 // How long ensureLobby waits for the lobby's first state sync before giving
 // up and resolving anyway. A fresh, EMPTY lobby room never receives a
@@ -164,16 +154,19 @@ export function createParty(rt, options = {}) {
   }
 
   /** Wrap a connected match room as a table handle. `pub` is the host's
-   *  per-key directory publisher (null for guests). */
-  function makeTable({ room, code, isHost, entry, pub }) {
+   *  per-key directory publisher (null for guests); `listing` is the table's
+   *  lobby entry, republished by whichever page holds the host role. */
+  function makeTable({ room, code, entry, pub: initialPub, listing }) {
     let done = false;         // cancel()/leave() called - ignore late events
+    let pub = initialPub;     // non-null while this page publishes the listing
 
     function takeDown() {
       if (done) return;
       done = true;
       if (pub) pub.unpublish();
+      pub = null;
       if (hostedTable === table) hostedTable = null;
-      if (isHost) forgetHostedTable();
+      if (room.isHost()) forgetHostedTable();
       room.disconnect();
     }
 
@@ -183,7 +176,6 @@ export function createParty(rt, options = {}) {
     let kitOwnsStatus = true;
 
     const table = {
-      isHost,
       code,
       roomId: room.getRoomId(),
       /** The match room handle - bind channels and events on this. */
@@ -191,6 +183,20 @@ export function createParty(rt, options = {}) {
       channel: room.channel,
       onPeerJoin: room.onPeerJoin,
       onPeerLeave: room.onPeerLeave,
+      /** cb(sid, visible) when a player's page is hidden or shown. */
+      onPeerVisibility: room.onPeerVisibility,
+      /** Whether THIS page holds the host role now (it can move: see handoff). */
+      isHost: room.isHost,
+      /** The host epoch: bumped by the server on every host change. */
+      hostEpoch: room.hostEpoch,
+      /** cb({ hostId, hostEpoch, previousHostId, reason, isMe, checkpoint }). */
+      onHostChange: room.onHostChange,
+      /** Host: save the referee state the next host starts from (<= 64 KB). */
+      setCheckpoint: room.setCheckpoint,
+      /** Host: preferred successors (session ids), in order. */
+      setSuccessors: room.setSuccessors,
+      /** Host: hand the role to a player now (e.g. before leaving). */
+      transferHost: room.transferHost,
       /** Invite link for this table (host side; '' outside a browser). */
       inviteUrl: inviteUrl(code),
       /** Everyone at the table right now, host/self included. A player whose
@@ -234,18 +240,33 @@ export function createParty(rt, options = {}) {
     // left cleanly, or a dropped player's seat hold ran out) - otherwise a
     // full table that loses a player can never be rejoined. Only while the
     // kit owns the status: an app's own setListing({ status }) wins.
-    if (isHost && pub) {
-      const sync = () => {
-        if (done || !kitOwnsStatus) return;
-        const next = table.players() >= seats ? 'playing' : 'open';
-        if (next === status) return;
-        status = next;
-        pub.update({ status });
-      };
-      room.onPeerJoin(sync);
-      room.onPeerLeave(sync);
-      sync();
-    }
+    // Only the page publishing the listing (the host) drives it.
+    const sync = () => {
+      if (done || !pub || !kitOwnsStatus) return;
+      const next = table.players() >= seats ? 'playing' : 'open';
+      if (next === status) return;
+      status = next;
+      pub.update({ status });
+    };
+    room.onPeerJoin(sync);
+    room.onPeerLeave(sync);
+    sync();
+
+    // The listing follows the host role: a page that becomes host (handoff or
+    // transfer) takes over heart-beating it, so the invite link and code keep
+    // working; a page that loses the role stops, without deleting it.
+    room.onHostChange(({ isMe }) => {
+      if (done) return;
+      if (isMe && !pub && dir && listing) {
+        pub = dir.publish(code, { ...listing, code, roomId: room.getRoomId(), seats, status });
+        rememberHostedTable(code, room.getRoomId());
+        sync();
+      } else if (!isMe && pub) {
+        pub.release();
+        pub = null;
+        forgetHostedTable();
+      }
+    });
     // Keep guests' entry metadata handy (host name etc).
     if (entry) table.entry = entry;
 
@@ -266,8 +287,15 @@ export function createParty(rt, options = {}) {
     return new URLSearchParams(location.search).get(urlParam);
   }
 
-  async function joinEntry(entry) {
+  /** The lobby fields of a directory entry (what a new host republishes). */
+  function listingOf(entry) {
+    const { _key, lastSeen, ...rest } = entry;
+    return rest;
+  }
+
+  async function joinEntry(entry, { canHost } = {}) {
     await ensureLobby();
+    const joinOpts = canHost ? { canHost: true } : {};
     if (!entry?.roomId) throw new RealtimeJoinError('not-found', 'invalid table entry');
     // Client-side seat gate: a listing that is no longer 'open' means the
     // table filled (or the host closed joins) - reject even when the room's
@@ -276,13 +304,13 @@ export function createParty(rt, options = {}) {
     // reload) is still seated there, and takes that held seat back.
     if (entry.status && entry.status !== 'open') {
       let room = null;
-      try { room = await rt.resume(matchName, { roomId: entry.roomId }); } catch { /* not ours to resume */ }
-      if (room) return makeTable({ room, code: entry.code, isHost: false, entry, pub: null });
+      try { room = await rt.resume(matchName, { ...joinOpts, roomId: entry.roomId }); } catch { /* not ours to resume */ }
+      if (room) return makeTable({ room, code: entry.code, entry, pub: null, listing: listingOf(entry) });
       throw new RealtimeJoinError('full', `table ${entry.code || entry.roomId} is already ${entry.status}`);
     }
     try {
-      const room = await rt.joinById(entry.roomId, matchName);
-      return makeTable({ room, code: entry.code, isHost: false, entry, pub: null });
+      const room = await rt.joinById(entry.roomId, matchName, joinOpts);
+      return makeTable({ room, code: entry.code, entry, pub: null, listing: listingOf(entry) });
     } catch (err) {
       throw toJoinError(err, `joining table ${entry.code || entry.roomId} failed`);
     }
@@ -297,48 +325,52 @@ export function createParty(rt, options = {}) {
   }
   function forgetHostedTable() { writeStored('sessionStorage', hostedKey(), null); }
 
-  async function resumeHostedTable(info) {
+  async function resumeHostedTable(info, hostOpts) {
     let saved = null;
     try { saved = JSON.parse(readStored('sessionStorage', hostedKey()) || 'null'); } catch { saved = null; }
     if (!saved?.roomId || !saved?.code || (info.code && info.code.toUpperCase() !== saved.code)) return null;
     let room;
     try {
-      room = await rt.joinById(saved.roomId, matchName, { host: true });
+      room = await rt.joinById(saved.roomId, matchName, hostOpts);
     } catch {
       forgetHostedTable();      // the room is gone: host a fresh table
       return null;
     }
-    if (!(await waitForHost(room, HOST_CONFIRM_WAIT_MS))) {
+    // The join resolves once the server has announced the host (see transport).
+    if (!room.isHost()) {
       room.disconnect();        // someone else holds the table now
       forgetHostedTable();
       return null;
     }
     const pub = dir.publish(saved.code, { ...info, code: saved.code, roomId: room.getRoomId(), seats, status: 'open' });
-    return makeTable({ room, code: saved.code, isHost: true, pub });
+    return makeTable({ room, code: saved.code, pub, listing: info });
   }
 
   async function host(options = {}) {
-    const { fresh, ...info } = options;
+    const { fresh, handoff, graceSeconds, ...info } = options;
+    const hostOpts = { host: true };
+    if (handoff !== undefined) hostOpts.handoff = !!handoff;
+    if (graceSeconds !== undefined) hostOpts.graceSeconds = graceSeconds;
     await ensureLobby();
     // Hosting again while a previous table is still waiting replaces it -
     // otherwise the old room lives on and its listing goes stale-but-joinable.
     if (hostedTable) hostedTable.cancel();
     else if (!fresh) {
-      const resumed = await resumeHostedTable(info);
+      const resumed = await resumeHostedTable(info, hostOpts);
       if (resumed) { hostedTable = resumed; return resumed; }
     }
-    const room = await rt.create(matchName, { host: true });
+    const room = await rt.create(matchName, hostOpts);
     let code = String(info.code || '').toUpperCase() || randomCode(codeLength);
     // A fresh entry already using this code gets a re-roll, not a collision.
     while (!info.code && dir.list().some((e) => e.code === code)) code = randomCode(codeLength);
     const pub = dir.publish(code, { ...info, code, roomId: room.getRoomId(), seats, status: 'open' });
-    const table = makeTable({ room, code, isHost: true, pub });
+    const table = makeTable({ room, code, pub, listing: info });
     hostedTable = table;
     rememberHostedTable(code, room.getRoomId());
     return table;
   }
 
-  async function joinByCode(rawCode, { timeoutMs = 8000 } = {}) {
+  async function joinByCode(rawCode, { timeoutMs = 8000, canHost = false } = {}) {
     const code = String(rawCode || '').trim().toUpperCase();
     if (!code) throw new RealtimeJoinError('not-found', 'no code given');
     await ensureLobby();
@@ -349,7 +381,7 @@ export function createParty(rt, options = {}) {
       const entry = dir.list().find((e) => e.code === code && !deadRoomIds.has(e.roomId));
       if (entry) {
         try {
-          return await joinEntry(entry);
+          return await joinEntry(entry, { canHost });
         } catch (err) {
           if (err.code !== 'gone') throw err;   // 'full'/'auth'/... fail fast
           // 'gone': the entry outlived its room - ignore it and keep
@@ -397,6 +429,9 @@ export function createParty(rt, options = {}) {
      * rematch). Replaces any previous still-waiting hosted table. After a page
      * reload it resumes the same table (same code, players still seated)
      * while the server still holds it; pass `info.fresh` to start a new one.
+     * `info.handoff: true` lets the server move the role to a player who
+     * joined with { canHost: true } when this page is gone or stops running
+     * for `info.graceSeconds` (default: the room's host_grace_seconds, 5).
      * @returns table - share table.code / table.inviteUrl, wire table.onFull,
      *                  and call table.cancel() if the host backs out.
      */
@@ -405,17 +440,18 @@ export function createParty(rt, options = {}) {
     /**
      * Join a table by its share code. Waits (default 8s) for the code to
      * appear in the directory - a joiner often clicks faster than the host's
-     * entry syncs. Throws RealtimeJoinError: 'not-found' (no such code),
-     * 'full' (seats taken / already playing), 'gone' (host left).
+     * entry syncs. opts: { timeoutMs, canHost } (canHost: this page may be
+     * handed the host role). Throws RealtimeJoinError: 'not-found' (no such
+     * code), 'full' (seats taken / already playing), 'gone' (host left).
      */
     joinByCode,
 
-    /** Join a specific browse-list entry. Throws 'full' / 'gone'. */
+    /** Join a specific browse-list entry (opts: { canHost }). Throws 'full' / 'gone'. */
     join: joinEntry,
 
     /**
      * Play against anyone: join the oldest open table, else host a new one.
-     * @returns table - check table.isHost to know which way it went.
+     * @returns table - check table.isHost() to know which way it went.
      */
     async quickMatch(info = {}) {
       await ensureLobby();
@@ -439,6 +475,7 @@ export function createParty(rt, options = {}) {
     /**
      * Follow an invite link: when the page URL carries a code, join that
      * table (throwing the usual typed errors); resolves null when it doesn't.
+     * opts: { timeoutMs, canHost } as for joinByCode.
      */
     async joinFromUrl(opts) {
       const code = codeFromUrl();

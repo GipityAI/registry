@@ -36,22 +36,57 @@ function mockTransport() {
   };
 }
 
+/**
+ * One match room shared by every page at the table. Each page gets its own
+ * view (its own session id, so isHost() differs per page); membership and the
+ * host role are shared. _setHost() plays the server announcing a new host.
+ */
 function fakeMatchRoom(id) {
   const joinCbs = new Set();
   const leaveCbs = new Set();
+  const hostCbs = new Set();   // [sid, cb]
   const peers = new Map();
-  let disconnected = false;
-  return {
-    getRoomId: () => id,
-    disconnect: () => { disconnected = true; },
-    peers: () => peers,
-    onPeerJoin: (cb) => { joinCbs.add(cb); return () => joinCbs.delete(cb); },
-    onPeerLeave: (cb) => { leaveCbs.add(cb); return () => leaveCbs.delete(cb); },
-    channel: () => ({}),
-    _addPeer(sid) { peers.set(sid, {}); for (const cb of [...joinCbs]) cb(sid); },
-    _removePeer(sid) { peers.delete(sid); for (const cb of [...leaveCbs]) cb(sid); },
-    get _disconnected() { return disconnected; },
-  };
+  const core = { hostId: null, epoch: 0, previousHostId: null, reason: null, checkpoints: [] };
+  const event = (sid) => ({ hostId: core.hostId, hostEpoch: core.epoch, previousHostId: core.previousHostId, reason: core.reason, isMe: core.hostId === sid, checkpoint: null });
+  function view(sid, joinOpts = {}) {
+    let disconnected = false;
+    const v = {
+      sessionId: sid,
+      joinOpts,
+      getRoomId: () => id,
+      disconnect: () => { disconnected = true; },
+      peers: () => peers,
+      onPeerJoin: (cb) => { joinCbs.add(cb); return () => joinCbs.delete(cb); },
+      onPeerLeave: (cb) => { leaveCbs.add(cb); return () => leaveCbs.delete(cb); },
+      onPeerVisibility: () => () => {},
+      channel: () => ({}),
+      isHost: () => core.hostId === sid,
+      hostEpoch: () => core.epoch,
+      onHostChange(cb) {
+        const e = [sid, cb];
+        hostCbs.add(e);
+        if (core.hostId) cb(event(sid));
+        return () => hostCbs.delete(e);
+      },
+      setCheckpoint: (data) => { if (core.hostId !== sid) return false; core.checkpoints.push(data); return true; },
+      setSuccessors: () => core.hostId === sid,
+      transferHost: (to) => { if (core.hostId !== sid) return false; v._setHost(to, 'transfer'); return true; },
+      _view: view,
+      _core: core,
+      _addPeer(peerSid) { peers.set(peerSid, {}); for (const cb of [...joinCbs]) cb(peerSid); },
+      _removePeer(peerSid) { peers.delete(peerSid); for (const cb of [...leaveCbs]) cb(peerSid); },
+      _setHost(hostSid, reason) {
+        core.previousHostId = core.hostId;
+        core.hostId = hostSid;
+        core.epoch += 1;
+        core.reason = reason;
+        for (const [s, cb] of [...hostCbs]) cb(event(s));
+      },
+      get _disconnected() { return disconnected; },
+    };
+    return v;
+  }
+  return view;
 }
 
 /**
@@ -64,7 +99,9 @@ function fakeRt() {
   const joinable = new Map();
   const resumable = new Set();
   let nextId = 1;
+  let nextGuest = 1;
   let lobbyDown = false;
+  const calls = [];   // [method, roomName, opts] for every match-room open
   return {
     async join(name) {
       if (lobbyDown) throw new RealtimeJoinError('failed', `join '${name}' failed`);
@@ -74,23 +111,29 @@ function fakeRt() {
         on: () => () => {},
       };
     },
-    async create() {
-      const room = fakeMatchRoom(`r${nextId++}`);
-      joinable.set(room.getRoomId(), room);
+    async create(name, opts = {}) {
+      calls.push(['create', name, opts]);
+      const id = `r${nextId++}`;
+      const room = fakeMatchRoom(id)(`host-${id}`, opts);
+      room._setHost(room.sessionId, 'claimed');
+      joinable.set(id, room);
       return room;
     },
-    async joinById(roomId) {
+    async joinById(roomId, name, opts = {}) {
+      calls.push(['joinById', name, opts]);
       const target = joinable.get(roomId);
       if (!target || typeof target === 'string') {
         throw new RealtimeJoinError(typeof target === 'string' ? target : 'gone', `room ${roomId} unavailable`);
       }
-      return target;
+      return target._view(`guest-${nextGuest++}`, opts);
     },
     // Rooms where this "browser" left a held seat behind (its page died).
-    async resume(name, { roomId } = {}) {
+    async resume(name, { roomId, ...opts } = {}) {
+      calls.push(['resume', name, opts]);
       if (!resumable.has(roomId)) throw new RealtimeJoinError('not-found', 'no held seat to resume');
-      return joinable.get(roomId);
+      return joinable.get(roomId)._view(`guest-${nextGuest++}`, opts);
     },
+    _calls: calls,
     _joinable: joinable,
     _resumable: resumable,
     _setLobbyDown(v) { lobbyDown = v; },
@@ -105,7 +148,7 @@ test('host publishes an open listing with a code and roomId', async () => {
   const rt = fakeRt();
   const party = newParty(rt);
   const table = await party.host({ host: 'Sam' });
-  assert.ok(table.isHost);
+  assert.ok(table.isHost());
   assert.match(table.code, /^[A-Z2-9]{4}$/);
   const tables = await party.tables();
   assert.equal(tables.length, 1);
@@ -151,7 +194,7 @@ test('joinByCode joins the advertised table', async () => {
   const joiner = newParty(rt);
   const hosted = await host.host({ host: 'Sam' });
   const table = await joiner.joinByCode(hosted.code.toLowerCase());
-  assert.equal(table.isHost, false);
+  assert.equal(table.isHost(), false);
   assert.equal(table.roomId, hosted.roomId);
   assert.equal(table.entry.host, 'Sam');
 });
@@ -192,12 +235,12 @@ test('quickMatch joins an open table, or hosts when none exist', async () => {
   const host = newParty(rt);
   const hosted = await host.host({ host: 'Sam' });
   const joined = await newParty(rt).quickMatch({ host: 'Ada' });
-  assert.equal(joined.isHost, false);
+  assert.equal(joined.isHost(), false);
   assert.equal(joined.roomId, hosted.roomId);
 
   const rt2 = fakeRt();
   const alone = await newParty(rt2).quickMatch({ host: 'Solo' });
-  assert.equal(alone.isHost, true);
+  assert.equal(alone.isHost(), true);
 });
 
 test('quickMatch skips a dead listing and hosts instead of failing', async () => {
@@ -206,7 +249,7 @@ test('quickMatch skips a dead listing and hosts instead of failing', async () =>
   const hosted = await host.host({ host: 'Sam' });
   rt._joinable.delete(hosted.roomId);
   const table = await newParty(rt).quickMatch({ host: 'Ada' });
-  assert.equal(table.isHost, true);
+  assert.equal(table.isHost(), true);
 });
 
 test('lobby failure propagates as a typed error (no silent null)', async () => {
@@ -255,7 +298,7 @@ test('an old table handle cannot clobber the new table listing', async () => {
   const [entry] = await party.tables();
   assert.equal(entry.code, 'BBBB');
   assert.equal(entry.status, 'open');
-  assert.ok(t2.isHost);
+  assert.ok(t2.isHost());
 });
 
 test('onFull fires immediately when the table is already full at registration', async () => {
@@ -334,7 +377,60 @@ test('a player whose own seat is held takes it back through a full table', async
   rt._resumable.add(hosted.roomId);
   const back = await newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 });
   assert.equal(back.roomId, hosted.roomId);
-  assert.equal(back.isHost, false);
+  assert.equal(back.isHost(), false);
+});
+
+test('host({ handoff, graceSeconds }) asks the server for handoff; they stay out of the listing', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt);
+  await party.host({ host: 'TV', handoff: true, graceSeconds: 3 });
+  assert.deepEqual(rt._calls.at(-1), ['create', 'match', { host: true, handoff: true, graceSeconds: 3 }]);
+  const [entry] = await party.tables();
+  assert.equal('handoff' in entry, false);
+  assert.equal('graceSeconds' in entry, false);
+});
+
+test('joinByCode({ canHost }) joins as a possible successor', async () => {
+  const rt = fakeRt();
+  const hosted = await newParty(rt).host({ host: 'TV' });
+  await newParty(rt).joinByCode(hosted.code, { canHost: true, timeoutMs: 1000 });
+  assert.deepEqual(rt._calls.at(-1), ['joinById', 'match', { canHost: true }]);
+  await newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 });
+  assert.deepEqual(rt._calls.at(-1), ['joinById', 'match', {}]);
+});
+
+test('handoff: the new host takes over the listing, so the code still works after the old host is gone', async () => {
+  const rt = fakeRt();
+  const tvParty = newParty(rt, { seats: 4 });
+  const tv = await tvParty.host({ host: 'TV', handoff: true });
+  const phoneParty = newParty(rt, { seats: 4 });
+  const phone = await phoneParty.joinByCode(tv.code, { canHost: true, timeoutMs: 1000 });
+  const changes = [];
+  phone.onHostChange((e) => changes.push(e));
+  assert.equal(phone.isHost(), false);
+
+  // The server hands the role to the phone (the TV's page stopped running).
+  phone.room._setHost(phone.room.sessionId, 'grace-expired');
+  assert.equal(phone.isHost(), true);
+  assert.equal(tv.isHost(), false);
+  assert.equal(phone.hostEpoch(), 2);
+  assert.deepEqual(changes.map((c) => [c.reason, c.isMe]), [['claimed', false], ['grace-expired', true]]);
+  assert.equal(phone.setCheckpoint({ round: 2 }), true);
+  assert.equal(tv.setCheckpoint({ round: 1 }), false, 'the old host can no longer checkpoint');
+
+  // The old host leaving must not delist the table the phone now hosts.
+  tvParty.close();
+  const [entry] = await newParty(rt).tables();
+  assert.equal(entry?.code, tv.code);
+  assert.equal(entry?.host, 'TV', 'the listing keeps the table info');
+  const late = await newParty(rt).joinByCode(tv.code, { timeoutMs: 1000 });
+  assert.equal(late.roomId, tv.roomId);
+
+  // Handing the role on stops the phone publishing it (without deleting it).
+  phone.transferHost(late.room.sessionId);
+  assert.equal(phone.isHost(), false);
+  assert.equal(late.isHost(), true);
+  assert.equal((await newParty(rt).tables())[0]?.code, tv.code);
 });
 
 test('inviteUrl/codeFromUrl are inert outside a browser', async () => {

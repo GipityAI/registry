@@ -79,15 +79,23 @@ function createRoomHandle(client, baseConfig = {}) {
     // these are the raw join/leave for lobby and disconnect/forfeit logic).
     onPeerJoin: transport.onPeerJoin,
     onPeerLeave: transport.onPeerLeave,
-    /** { sessionId, clientId, displayName } for a peer, or null. clientId is
-     *  stable per browser, so it recognizes a player who reloaded the page. */
+    /** { sessionId, clientId, displayName, visible } for a peer, or null.
+     *  clientId is stable per browser, so it recognizes a player who reloaded
+     *  the page; visible is false while their page is hidden (backgrounded). */
     peerInfo: transport.peerInfo,
+    /** cb(sid, visible) when a peer's page is hidden or shown. */
+    onPeerVisibility: transport.onPeerVisibility,
 
     // Host role (server-side; opt in with connect({ host: true }) or
-    // rt.join/create/joinById(name, { host: true })).
+    // rt.join/create/joinById(name, { host: true }); handoff with
+    // { handoff: true, graceSeconds } and peers joining with { canHost: true }).
     hostId: transport.getHostId,
+    hostEpoch: transport.getHostEpoch,
     isHost: transport.isHost,
     onHostChange: transport.onHostChange,
+    setCheckpoint: transport.setCheckpoint,
+    setSuccessors: transport.setSuccessors,
+    transferHost: transport.transferHost,
 
     // Server clock (synced by periodic pings).
     serverNow: transport.serverNow,

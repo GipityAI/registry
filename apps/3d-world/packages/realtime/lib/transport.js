@@ -32,12 +32,19 @@
  * Server envelope: every custom message arrives stamped with `senderId` and
  * `serverTs` by the server (client values are overwritten, so both are
  * trustworthy). send(type, data, { to }) targets one session id, a list, or
- * 'host'; a targeted send that reached nobody comes back as `__undelivered`
- * and is surfaced as the 'undelivered' event. The host role is server-side
- * and opt-in (connect({ host: true })): its reclaim key is kept in
+ * 'host'; a send that reached nobody (or was refused) comes back as
+ * `__undelivered` and is surfaced as the 'undelivered' event. The host role is
+ * server-side and opt-in (connect({ host: true })): its reclaim key is kept in
  * sessionStorage per (app, room, scope) so a reloaded host page takes the role
  * back, whichever join mode it uses. A periodic `__ping` keeps an estimate of
  * the server clock.
+ *
+ * Host handoff: every `__host` message carries a monotonic hostEpoch. While
+ * this page holds the role, everything it sends is stamped `__hostEpoch`, so
+ * the server drops what a stale host (a phone that woke up after a handoff)
+ * sends. When the server asks for it (handoff rooms), the host heartbeats so
+ * a page that stopped running is noticed. The page's visibility
+ * (`document.hidden`) is reported to the room; peers see theirs.
  */
 
 import { applySettings, getSettings } from './settings.js';
@@ -47,7 +54,9 @@ import { createClock } from './clock.js';
 import { readStored, writeStored, deviceClientId } from './storage.js';
 
 /** Server-internal message types: handled here, never emitted to the app. */
-const INTERNAL = new Set(['__pong', '__host', '__host_key', '__undelivered']);
+const INTERNAL = new Set(['__pong', '__host', '__host_key', '__undelivered', '__visibility']);
+/** Largest checkpoint the server accepts (its JSON, in UTF-8 bytes). */
+export const MAX_CHECKPOINT_BYTES = 64 * 1024;
 // Both stores hold JSON { roomId, ... } under one key per (app, room, scope),
 // so a join that doesn't know the instance id yet (joinOrCreate) finds them.
 const hostKeyStorageKey = (guid, room, scope) => `gipity-rt:host-key:${guid}:${room}:${scope}`;
@@ -66,6 +75,10 @@ function storedFor(kind, key, roomId) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// The server announces the room's host to every joiner right after the join;
+// connect() waits this long for it so hostId()/isHost() are right on return.
+const HOST_ANNOUNCE_WAIT_MS = 2000;
+
 export function createTransport({ client, observability }) {
   let room = null;
   let connected = false;
@@ -77,16 +90,22 @@ export function createTransport({ client, observability }) {
   let hasSynced = false;     // true once the room's first data patch has landed
   let lastError = null;      // why the most recent connect() returned null
   let connectConfig = {};    // the last connect() config (room name, host flag)
-  let hostId = null;         // session id of the room's host, null when none
+  // The room's host role as the server last announced it.
+  const NO_HOST = { hostId: null, hostEpoch: 0, previousHostId: null, reason: null };
+  let host = NO_HOST;
+  let hostCheckpoint = null; // the checkpoint handed to this page with the role
+  let onAnnounce = null;     // resolves connect()'s wait for the first __host
   let pingTimer = null;
+  let heartbeatTimer = null;
   const clock = createClock();
 
   const peers = new Map();            // sid -> { lastSeen, clientId, displayName }
-  const hostChangeHandlers = new Set(); // cb(hostId|null, isMe)
+  const hostChangeHandlers = new Set(); // cb({ hostId, hostEpoch, ..., isMe, checkpoint })
   const msgHandlers = new Map();      // type -> Set<cb>
   const dataHandlers = new Set();     // cb(key, value|undefined, prev)
   const peerJoinHandlers = new Set(); // cb(sid)
   const peerLeaveHandlers = new Set();// cb(sid)
+  const visibilityHandlers = new Set();// cb(sid, visible)
   const disconnectHandlers = new Set();
   const dataMirror = new Map();       // key -> raw value string
 
@@ -108,15 +127,40 @@ export function createTransport({ client, observability }) {
       try { cb(sid); } catch (e) { console.warn('[realtime] peer handler error', e); }
     }
   }
-  function setHost(id) {
-    const next = id || null;
-    if (next === hostId) return;
-    hostId = next;
-    const me = !!room && hostId === room.sessionId;
+  function hostEvent() {
+    const isMe = !!room && !!host.hostId && host.hostId === room.sessionId;
+    return { ...host, isMe, checkpoint: isMe ? hostCheckpoint : null };
+  }
+  /** Apply a `__host` announcement. Fires onHostChange when the holder or the
+   *  epoch changed (a fresh page hears the current state once). */
+  function applyHost(data) {
+    const epoch = typeof data?.hostEpoch === 'number' ? data.hostEpoch : 0;
+    const next = data?.hostId || null;
+    if (epoch < host.hostEpoch) return;
+    const changed = epoch !== host.hostEpoch || next !== host.hostId;
+    host = { hostId: next, hostEpoch: epoch, previousHostId: data?.previousHostId || null, reason: data?.reason || null };
+    if (onAnnounce) { onAnnounce(); onAnnounce = null; }
+    const isMe = !!room && next === room.sessionId;
+    if (isMe && data && 'checkpoint' in data) hostCheckpoint = data.checkpoint || null;
+    if (!isMe) hostCheckpoint = null;
+    setHeartbeat(isMe ? data?.heartbeatMs : 0);
+    if (!changed) return;
+    const ev = hostEvent();
     for (const cb of hostChangeHandlers) {
-      try { cb(hostId, me); } catch (e) { console.warn('[realtime] host handler error', e); }
+      try { cb(ev); } catch (e) { console.warn('[realtime] host handler error', e); }
     }
-    observability.emit('host', { hostId, isMe: me });
+    observability.emit('host', { hostId: ev.hostId, hostEpoch: ev.hostEpoch, previousHostId: ev.previousHostId, reason: ev.reason, isMe: ev.isMe });
+  }
+  // A handoff host must keep talking or the server hands the role on; the
+  // server says how often (heartbeatMs) when it grants the role.
+  function setHeartbeat(ms) {
+    if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
+    if (ms > 0) heartbeatTimer = setInterval(ping, ms);
+  }
+  function fireVisibility(sid, visible) {
+    for (const cb of visibilityHandlers) {
+      try { cb(sid, visible); } catch (e) { console.warn('[realtime] visibility handler error', e); }
+    }
   }
   function fireDisconnect(info) {
     for (const cb of disconnectHandlers) {
@@ -172,8 +216,12 @@ export function createTransport({ client, observability }) {
       if (config.sessionId) opts.sessionId = config.sessionId;
       if (config.displayName) opts.displayName = config.displayName;
       opts.clientId = config.clientId || deviceClientId();
+      if (config.canHost) opts.canHost = true;
+      opts.visible = pageVisible();
       if (config.host) {
         opts.host = true;
+        if (config.handoff !== undefined) opts.handoff = !!config.handoff;
+        if (config.graceSeconds !== undefined) opts.graceSeconds = config.graceSeconds;
         // A key from an earlier page load of this host reclaims the role.
         const key = config.hostKey
           || storedFor('sessionStorage', hostKeyStorageKey(guid, roomName, scope), config.roomId)?.key;
@@ -196,14 +244,22 @@ export function createTransport({ client, observability }) {
       });
 
       connected = true;
+      // A new room (or a new page's seat): its epochs start over. The server
+      // announces the current host right after the join.
+      host = NO_HOST;
+      hostCheckpoint = null;
       joinKind = resumed ? 'reconnect' : mode === 'create' ? 'create' : 'join';
       awaitingSync = true;
       hasSynced = false;
       console.log(`[realtime] ✓ ${resumed ? 'Resumed held seat' : 'Connected'} - sessionId=${room.sessionId} roomId=${room.roomId}`);
       observability.emit('connect', { sessionId: room.sessionId, roomId: room.roomId, room: roomName, resumed: !!resumed });
+      const announced = new Promise((resolve) => { onAnnounce = resolve; });
       wireRoom();
       bindPagehide();
+      bindVisibility();
       startClockSync();
+      await Promise.race([announced, sleep(HOST_ANNOUNCE_WAIT_MS)]);
+      onAnnounce = null;
       return room;
     } catch (err) {
       lastError = err;
@@ -277,6 +333,7 @@ export function createTransport({ client, observability }) {
     intentionalLeave = true;
     reconnecting = false;
     stopClockSync();
+    setHeartbeat(0);
     if (room) forgetSeat(room.roomId);   // a clean leave frees the seat: nothing to resume
     if (room) { try { room.leave(); } catch { /* already gone */ } }
     room = null;
@@ -296,6 +353,23 @@ export function createTransport({ client, observability }) {
     if (pagehideBound || typeof window === 'undefined') return;
     pagehideBound = true;
     window.addEventListener('pagehide', () => { if (connected) disconnect(); });
+  }
+
+  // Report the page's visibility: a hidden page (a locked phone, another
+  // app in front) is usually suspended, so peers - and the host handoff -
+  // should know it is not just lagging.
+  function pageVisible() {
+    return typeof document === 'undefined' || !document.hidden;
+  }
+  let visibilityBound = false;
+  function bindVisibility() {
+    if (visibilityBound || typeof document === 'undefined' || !document.addEventListener) return;
+    visibilityBound = true;
+    document.addEventListener('visibilitychange', sendVisibility);
+  }
+  function sendVisibility() {
+    if (!room || !connected) return;
+    try { room.send('__visibility', { visible: pageVisible() }); } catch { /* reconnect handles it */ }
   }
 
   // --- room wiring (players + data map + message relay) ---
@@ -329,7 +403,11 @@ export function createTransport({ client, observability }) {
           const info = peers.get(sid) || { lastSeen: Date.now() };
           info.clientId = player?.clientId || '';
           info.displayName = player?.displayName || '';
+          const visible = player?.visible !== false;
+          const flipped = known && info.visible !== undefined && info.visible !== visible;
+          info.visible = visible;
           peers.set(sid, info);
+          if (flipped) fireVisibility(sid, visible);
           if (known) return;
           knownPlayers.add(sid);
           firePeer(peerJoinHandlers, sid);
@@ -341,8 +419,6 @@ export function createTransport({ client, observability }) {
           firePeer(peerLeaveHandlers, sid);
         }
       }
-
-      if (typeof state.hostId === 'string') setHost(state.hostId);
 
       // Server-synced data map (entity substrate for shared/server channels).
       if (state.data) {
@@ -388,6 +464,7 @@ export function createTransport({ client, observability }) {
     r.onLeave((code) => {
       connected = false;
       stopClockSync();
+      setHeartbeat(0);
       if (intentionalLeave) {
         observability.emit('disconnect', { code });
         fireDisconnect({ code });
@@ -412,7 +489,7 @@ export function createTransport({ client, observability }) {
   async function startReconnect() {
     if (reconnecting || intentionalLeave) return;
     const s = getSettings();
-    const windowMs = connectConfig.host && room && hostId === room.sessionId
+    const windowMs = connectConfig.host && room && host.hostId === room.sessionId
       ? Math.max(s.reconnectWindowMs, s.hostReconnectWindowMs)
       : s.reconnectWindowMs;
     if (windowMs <= 0 || !reconnectionToken) {
@@ -438,6 +515,8 @@ export function createTransport({ client, observability }) {
         console.log(`[realtime] ✓ Reconnected - sessionId=${room.sessionId}`);
         wireRoom();
         startClockSync();
+        // The page may have been hidden or shown while the socket was down.
+        sendVisibility();
         return;
       } catch (err) {
         if (isRoomGoneError(err)) break;
@@ -462,13 +541,17 @@ export function createTransport({ client, observability }) {
 
   /**
    * Send a custom message. `opts.to`: a session id, an array of them, or
-   * 'host'; omitted = everyone else in the room.
+   * 'host'; omitted = everyone else in the room. While this page is the host,
+   * the message carries its hostEpoch (see the header).
    */
   function send(type, data = {}, opts = {}) {
     if (!room || !connected) return;
     try {
-      const payload = opts.to === undefined ? data
-        : { ...(typeof data === 'object' && data !== null && !Array.isArray(data) ? data : { data }), __to: opts.to };
+      const stamp = isHost();
+      const payload = opts.to === undefined && !stamp ? data
+        : { ...(typeof data === 'object' && data !== null && !Array.isArray(data) ? data : { data }) };
+      if (opts.to !== undefined) payload.__to = opts.to;
+      if (stamp) payload.__hostEpoch = host.hostEpoch;
       room.send(type, payload);
       observability.bump('messagesSent');
     } catch (err) {
@@ -512,7 +595,47 @@ export function createTransport({ client, observability }) {
       });
       return;
     }
-    if (type === '__host') setHost(data?.hostId);
+    if (type === '__visibility') {
+      // Relay rooms announce visibility as a message (state rooms sync it).
+      const info = peers.get(data?.sessionId);
+      const visible = data?.visible !== false;
+      if (info && info.visible !== visible) { info.visible = visible; fireVisibility(data.sessionId, visible); }
+      return;
+    }
+    if (type === '__host') applyHost(data);
+  }
+
+  // --- host-only requests (the server re-checks each one) ---
+
+  function hostRequest(type, body) {
+    if (!room || !connected || !isHost()) return false;
+    try {
+      room.send(type, { ...body, __hostEpoch: host.hostEpoch });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /** Host: store `data` as the table's checkpoint (last write wins). It is
+   *  handed to whoever gets the role next, and to no one else. Throws a
+   *  RangeError over MAX_CHECKPOINT_BYTES. Returns false when this page is
+   *  not the host (nothing was sent). */
+  function setCheckpoint(data) {
+    const json = JSON.stringify(data ?? null);
+    const bytes = typeof TextEncoder !== 'undefined' ? new TextEncoder().encode(json).length : json.length;
+    if (bytes > MAX_CHECKPOINT_BYTES) {
+      throw new RangeError(`[realtime] checkpoint is ${bytes} bytes; the limit is ${MAX_CHECKPOINT_BYTES}`);
+    }
+    return hostRequest('__checkpoint', { data: data ?? null });
+  }
+  /** Host: preferred successors (session ids), first present one wins. */
+  function setSuccessors(ids) {
+    return hostRequest('__successors', { ids: Array.isArray(ids) ? ids : [] });
+  }
+  /** Host: hand the role to a present peer now. */
+  function transferHost(sessionId) {
+    return hostRequest('__transfer_host', { to: sessionId });
   }
 
   function ping() {
@@ -561,12 +684,16 @@ export function createTransport({ client, observability }) {
   function onPeerJoin(cb) { peerJoinHandlers.add(cb); return () => peerJoinHandlers.delete(cb); }
   function onPeerLeave(cb) { peerLeaveHandlers.add(cb); return () => peerLeaveHandlers.delete(cb); }
   function onDisconnect(cb) { disconnectHandlers.add(cb); return () => disconnectHandlers.delete(cb); }
-  /** cb(hostId|null, isMe) on every host change; replays the current host. */
+  /** cb({ hostId, hostEpoch, previousHostId, reason, isMe, checkpoint }) on
+   *  every host change; replays the current host (and, for the host itself,
+   *  the checkpoint it was handed). */
   function onHostChange(cb) {
     hostChangeHandlers.add(cb);
-    if (hostId) { try { cb(hostId, !!room && hostId === room.sessionId); } catch { /* handler */ } }
+    if (host.hostId) { try { cb(hostEvent()); } catch (e) { console.warn('[realtime] host handler error', e); } }
     return () => hostChangeHandlers.delete(cb);
   }
+  /** cb(sid, visible) when a peer's page is hidden or shown. */
+  function onPeerVisibility(cb) { visibilityHandlers.add(cb); return () => visibilityHandlers.delete(cb); }
 
   // --- queries ---
 
@@ -576,17 +703,19 @@ export function createTransport({ client, observability }) {
   function getSessionId() { return room?.sessionId || null; }
   function getPeers() { return peers; }
   function getLastError() { return lastError; }
-  function getHostId() { return hostId; }
-  function isHost() { return !!room && !!hostId && hostId === room.sessionId; }
+  function getHostId() { return host.hostId; }
+  function getHostEpoch() { return host.hostEpoch; }
+  function isHost() { return !!room && !!host.hostId && host.hostId === room.sessionId; }
   function peerInfo(sid) {
     const p = peers.get(sid);
-    return p ? { sessionId: sid, clientId: p.clientId || '', displayName: p.displayName || '' } : null;
+    return p ? { sessionId: sid, clientId: p.clientId || '', displayName: p.displayName || '', visible: p.visible !== false } : null;
   }
 
   return {
     connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers, getLastError,
     send, on, ping,
-    getHostId, isHost, onHostChange, peerInfo,
+    getHostId, getHostEpoch, isHost, onHostChange, peerInfo, onPeerVisibility,
+    setCheckpoint, setSuccessors, transferHost,
     getRtt: clock.rtt, getMinRtt: clock.minRtt, isClockSynced: clock.isSynced,
     serverNow: () => clock.toServer(Date.now()),
     setData, deleteData, onData,

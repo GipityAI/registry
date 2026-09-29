@@ -10,7 +10,8 @@
  *   const dir = createDirectory(lobby);
  *   const pub = dir.publish(matchId, { host: 'Sam', status: 'open' }); // host side
  *   pub.update({ status: 'playing' });                                 // this entry only
- *   pub.unpublish();
+ *   pub.unpublish();                                                   // remove it
+ *   pub.release();                                   // stop heart-beating, leave it for a new owner
  *   dir.onChange(() => render(dir.list()));                            // reader side
  *
  * publish() returns a handle scoped to ITS key, so one peer can advertise
@@ -47,6 +48,12 @@ export function createDirectory(roomHandle, options = {}) {
     if (lastKey === key) lastKey = mine.size ? [...mine.keys()].pop() : null;
     stopHeartbeatIfIdle();
   }
+  function releaseKey(key) {
+    if (!mine.has(key)) return;
+    mine.delete(key);
+    if (lastKey === key) lastKey = mine.size ? [...mine.keys()].pop() : null;
+    stopHeartbeatIfIdle();
+  }
   function updateKey(key, patch) {
     const entry = mine.get(key);
     if (!entry) return;
@@ -68,7 +75,9 @@ export function createDirectory(roomHandle, options = {}) {
 
     /**
      * Publish (and start heart-beating) an entry under `key`. Returns a
-     * handle scoped to this entry: `{ key, update(patch), unpublish() }`.
+     * handle scoped to this entry: `{ key, update(patch), unpublish(),
+     * release() }`. release() stops heart-beating without deleting the entry,
+     * for handing it to another publisher (a party table's new host).
      */
     publish(key, entry) {
       mine.set(key, entry);
@@ -79,6 +88,7 @@ export function createDirectory(roomHandle, options = {}) {
         key,
         update: (patch) => updateKey(key, patch),
         unpublish: () => unpublishKey(key),
+        release: () => releaseKey(key),
       };
     },
 

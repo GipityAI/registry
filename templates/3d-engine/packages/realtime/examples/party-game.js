@@ -34,7 +34,7 @@ export async function partyGame({ name, onTables, onState, onStart, onOpponentLe
     game = table.channel('state', { sync: 'store' });
     game.onChange(() => onState(game.get('game')));
     table.onPeerLeave(() => onOpponentLeft());   // fires only on PERMANENT loss
-    onStart(table);                              // { isHost, code, inviteUrl, room }
+    onStart(table);                              // { isHost(), code, inviteUrl, room }
   }
 
   // An invite link brings the guest straight to the table - run this on load.
@@ -67,7 +67,7 @@ export async function partyGame({ name, onTables, onState, onStart, onOpponentLe
     async join(entry) { bindTable(await party.join(entry)); },
     async quickMatch() {
       const t = await party.quickMatch({ host: name });
-      onStatus(t.isHost ? `No open games - hosting. Share ${t.inviteUrl || t.code}` : '');
+      onStatus(t.isHost() ? `No open games - hosting. Share ${t.inviteUrl || t.code}` : '');
       bindTable(t);
     },
 
