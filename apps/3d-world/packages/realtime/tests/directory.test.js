@@ -41,8 +41,9 @@ function fakeRoom(transport) {
     channel: (name) => createStoreChannel({ name, transport, observability: { bump: () => {} } }),
   };
 }
-// heartbeatMs huge so the interval never fires mid-test (process.exit clears it).
-const newDir = (opts) => createDirectory(fakeRoom(mockTransport()), { heartbeatMs: 9e9, ...opts });
+// heartbeatMs at the timer maximum (~24.8 days; anything larger overflows to 1 ms)
+// so the interval never fires mid-test (process.exit clears it).
+const newDir = (opts) => createDirectory(fakeRoom(mockTransport()), { heartbeatMs: 2 ** 31 - 1, ...opts });
 
 test('publish adds an entry that list() returns, tagged with _key', () => {
   const dir = newDir();
@@ -142,6 +143,26 @@ test('release() hands an entry over: it stays listed, this peer stops writing it
   pub.unpublish();                         // nor can we delete the new owner's entry
   assert.equal(dir.store.has('m'), true);
 });
+
+// The listing moves with a party's host role: the old host release()s and the
+// new host publishes the same key. The old host's heartbeat must stop, or it
+// would keep overwriting the new owner's entry with its stale copy.
+try {
+  const transport = mockTransport();
+  const oldHost = createDirectory(fakeRoom(transport), { heartbeatMs: 20 });
+  const newHost = createDirectory(fakeRoom(transport), { heartbeatMs: 2 ** 31 - 1 });
+  const pub = oldHost.publish('T1', { host: 'TV', roomId: 'r1', status: 'open' });
+  await new Promise((r) => setTimeout(r, 60));
+  pub.release();
+  newHost.publish('T1', { host: 'TV', roomId: 'r1', status: 'playing' });
+  await new Promise((r) => setTimeout(r, 100));
+  assert.equal(newHost.list()[0].status, 'playing', 'the released heartbeat never rewrites the entry');
+  assert.equal(oldHost.list()[0].status, 'playing', 'both pages read the new owner\'s entry');
+  newHost.close();
+  passed++; console.log('  ok   - release() stops the heartbeat: the new owner\'s entry is never overwritten');
+} catch (e) {
+  failed++; console.error('  FAIL - release() stops the heartbeat', '\n        ', e.message);
+}
 
 console.log(`\ndirectory.test.js: ${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
