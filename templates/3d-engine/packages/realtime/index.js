@@ -171,6 +171,14 @@ export function createRealtime(config = {}) {
     joinById(roomId, name, opts = {}) {
       return openRoom(client, { ...opts, roomId, room: name, mode: 'joinById' }, `join room ${roomId} failed`);
     },
+    /** Take back the seat this browser left WITHOUT a clean leave (a crash,
+     *  a killed tab) while the server still holds it - same session id. Never
+     *  takes a new seat: err.code 'not-found' when there is nothing to resume.
+     *  opts: { scope, roomId } (roomId limits it to one instance). join /
+     *  joinExisting / joinById already try this first. */
+    resume(name, opts = {}) {
+      return openRoom(client, { ...opts, room: name, mode: 'resume' }, `resume '${name}' failed`);
+    },
     /** Discover live room instances - used by lobby / directory code. */
     listRooms(name, scope) {
       return client.listRooms(name, scope);

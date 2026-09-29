@@ -4,15 +4,18 @@
  * A TV or laptop page runs the game and hosts the table; up to N phones scan a
  * QR code and send button presses. The screen is the single source of truth.
  *
- *   - The screen calls party.host(): it holds the room's HOST ROLE (a role,
- *     not a player seat). A reload of the screen page resumes the same table
- *     (same code, phones still seated) and takes the role back.
+ *   - The screen calls party.host(): it holds the room's HOST ROLE. It is
+ *     not a player, but its page still takes one of the room's seats, so
+ *     seats and max_clients are phones + 1. A reload of the screen page
+ *     resumes the same table (same code, phones still seated) and takes the
+ *     role back.
  *   - Phones join from the QR code's invite URL and sendToHost(): inputs go to
  *     the screen only, never to the other phones.
  *   - Every input arrives with a server-stamped senderId (trustworthy) and a
  *     sentAt in server-clock ms, so the screen can measure input age.
  *   - A phone that reloads is a new session; its clientId (stable per browser)
- *     lets the screen give it its old seat back.
+ *     lets the screen give it its old seat back. A phone whose page crashed
+ *     resumes its held session instead, even at a full table.
  *
  * gipity.yaml, realtime phase: provision `lobby` and `match`, with the match
  * room sized for the screen plus the phones and the holds you want:

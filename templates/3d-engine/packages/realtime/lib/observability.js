@@ -15,6 +15,7 @@ export function createObservability() {
     syncFull: 0,
     syncDelta: 0,
     lastMaxDrift: 0,
+    undelivered: 0,
   };
 
   function on(event, cb) {

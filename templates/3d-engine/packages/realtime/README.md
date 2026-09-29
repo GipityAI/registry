@@ -108,8 +108,17 @@ already full), `onPeerJoin/onPeerLeave`, `setListing(patch)`, `cancel()`,
 `status: 'playing'` automatically — browsers stop steering joiners into it and
 a late `joinByCode` rejects as `'full'` (`seats` is enforced client-side;
 provision `match` with a matching `max_clients` for a server-side cap too).
+When a seat frees again (a player left, or a dropped player's seat hold ran
+out) the listing flips back to `'open'`, so a player who reloads can rejoin
+from the invite link or code. That automatic flip stops the moment the app sets
+`status` itself with `setListing()` (e.g. `{ status: 'playing' }` at kickoff to
+keep a running match closed); setting it back to `'open'` hands it back.
 Hosting again while a table is still waiting **replaces** it — the old table
 is canceled, never orphaned.
+
+**`seats` counts every client at the table, the host's page included.** The
+host is a role, but the page holding it is still a client of the room: a TV
+plus 8 phones is `seats: 9`, and the `match` room needs `max_clients: 9`.
 
 `host()` also takes the room's **host role** (server-side): a TV/screen that
 hosts a couch game keeps it while phones join as players. After a page reload
@@ -117,6 +126,13 @@ the same `party.host()` call **resumes the same table** (same code, players
 still seated) while the server holds it (`host_hold_seconds`, default 60);
 pass `{ fresh: true }` to start a new one. Phones send to it with
 `table.channel('input').sendToHost('press', {...})`. See `examples/couch-controllers.js`.
+
+**Rejoining after a crash.** A phone whose page died *without* a clean leave
+(the browser crashed, the OS killed the tab) still has its seat held by the
+server for `seat_hold_seconds`. When that browser opens the invite link or
+code again, the kit takes the held seat back (same session id), even when the
+table is full and even though the listing says `'playing'`. Any other device
+waits for the hold to run out (the listing then reopens by itself).
 
 ## Rooms (the primitives under all of that)
 
@@ -129,12 +145,13 @@ const lobby = await rt.join('lobby');            // joinOrCreate a shared room
 const match = await rt.create('match');          // a fresh match instance
 const other = await rt.joinById(id, 'match');    // a specific advertised instance
 const only  = await rt.joinExisting('match', { scope: code }); // join, NEVER create
+const back  = await rt.resume('match', { scope: code }); // take back a held seat, NEVER a new one
 const live  = await rt.listRooms('match');       // [{roomId, clients, maxClients, metadata}]
 await rt.ensureToken();                          // pre-warm the app token
 ```
 
-`join` / `joinExisting` / `create` / `joinById` **throw `RealtimeJoinError`**
-on failure (see above). The default room's `rt.connect()` keeps its
+`join` / `joinExisting` / `create` / `joinById` / `resume` **throw
+`RealtimeJoinError`** on failure (see above). The default room's `rt.connect()` keeps its
 null-on-failure contract (offline mode when the page has no app GUID); inspect
 `rt.getLastError()` or the `'error'` event for the cause.
 
@@ -157,8 +174,25 @@ getSettings()  applySettings()
 closed or reloaded), and after the seat hold (`seat_hold_seconds`, default
 30 s) when a connection dropped and did not come back. A blip inside the hold
 never fires it, so it is safe as a forfeit/departure signal without your own
-debounce. A reloaded page is a new session id; match returning players by
-`peerInfo(sid).clientId`.
+debounce. A page reloaded cleanly is a new session id; match returning players
+by `peerInfo(sid).clientId`. A page that died *without* a clean leave keeps
+its seat for the hold, and the next join of that room from the same browser
+(any mode but `create`) **resumes the held seat** with its old session id,
+host role included, instead of being refused as `'full'` by its own ghost
+(the resume token lives in localStorage per app, room and scope, and every
+clean leave clears it). `rt.resume(name, { scope, roomId })` does only that.
+
+The host key that lets a reloaded host page reclaim the role is kept per tab
+(sessionStorage) per app, room and scope, so it works whichever way the host
+joined: `join` (joinOrCreate), `joinExisting`, or `joinById`.
+
+**No host?** A `sendToHost()` / `{ to: 'host' }` send while no host is
+connected is dropped by the server, which tells the sender: the room fires
+`'undelivered'` `{ channel, type, to: 'host', reason: 'no-host' }` (a send to
+session ids that are all gone gives `reason: 'no-recipient'`). Delivered and
+broadcast messages carry no acknowledgement. `hostId()` is `null` while there
+is no host, and `onHostChange(cb)` fires when one arrives, so an app that must
+not lose inputs can buffer until then.
 
 Every relayed message carries `senderId` and `serverTs`, stamped by the server
 (client values are overwritten, so `senderId` is trustworthy), and
@@ -269,7 +303,7 @@ agent-ops and desktop all reuse it directly).
 The runtime is inspectable, not a black box. Events actually emitted:
 
 ```js
-rt.on('connect',      ({ sessionId, roomId, room }) => {});
+rt.on('connect',      ({ sessionId, roomId, room, resumed }) => {});
 rt.on('synced',       ({ kind }) => {});  // kind: 'create'|'join'|'reconnect'
                                           // -> claim a seat / spectate / re-bind
 rt.on('disconnect',   (e) => {});         // intentional leave or permanent loss
@@ -278,6 +312,7 @@ rt.on('reconnecting', () => {});
 rt.on('reconnected',  ({ sessionId }) => {});
 rt.on('lost',         () => {});
 rt.on('channel-open', ({ name, sync }) => {});
+rt.on('undelivered',  ({ channel, type, to, reason }) => {}); // 'no-host' | 'no-recipient'
 
 rt.metrics();            // { connected, peers, channels, messagesSent, ... }
 rt.onMetrics((m) => updatePanel(m), 1000);
@@ -341,7 +376,17 @@ The flip side of the reconnection hold: when the **page itself dies**
 (navigation, tab close), waiting out the seat hold for a reconnect that can never come
 would leave a ghost seat — so the kit listens for `pagehide` and leaves
 **consented**, freeing the seat (and disposing an empty match room)
-immediately. Next joiners never hit "full" because of a closed tab.
+immediately. Next joiners never hit "full" because of a closed tab. When the
+page dies without `pagehide` firing (a crash, a killed tab), the same browser
+resumes its held seat on the next join (see "Rooms").
+
+**Where it runs.** Gipity Realtime runs in one region, US West (Oregon). Every
+message makes a round trip through it, so players far from the US West coast
+see more latency (typical round trips: about 70 ms from the US East Coast,
+about 150 ms from Western Europe, 100-200 ms from East Asia and Australia,
+plus each player's own last-mile delay). Fine for party, turn-based and
+casual action games; measure with `rt.rtt()` before promising twitch-speed
+play overseas.
 
 ## Verifying multiplayer actually works
 

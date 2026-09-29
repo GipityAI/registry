@@ -18,26 +18,51 @@
  * Channel `onDisconnect` handlers fire only on a *permanent* loss, never on a
  * transient drop that is being recovered.
  *
+ * Seat resume across a page reload: the current reconnection token is kept in
+ * localStorage per (app, room, scope) and cleared on every clean leave. When a
+ * page died WITHOUT a clean leave (a crash, a killed tab), the server is still
+ * holding its seat; the next join of that room from this browser presents the
+ * token first and takes the held seat back - same session id, same host role -
+ * instead of being refused as 'full' by its own ghost. mode 'resume' does only
+ * that and never takes a new seat.
+ *
  * Stub-safe: every method is callable before connect() (or with no app GUID,
  * i.e. offline mode) - sends become no-ops, queries return empty.
  *
  * Server envelope: every custom message arrives stamped with `senderId` and
  * `serverTs` by the server (client values are overwritten, so both are
  * trustworthy). send(type, data, { to }) targets one session id, a list, or
- * 'host'. The host role is server-side and opt-in (connect({ host: true })):
- * its reclaim key is kept in sessionStorage so a reloaded host page takes the
- * role back. A periodic `__ping` keeps an estimate of the server clock.
+ * 'host'; a targeted send that reached nobody comes back as `__undelivered`
+ * and is surfaced as the 'undelivered' event. The host role is server-side
+ * and opt-in (connect({ host: true })): its reclaim key is kept in
+ * sessionStorage per (app, room, scope) so a reloaded host page takes the role
+ * back, whichever join mode it uses. A periodic `__ping` keeps an estimate of
+ * the server clock.
  */
 
 import { applySettings, getSettings } from './settings.js';
 import { reconnectDelay, isRoomGoneError } from './reconnect.js';
-import { classifyJoinError } from './errors.js';
+import { classifyJoinError, RealtimeJoinError } from './errors.js';
 import { createClock } from './clock.js';
 import { readStored, writeStored, deviceClientId } from './storage.js';
 
 /** Server-internal message types: handled here, never emitted to the app. */
-const INTERNAL = new Set(['__pong', '__host', '__host_key']);
-const hostKeyStorageKey = (guid, room, roomId) => `gipity-rt:host-key:${guid}:${room}:${roomId}`;
+const INTERNAL = new Set(['__pong', '__host', '__host_key', '__undelivered']);
+// Both stores hold JSON { roomId, ... } under one key per (app, room, scope),
+// so a join that doesn't know the instance id yet (joinOrCreate) finds them.
+const hostKeyStorageKey = (guid, room, scope) => `gipity-rt:host-key:${guid}:${room}:${scope}`;
+const seatStorageKey = (guid, room, scope) => `gipity-rt:seat:${guid}:${room}:${scope}`;
+
+function readJson(kind, key) {
+  try { return JSON.parse(readStored(kind, key) || 'null'); } catch { return null; }
+}
+/** A stored { roomId, ... } record, when it applies to `roomId` (any
+ *  instance when the join doesn't name one). */
+function storedFor(kind, key, roomId) {
+  const rec = readJson(kind, key);
+  if (!rec?.roomId) return null;
+  return !roomId || rec.roomId === roomId ? rec : null;
+}
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -111,10 +136,13 @@ export function createTransport({ client, observability }) {
    *                                  room. Use for URL/invite-code partitioning
    *                                  without provisioning a room per value.
    * @param {string} [config.roomId]  Instance id - required for mode 'joinById'.
-   * @param {'joinOrCreate'|'join'|'create'|'joinById'} [config.mode]
+   * @param {'joinOrCreate'|'join'|'create'|'joinById'|'resume'} [config.mode]
    *                                  Default 'joinOrCreate'. 'join' never
    *                                  creates - it fails with 'not-found' when
-   *                                  no matching instance is live.
+   *                                  no matching instance is live. 'resume'
+   *                                  only takes back a seat this browser left
+   *                                  uncleanly (else 'not-found'). Every mode
+   *                                  but 'create' tries that resume first.
    * @param {number} [config.maxClients]
    * @returns {Promise<Object|null>}  The Colyseus room, or null on failure
    *                                  (inspect getLastError() / the 'error'
@@ -148,12 +176,19 @@ export function createTransport({ client, observability }) {
         opts.host = true;
         // A key from an earlier page load of this host reclaims the role.
         const key = config.hostKey
-          || (config.roomId ? readStored('sessionStorage', hostKeyStorageKey(guid, roomName, config.roomId)) : null);
+          || storedFor('sessionStorage', hostKeyStorageKey(guid, roomName, scope), config.roomId)?.key;
         if (key) opts.hostKey = key;
       }
-      connectConfig = { ...config, room: roomName };
+      connectConfig = { ...config, room: roomName, scope };
 
-      room = await joinWithRetry(() => {
+      // A seat this browser left without a clean leave is still held by the
+      // server: take it back before asking for a new one (which the held seat
+      // itself may be blocking when the room is at max_clients).
+      const resumed = mode === 'create' ? null : await resumeSeat(colyseus, guid, roomName, scope, config.roomId);
+      if (!resumed && mode === 'resume') {
+        throw new RealtimeJoinError('not-found', `no held seat to resume in '${roomName}'`);
+      }
+      room = resumed || await joinWithRetry(() => {
         if (mode === 'create') return colyseus.create('state', opts);
         if (mode === 'join') return colyseus.join('state', opts);
         if (mode === 'joinById') return colyseus.joinById(config.roomId, opts);
@@ -161,11 +196,11 @@ export function createTransport({ client, observability }) {
       });
 
       connected = true;
-      joinKind = mode === 'create' ? 'create' : 'join';
+      joinKind = resumed ? 'reconnect' : mode === 'create' ? 'create' : 'join';
       awaitingSync = true;
       hasSynced = false;
-      console.log(`[realtime] ✓ Connected - sessionId=${room.sessionId} roomId=${room.roomId}`);
-      observability.emit('connect', { sessionId: room.sessionId, roomId: room.roomId, room: roomName });
+      console.log(`[realtime] ✓ ${resumed ? 'Resumed held seat' : 'Connected'} - sessionId=${room.sessionId} roomId=${room.roomId}`);
+      observability.emit('connect', { sessionId: room.sessionId, roomId: room.roomId, room: roomName, resumed: !!resumed });
       wireRoom();
       bindPagehide();
       startClockSync();
@@ -176,6 +211,38 @@ export function createTransport({ client, observability }) {
       observability.emit('error', { phase: 'connect', message: err.message, error: err });
       return null;
     }
+  }
+
+  /**
+   * Present a stored reconnection token for (room, scope) - and, when the
+   * join names an instance, only that instance's. Resolves the resumed room,
+   * or null. A token whose room is gone is dropped; any other failure (the
+   * server hasn't noticed the old socket died yet, so the seat isn't held
+   * yet) keeps it for the next attempt. One failed request is the cost, and
+   * only after an unclean exit: every clean leave clears the token.
+   */
+  async function resumeSeat(colyseus, guid, roomName, scope, roomId) {
+    const key = seatStorageKey(guid, roomName, scope);
+    const rec = storedFor('localStorage', key, roomId);
+    if (!rec?.token) return null;
+    try {
+      return await colyseus.reconnect(rec.token);
+    } catch (err) {
+      if (isRoomGoneError(err)) writeStored('localStorage', key, null);
+      console.debug('[realtime] no held seat to resume:', err?.message);
+      return null;
+    }
+  }
+
+  function rememberSeat(r) {
+    if (!r?.reconnectionToken) return;
+    writeStored('localStorage', seatStorageKey(client.getAppGuid(), connectConfig.room, connectConfig.scope ?? ''),
+      JSON.stringify({ roomId: r.roomId, token: r.reconnectionToken }));
+  }
+
+  function forgetSeat(roomId) {
+    const key = seatStorageKey(client.getAppGuid(), connectConfig.room, connectConfig.scope ?? '');
+    if (roomId && readJson('localStorage', key)?.roomId === roomId) writeStored('localStorage', key, null);
   }
 
   /**
@@ -210,6 +277,7 @@ export function createTransport({ client, observability }) {
     intentionalLeave = true;
     reconnecting = false;
     stopClockSync();
+    if (room) forgetSeat(room.roomId);   // a clean leave frees the seat: nothing to resume
     if (room) { try { room.leave(); } catch { /* already gone */ } }
     room = null;
     connected = false;
@@ -241,6 +309,7 @@ export function createTransport({ client, observability }) {
     // patch from a room we have since left must not deref a stale/null `room`.
     const r = room;
     reconnectionToken = r.reconnectionToken || reconnectionToken;
+    rememberSeat(r);
     const knownPlayers = new Set(peers.keys());
 
     // Colyseus 0.16 removed the per-collection .onAdd / .onChange / .onRemove
@@ -383,6 +452,7 @@ export function createTransport({ client, observability }) {
 
   function finishLost() {
     connected = false;
+    if (room) forgetSeat(room.roomId);
     observability.emit('lost', {});
     console.warn('[realtime] ✗ Connection lost - could not reconnect');
     fireDisconnect({ code: 'lost' });
@@ -422,8 +492,24 @@ export function createTransport({ client, observability }) {
     }
     if (type === '__host_key') {
       if (typeof data?.key === 'string') {
-        writeStored('sessionStorage', hostKeyStorageKey(client.getAppGuid(), connectConfig.room, r.roomId), data.key);
+        writeStored('sessionStorage', hostKeyStorageKey(client.getAppGuid(), connectConfig.room, connectConfig.scope ?? ''),
+          JSON.stringify({ roomId: r.roomId, key: data.key }));
       }
+      return;
+    }
+    if (type === '__undelivered') {
+      // A targeted send reached nobody: 'no-host' (sendToHost / to:'host'
+      // while no host is connected) or 'no-recipient'. Split the wire type
+      // back into the channel name and the app's message type.
+      const wire = String(data?.type ?? '');
+      const i = wire.indexOf(':');
+      observability.bump('undelivered');
+      observability.emit('undelivered', {
+        channel: i > 0 ? wire.slice(0, i) : null,
+        type: i > 0 ? wire.slice(i + 1) : wire,
+        to: data?.to ?? null,
+        reason: data?.reason || 'no-recipient',
+      });
       return;
     }
     if (type === '__host') setHost(data?.hostId);

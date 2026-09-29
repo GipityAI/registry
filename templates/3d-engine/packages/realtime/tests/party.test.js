@@ -38,6 +38,7 @@ function mockTransport() {
 
 function fakeMatchRoom(id) {
   const joinCbs = new Set();
+  const leaveCbs = new Set();
   const peers = new Map();
   let disconnected = false;
   return {
@@ -45,9 +46,10 @@ function fakeMatchRoom(id) {
     disconnect: () => { disconnected = true; },
     peers: () => peers,
     onPeerJoin: (cb) => { joinCbs.add(cb); return () => joinCbs.delete(cb); },
-    onPeerLeave: () => () => {},
+    onPeerLeave: (cb) => { leaveCbs.add(cb); return () => leaveCbs.delete(cb); },
     channel: () => ({}),
     _addPeer(sid) { peers.set(sid, {}); for (const cb of [...joinCbs]) cb(sid); },
+    _removePeer(sid) { peers.delete(sid); for (const cb of [...leaveCbs]) cb(sid); },
     get _disconnected() { return disconnected; },
   };
 }
@@ -60,6 +62,7 @@ function fakeMatchRoom(id) {
 function fakeRt() {
   const lobbyTransport = mockTransport();
   const joinable = new Map();
+  const resumable = new Set();
   let nextId = 1;
   let lobbyDown = false;
   return {
@@ -83,7 +86,13 @@ function fakeRt() {
       }
       return target;
     },
+    // Rooms where this "browser" left a held seat behind (its page died).
+    async resume(name, { roomId } = {}) {
+      if (!resumable.has(roomId)) throw new RealtimeJoinError('not-found', 'no held seat to resume');
+      return joinable.get(roomId);
+    },
     _joinable: joinable,
+    _resumable: resumable,
     _setLobbyDown(v) { lobbyDown = v; },
   };
 }
@@ -277,6 +286,55 @@ test('unprovisioned room name classifies distinctly, not as a gone game', async 
     newParty(rt).tables(),
     (err) => err.code === 'unprovisioned',
   );
+});
+
+test('a full table reopens when a seat frees, so a reloading player can rejoin by code', async () => {
+  const rt = fakeRt();
+  const host = newParty(rt, { seats: 3 });
+  const hosted = await host.host({ host: 'TV' });
+  const room = rt._joinable.get(hosted.roomId);
+  room._addPeer('phone-1');
+  room._addPeer('phone-2');            // 3 of 3 -> playing
+  assert.equal((await host.tables()).length, 0, 'a full table is not browsable');
+  room._removePeer('phone-2');         // clean leave, or its seat hold ran out
+  const [entry] = await host.tables();
+  assert.equal(entry?.status, 'open', 'the listing reopened');
+  const again = await newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 });
+  assert.equal(again.roomId, hosted.roomId);
+  room._addPeer('phone-2b');           // full again -> playing again
+  assert.equal((await host.tables()).length, 0, 'refilled table closes again');
+});
+
+test('an app-set status is never overridden by the kit reopening the table', async () => {
+  const rt = fakeRt();
+  const host = newParty(rt, { seats: 2 });
+  const hosted = await host.host({ host: 'Sam' });
+  const room = rt._joinable.get(hosted.roomId);
+  room._addPeer('guest-1');
+  hosted.setListing({ status: 'in-match' });   // the app closed joins at kickoff
+  room._removePeer('guest-1');
+  await assert.rejects(
+    newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 }),
+    (err) => err.code === 'full',
+  );
+  // Handing status back to the kit ('open') resumes the automatic flip.
+  hosted.setListing({ status: 'open' });
+  room._addPeer('guest-2');
+  assert.equal((await host.tables()).length, 0);
+});
+
+test('a player whose own seat is held takes it back through a full table', async () => {
+  const rt = fakeRt();
+  const host = newParty(rt, { seats: 2 });
+  const hosted = await host.host({ host: 'TV' });
+  rt._joinable.get(hosted.roomId)._addPeer('phone-1');   // full -> playing
+  // A stranger is refused...
+  await assert.rejects(newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 }), (err) => err.code === 'full');
+  // ...but the phone whose page crashed (seat still held) gets back in.
+  rt._resumable.add(hosted.roomId);
+  const back = await newParty(rt).joinByCode(hosted.code, { timeoutMs: 1000 });
+  assert.equal(back.roomId, hosted.roomId);
+  assert.equal(back.isHost, false);
 });
 
 test('inviteUrl/codeFromUrl are inert outside a browser', async () => {

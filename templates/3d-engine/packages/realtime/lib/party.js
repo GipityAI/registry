@@ -14,7 +14,13 @@
  *   - every join failure is a typed RealtimeJoinError ('not-found' | 'full' |
  *     'gone' | ...) - never a UI stuck on "Joining…". A table whose listing is
  *     no longer 'open' rejects as 'full' client-side even when the room's
- *     provisioned max_clients is larger than `seats`.
+ *     provisioned max_clients is larger than `seats` - except for a player
+ *     whose own seat there is still held (their page died without a clean
+ *     leave): the invite link / code takes that held seat back.
+ *   - a full table reopens by itself: the kit flips the listing to 'playing'
+ *     when it fills and back to 'open' when a seat frees (a player left, or a
+ *     dropped player's seat hold ran out) - unless the app set the status
+ *     itself with setListing(), which the kit then leaves alone.
  *   - one staleness window: the browse list, join-by-code, and quick-match all
  *     read the same directory freshness (no 18s-vs-45s divergence)
  *   - the invite URL is first-class: inviteUrl() builds it, joinFromUrl()
@@ -84,10 +90,12 @@ const LOBBY_SYNC_WAIT_MS = 800;
  * @param {Object} [options]
  * @param {string} [options.lobby='lobby']  Provisioned name of the shared lobby room.
  * @param {string} [options.match='match']  Provisioned name of the per-game room.
- * @param {number} [options.seats=2]        Players per table (host included).
- *                                          When the table fills, its listing
- *                                          flips to status 'playing' automatically
- *                                          and further joins reject as 'full'.
+ * @param {number} [options.seats=2]        Clients per table, the host's page
+ *                                          included (a TV + 8 phones = 9). When
+ *                                          the table fills, its listing flips to
+ *                                          status 'playing' automatically and
+ *                                          further joins reject as 'full'; when
+ *                                          a seat frees it flips back to 'open'.
  * @param {number} [options.codeLength=4]
  * @param {string} [options.urlParam='join']  Query param used by inviteUrl()/joinFromUrl().
  * @param {number} [options.heartbeatMs]    Directory heartbeat (default 15000).
@@ -169,6 +177,11 @@ export function createParty(rt, options = {}) {
       room.disconnect();
     }
 
+    // The listing status this host last published, and whether the kit (not
+    // the app) is driving it.
+    let status = 'open';
+    let kitOwnsStatus = true;
+
     const table = {
       isHost,
       code,
@@ -180,7 +193,8 @@ export function createParty(rt, options = {}) {
       onPeerLeave: room.onPeerLeave,
       /** Invite link for this table (host side; '' outside a browser). */
       inviteUrl: inviteUrl(code),
-      /** Everyone at the table right now, host/self included. */
+      /** Everyone at the table right now, host/self included. A player whose
+       *  connection dropped still counts while the server holds their seat. */
       players() { return room.peers().size + 1; },
       /** cb() once when the table fills to `seats` players (fires immediately
        *  when it is already full at registration time). */
@@ -193,8 +207,18 @@ export function createParty(rt, options = {}) {
         if (table.players() >= seats) Promise.resolve().then(fire);
         return off;
       },
-      /** Host: merge a patch into the table's lobby listing (e.g. status). */
-      setListing(patch) { if (pub && !done) pub.update(patch); },
+      /** Host: merge a patch into the table's lobby listing (e.g. status).
+       *  Setting `status` yourself takes the open/playing flip over from the
+       *  kit (e.g. { status: 'playing' } at kickoff keeps a match closed even
+       *  when a seat frees); setting it back to 'open' hands it back. */
+      setListing(patch) {
+        if (!pub || done) return;
+        if (patch && 'status' in patch) {
+          status = patch.status;
+          kitOwnsStatus = patch.status === 'open';
+        }
+        pub.update(patch);
+      },
       /**
        * Host, pre-game: take the table down cleanly. The listing disappears
        * for everyone and no later joiner can resurrect the abandoned match.
@@ -204,11 +228,23 @@ export function createParty(rt, options = {}) {
       leave: takeDown,
     };
 
-    // The moment the table fills, flip its listing so browsers/quick-match
-    // stop steering joiners into it (and joinByCode rejects as 'full').
-    // Apps can still setListing() over this.
-    if (isHost) {
-      table.onFull(() => { if (pub && !done) pub.update({ status: 'playing' }); });
+    // Keep the listing's status in step with the seat count: 'playing' the
+    // moment the table fills (browsers/quick-match stop steering joiners in,
+    // joinByCode rejects as 'full'), 'open' again when a seat frees (a player
+    // left cleanly, or a dropped player's seat hold ran out) - otherwise a
+    // full table that loses a player can never be rejoined. Only while the
+    // kit owns the status: an app's own setListing({ status }) wins.
+    if (isHost && pub) {
+      const sync = () => {
+        if (done || !kitOwnsStatus) return;
+        const next = table.players() >= seats ? 'playing' : 'open';
+        if (next === status) return;
+        status = next;
+        pub.update({ status });
+      };
+      room.onPeerJoin(sync);
+      room.onPeerLeave(sync);
+      sync();
     }
     // Keep guests' entry metadata handy (host name etc).
     if (entry) table.entry = entry;
@@ -235,8 +271,13 @@ export function createParty(rt, options = {}) {
     if (!entry?.roomId) throw new RealtimeJoinError('not-found', 'invalid table entry');
     // Client-side seat gate: a listing that is no longer 'open' means the
     // table filled (or the host closed joins) - reject even when the room's
-    // provisioned max_clients would still admit us.
+    // provisioned max_clients would still admit us. The one exception is our
+    // own seat: a page that died without a clean leave (and this is its
+    // reload) is still seated there, and takes that held seat back.
     if (entry.status && entry.status !== 'open') {
+      let room = null;
+      try { room = await rt.resume(matchName, { roomId: entry.roomId }); } catch { /* not ours to resume */ }
+      if (room) return makeTable({ room, code: entry.code, isHost: false, entry, pub: null });
       throw new RealtimeJoinError('full', `table ${entry.code || entry.roomId} is already ${entry.status}`);
     }
     try {
@@ -348,8 +389,10 @@ export function createParty(rt, options = {}) {
 
     /**
      * Host a table: creates a match room, advertises it under a share code,
-     * and holds the room's host role (the host is a role, not a player: a TV
-     * or big screen hosts, phones join). `info` is merged into the listing
+     * and holds the room's host role (a TV or big screen hosts, phones join).
+     * The role is not a player slot in the game's sense, but the host's page
+     * IS a client of the room: it counts toward `seats` and the room's
+     * max_clients (a TV + 8 phones needs seats: 9 and max_clients: 9). `info` is merged into the listing
      * (e.g. { host: 'Sam' }); pass `info.code` to force a specific code (e.g. a
      * rematch). Replaces any previous still-waiting hosted table. After a page
      * reload it resumes the same table (same code, players still seated)

@@ -32,7 +32,10 @@ export function createChannelRegistry({ transport, observability }) {
       sync: 'messages', name,
       /** Send to everyone else, or opts.to: a session id, an array, or 'host'. */
       send(type, data = {}, opts = {}) { transport.send(prefix + type, stamp(data), opts); sent++; },
-      /** Send to the room's host only (see connect({ host: true })). */
+      /** Send to the room's host only (see connect({ host: true })). With no
+       *  host connected the server drops it and the room fires
+       *  'undelivered' { channel, type, to: 'host', reason: 'no-host' };
+       *  check room.hostId() (null = no host) to buffer instead. */
       sendToHost(type, data = {}) { transport.send(prefix + type, stamp(data), { to: 'host' }); sent++; },
       /** cb(data): data.senderId and data.serverTs are set by the server. */
       on(type, cb) {
