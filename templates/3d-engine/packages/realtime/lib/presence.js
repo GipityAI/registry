@@ -39,31 +39,46 @@ export function createPresenceChannel({ name, transport, adapter, observability 
     if (peers.delete(sid)) fire(leaveCbs, sid);
   });
 
-  // --- outgoing broadcast loop ---
-  const broadcast = setInterval(() => {
-    const payload = pres.encode() ?? localState;
-    if (payload) {
-      transport.send(wireType, { sid: transport.getSessionId(), ...payload });
-      sent++;
-    }
-  }, getSettings().posRateMs);
-
-  // --- stale sweep (backup for missed peer-leave) ---
-  const sweep = setInterval(() => {
-    const cutoff = Date.now() - getSettings().staleTimeoutMs * 3;
-    for (const [sid, peer] of peers) {
-      if (peer.lastSeen && peer.lastSeen < cutoff) {
-        peers.delete(sid);
-        fire(leaveCbs, sid);
+  // --- outgoing broadcast loop + stale sweep (backup for missed peer-leave) ---
+  // Started on creation and restarted after every (re)connect: a permanent
+  // loss stops them, and a later connect() on the same handle must bring
+  // presence back instead of leaving it silent forever.
+  let broadcast = null;
+  let sweep = null;
+  function stop() {
+    if (broadcast) { clearInterval(broadcast); broadcast = null; }
+    if (sweep) { clearInterval(sweep); sweep = null; }
+  }
+  function start() {
+    stop();
+    broadcast = setInterval(() => {
+      const payload = pres.encode() ?? localState;
+      if (payload) {
+        transport.send(wireType, { ...payload, sid: transport.getSessionId() });
+        sent++;
       }
-    }
-  }, 2000);
+    }, getSettings().posRateMs);
+    sweep = setInterval(() => {
+      const cutoff = Date.now() - getSettings().staleTimeoutMs * 3;
+      for (const [sid, peer] of peers) {
+        if (peer.lastSeen && peer.lastSeen < cutoff) {
+          peers.delete(sid);
+          fire(leaveCbs, sid);
+        }
+      }
+    }, 2000);
+  }
+  start();
 
-  transport.onDisconnect(() => { clearInterval(broadcast); clearInterval(sweep); });
+  transport.onDisconnect(() => {
+    stop();
+    for (const sid of [...peers.keys()]) { peers.delete(sid); fire(leaveCbs, sid); }
+  });
 
   return {
     sync: 'presence',
     name,
+    _afterConnect: start,
     setLocal(obj) { localState = obj; },
     local() { return localState; },
     peers() { return peers; },

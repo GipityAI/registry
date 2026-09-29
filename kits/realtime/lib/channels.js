@@ -22,9 +22,19 @@ export function createChannelRegistry({ transport, observability }) {
   function messagesChannel(name) {
     const prefix = `${name}:`;
     let sent = 0, received = 0;
+    // Stamp the send time in server-clock ms once the clock is synced, so a
+    // receiver can compute an input's age: room.serverNow() - msg.sentAt.
+    const stamp = (data) => {
+      if (!transport.isClockSynced?.() || typeof data !== 'object' || data === null || Array.isArray(data) || 'sentAt' in data) return data;
+      return { ...data, sentAt: Math.round(transport.serverNow()) };
+    };
     return {
       sync: 'messages', name,
-      send(type, data = {}) { transport.send(prefix + type, data); sent++; },
+      /** Send to everyone else, or opts.to: a session id, an array, or 'host'. */
+      send(type, data = {}, opts = {}) { transport.send(prefix + type, stamp(data), opts); sent++; },
+      /** Send to the room's host only (see connect({ host: true })). */
+      sendToHost(type, data = {}) { transport.send(prefix + type, stamp(data), { to: 'host' }); sent++; },
+      /** cb(data): data.senderId and data.serverTs are set by the server. */
       on(type, cb) {
         return transport.on(prefix + type, (d) => { received++; cb(d); });
       },

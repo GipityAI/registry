@@ -20,11 +20,24 @@
  *
  * Stub-safe: every method is callable before connect() (or with no app GUID,
  * i.e. offline mode) - sends become no-ops, queries return empty.
+ *
+ * Server envelope: every custom message arrives stamped with `senderId` and
+ * `serverTs` by the server (client values are overwritten, so both are
+ * trustworthy). send(type, data, { to }) targets one session id, a list, or
+ * 'host'. The host role is server-side and opt-in (connect({ host: true })):
+ * its reclaim key is kept in sessionStorage so a reloaded host page takes the
+ * role back. A periodic `__ping` keeps an estimate of the server clock.
  */
 
 import { applySettings, getSettings } from './settings.js';
 import { reconnectDelay, isRoomGoneError } from './reconnect.js';
 import { classifyJoinError } from './errors.js';
+import { createClock } from './clock.js';
+import { readStored, writeStored, deviceClientId } from './storage.js';
+
+/** Server-internal message types: handled here, never emitted to the app. */
+const INTERNAL = new Set(['__pong', '__host', '__host_key']);
+const hostKeyStorageKey = (guid, room, roomId) => `gipity-rt:host-key:${guid}:${room}:${roomId}`;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -38,8 +51,13 @@ export function createTransport({ client, observability }) {
   let awaitingSync = false;  // emit 'synced' on the next data-bearing patch
   let hasSynced = false;     // true once the room's first data patch has landed
   let lastError = null;      // why the most recent connect() returned null
+  let connectConfig = {};    // the last connect() config (room name, host flag)
+  let hostId = null;         // session id of the room's host, null when none
+  let pingTimer = null;
+  const clock = createClock();
 
-  const peers = new Map();            // sid -> { lastSeen }
+  const peers = new Map();            // sid -> { lastSeen, clientId, displayName }
+  const hostChangeHandlers = new Set(); // cb(hostId|null, isMe)
   const msgHandlers = new Map();      // type -> Set<cb>
   const dataHandlers = new Set();     // cb(key, value|undefined, prev)
   const peerJoinHandlers = new Set(); // cb(sid)
@@ -64,6 +82,16 @@ export function createTransport({ client, observability }) {
     for (const cb of set) {
       try { cb(sid); } catch (e) { console.warn('[realtime] peer handler error', e); }
     }
+  }
+  function setHost(id) {
+    const next = id || null;
+    if (next === hostId) return;
+    hostId = next;
+    const me = !!room && hostId === room.sessionId;
+    for (const cb of hostChangeHandlers) {
+      try { cb(hostId, me); } catch (e) { console.warn('[realtime] host handler error', e); }
+    }
+    observability.emit('host', { hostId, isMe: me });
   }
   function fireDisconnect(info) {
     for (const cb of disconnectHandlers) {
@@ -115,6 +143,15 @@ export function createTransport({ client, observability }) {
       // rejects with "requires Gipity login" and there was no way to comply).
       if (config.sessionId) opts.sessionId = config.sessionId;
       if (config.displayName) opts.displayName = config.displayName;
+      opts.clientId = config.clientId || deviceClientId();
+      if (config.host) {
+        opts.host = true;
+        // A key from an earlier page load of this host reclaims the role.
+        const key = config.hostKey
+          || (config.roomId ? readStored('sessionStorage', hostKeyStorageKey(guid, roomName, config.roomId)) : null);
+        if (key) opts.hostKey = key;
+      }
+      connectConfig = { ...config, room: roomName };
 
       room = await joinWithRetry(() => {
         if (mode === 'create') return colyseus.create('state', opts);
@@ -131,6 +168,7 @@ export function createTransport({ client, observability }) {
       observability.emit('connect', { sessionId: room.sessionId, roomId: room.roomId, room: roomName });
       wireRoom();
       bindPagehide();
+      startClockSync();
       return room;
     } catch (err) {
       lastError = err;
@@ -159,6 +197,8 @@ export function createTransport({ client, observability }) {
         // retrying used to burn the full backoff window (~6s) on every one.
         const kind = classifyJoinError(err);
         if (kind === 'auth' || kind === 'unprovisioned' || kind === 'not-found') throw err;
+        // A full scoped table (an invite code) won't free up by retrying.
+        if (kind === 'full' && /scope is full/i.test(String(err?.message || ''))) throw err;
         console.warn(`[realtime] join attempt ${i + 1}/${attempts} failed:`, err?.message);
         if (i < attempts - 1) await sleep(reconnectDelay(i + 1, { baseMs: 450, maxMs: 3000 }));
       }
@@ -169,6 +209,7 @@ export function createTransport({ client, observability }) {
   function disconnect() {
     intentionalLeave = true;
     reconnecting = false;
+    stopClockSync();
     if (room) { try { room.leave(); } catch { /* already gone */ } }
     room = null;
     connected = false;
@@ -212,11 +253,16 @@ export function createTransport({ client, observability }) {
       // Peer membership (server-authoritative).
       if (state.players) {
         const present = new Set();
-        state.players.forEach((_, sid) => {
+        state.players.forEach((player, sid) => {
           present.add(sid);
-          if (sid === r.sessionId || knownPlayers.has(sid)) return;
+          if (sid === r.sessionId) return;
+          const known = knownPlayers.has(sid);
+          const info = peers.get(sid) || { lastSeen: Date.now() };
+          info.clientId = player?.clientId || '';
+          info.displayName = player?.displayName || '';
+          peers.set(sid, info);
+          if (known) return;
           knownPlayers.add(sid);
-          peers.set(sid, { lastSeen: Date.now() });
           firePeer(peerJoinHandlers, sid);
         });
         for (const sid of [...knownPlayers]) {
@@ -226,6 +272,8 @@ export function createTransport({ client, observability }) {
           firePeer(peerLeaveHandlers, sid);
         }
       }
+
+      if (typeof state.hostId === 'string') setHost(state.hostId);
 
       // Server-synced data map (entity substrate for shared/server channels).
       if (state.data) {
@@ -256,7 +304,12 @@ export function createTransport({ client, observability }) {
     // Custom-message relay - any unhandled type is broadcast app-to-app.
     r.onMessage('*', (type, data) => {
       if (r !== room) return; // ignore a stale message from a room we have left
+      if (INTERNAL.has(type)) { handleInternal(r, type, data); return; }
       observability.bump('messagesReceived');
+      // Identity comes from the server, never the payload: the server stamps
+      // senderId on every relayed message (overwriting whatever the client
+      // put there), and every kit module keys on `sid`, so align the two here.
+      if (data && typeof data === 'object' && typeof data.senderId === 'string') data.sid = data.senderId;
       if (data && data.sid && peers.has(data.sid)) {
         peers.get(data.sid).lastSeen = Date.now();
       }
@@ -265,6 +318,7 @@ export function createTransport({ client, observability }) {
 
     r.onLeave((code) => {
       connected = false;
+      stopClockSync();
       if (intentionalLeave) {
         observability.emit('disconnect', { code });
         fireDisconnect({ code });
@@ -289,7 +343,10 @@ export function createTransport({ client, observability }) {
   async function startReconnect() {
     if (reconnecting || intentionalLeave) return;
     const s = getSettings();
-    if (s.reconnectWindowMs <= 0 || !reconnectionToken) {
+    const windowMs = connectConfig.host && room && hostId === room.sessionId
+      ? Math.max(s.reconnectWindowMs, s.hostReconnectWindowMs)
+      : s.reconnectWindowMs;
+    if (windowMs <= 0 || !reconnectionToken) {
       finishLost();
       return;
     }
@@ -297,7 +354,7 @@ export function createTransport({ client, observability }) {
     observability.emit('reconnecting', {});
 
     const colyseus = await client.colyseusClient();
-    const deadline = Date.now() + s.reconnectWindowMs;
+    const deadline = Date.now() + windowMs;
     let attempt = 0;
     while (Date.now() < deadline && !intentionalLeave) {
       attempt++;
@@ -311,6 +368,7 @@ export function createTransport({ client, observability }) {
         observability.emit('reconnected', { sessionId: room.sessionId });
         console.log(`[realtime] ✓ Reconnected - sessionId=${room.sessionId}`);
         wireRoom();
+        startClockSync();
         return;
       } catch (err) {
         if (isRoomGoneError(err)) break;
@@ -332,10 +390,16 @@ export function createTransport({ client, observability }) {
 
   // --- messaging ---
 
-  function send(type, data = {}) {
+  /**
+   * Send a custom message. `opts.to`: a session id, an array of them, or
+   * 'host'; omitted = everyone else in the room.
+   */
+  function send(type, data = {}, opts = {}) {
     if (!room || !connected) return;
     try {
-      room.send(type, data);
+      const payload = opts.to === undefined ? data
+        : { ...(typeof data === 'object' && data !== null && !Array.isArray(data) ? data : { data }), __to: opts.to };
+      room.send(type, payload);
       observability.bump('messagesSent');
     } catch (err) {
       console.error(`[realtime] send("${type}") failed:`, err.message);
@@ -347,6 +411,40 @@ export function createTransport({ client, observability }) {
     if (!msgHandlers.has(type)) msgHandlers.set(type, new Set());
     msgHandlers.get(type).add(cb);
     return () => msgHandlers.get(type)?.delete(cb);
+  }
+
+  // --- internal messages: host role + clock ---
+
+  function handleInternal(r, type, data) {
+    if (type === '__pong') {
+      clock.addSample(data?.t, data?.serverTs, Date.now());
+      return;
+    }
+    if (type === '__host_key') {
+      if (typeof data?.key === 'string') {
+        writeStored('sessionStorage', hostKeyStorageKey(client.getAppGuid(), connectConfig.room, r.roomId), data.key);
+      }
+      return;
+    }
+    if (type === '__host') setHost(data?.hostId);
+  }
+
+  function ping() {
+    if (!room || !connected) return;
+    try { room.send('__ping', { t: Date.now() }); } catch { /* reconnect handles it */ }
+  }
+
+  // A burst of pings on (re)connect gives a good first estimate; then a slow
+  // refresh keeps the estimate current as network conditions drift.
+  function startClockSync() {
+    stopClockSync();
+    const every = getSettings().clockSyncMs;
+    if (every <= 0) return;
+    for (let i = 0; i < 4; i++) setTimeout(ping, i * 150);
+    pingTimer = setInterval(ping, every);
+  }
+  function stopClockSync() {
+    if (pingTimer) { clearInterval(pingTimer); pingTimer = null; }
   }
 
   // --- data map ---
@@ -377,6 +475,12 @@ export function createTransport({ client, observability }) {
   function onPeerJoin(cb) { peerJoinHandlers.add(cb); return () => peerJoinHandlers.delete(cb); }
   function onPeerLeave(cb) { peerLeaveHandlers.add(cb); return () => peerLeaveHandlers.delete(cb); }
   function onDisconnect(cb) { disconnectHandlers.add(cb); return () => disconnectHandlers.delete(cb); }
+  /** cb(hostId|null, isMe) on every host change; replays the current host. */
+  function onHostChange(cb) {
+    hostChangeHandlers.add(cb);
+    if (hostId) { try { cb(hostId, !!room && hostId === room.sessionId); } catch { /* handler */ } }
+    return () => hostChangeHandlers.delete(cb);
+  }
 
   // --- queries ---
 
@@ -386,10 +490,19 @@ export function createTransport({ client, observability }) {
   function getSessionId() { return room?.sessionId || null; }
   function getPeers() { return peers; }
   function getLastError() { return lastError; }
+  function getHostId() { return hostId; }
+  function isHost() { return !!room && !!hostId && hostId === room.sessionId; }
+  function peerInfo(sid) {
+    const p = peers.get(sid);
+    return p ? { sessionId: sid, clientId: p.clientId || '', displayName: p.displayName || '' } : null;
+  }
 
   return {
     connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers, getLastError,
-    send, on,
+    send, on, ping,
+    getHostId, isHost, onHostChange, peerInfo,
+    getRtt: clock.rtt, getMinRtt: clock.minRtt, isClockSynced: clock.isSynced,
+    serverNow: () => clock.toServer(Date.now()),
     setData, deleteData, onData,
     onPeerJoin, onPeerLeave, onDisconnect,
   };

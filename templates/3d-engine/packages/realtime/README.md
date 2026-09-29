@@ -111,6 +111,13 @@ provision `match` with a matching `max_clients` for a server-side cap too).
 Hosting again while a table is still waiting **replaces** it — the old table
 is canceled, never orphaned.
 
+`host()` also takes the room's **host role** (server-side): a TV/screen that
+hosts a couch game keeps it while phones join as players. After a page reload
+the same `party.host()` call **resumes the same table** (same code, players
+still seated) while the server holds it (`host_hold_seconds`, default 60);
+pass `{ fresh: true }` to start a new one. Phones send to it with
+`table.channel('input').sendToHost('press', {...})`. See `examples/couch-controllers.js`.
+
 ## Rooms (the primitives under all of that)
 
 `createRealtime()` returns a client bound to a **default room** plus the
@@ -138,15 +145,27 @@ connect(cfg) → room|null        disconnect()
 isConnected()                   isSynced()      // first state sync landed?
 getRoomId()  getSessionId()     getLastError()
 peers() → Map                   onPeerJoin(cb) / onPeerLeave(cb)  // cb(sid)
+peerInfo(sid) → { sessionId, clientId, displayName }  // clientId: stable per browser
+hostId()  isHost()  onHostChange(cb)   // the server-side host role (join with { host: true })
+serverNow()  rtt()  minRtt()  isClockSynced()   // built-in clock sync (__ping)
 channel(name, opts)             channels()
 on(event, cb)                   metrics()  onMetrics(cb, ms)
 getSettings()  applySettings()
 ```
 
-`onPeerLeave` already has the disconnect grace built in: the server holds a
-dropped seat for 30 s, so it fires only when a peer is **permanently** gone
-(clean leave or failed reconnection) — safe to treat as forfeit/departure
-without your own debounce.
+`onPeerLeave` fires when a peer is gone: immediately on a clean leave (tab
+closed or reloaded), and after the seat hold (`seat_hold_seconds`, default
+30 s) when a connection dropped and did not come back. A blip inside the hold
+never fires it, so it is safe as a forfeit/departure signal without your own
+debounce. A reloaded page is a new session id; match returning players by
+`peerInfo(sid).clientId`.
+
+Every relayed message carries `senderId` and `serverTs`, stamped by the server
+(client values are overwritten, so `senderId` is trustworthy), and
+`messages`-channel sends carry `sentAt` in server-clock ms once the clock has
+synced: input age on arrival is `room.serverNow() - msg.sentAt`. Limits: 10,000
+characters per message or data value, 120 messages/s per client (bursts to
+240), 1,000 data keys and 2 MB of data per room.
 
 ## Channels
 
@@ -155,7 +174,10 @@ Colyseus room backs everything; channels namespace by prefixing `name:` onto
 every wire key / message type. A channel exposes only its `sync` mode's methods:
 
 ### `sync: 'messages'` — pub/sub
-`ch.send(type, data)` · `ch.on(type, cb) → off()` · `ch.metrics()`
+`ch.send(type, data, { to })` · `ch.sendToHost(type, data)` · `ch.on(type, cb) → off()` · `ch.metrics()`
+
+`to` is a session id, an array of them, or `'host'`; without it the message
+goes to everyone else. Delivery is immediate, reliable, and ordered per sender.
 
 ### `sync: 'presence'` — ephemeral per-peer state
 `ch.setLocal(obj)` · `ch.local()` · `ch.peers() → Map(sid → peer)` ·
@@ -302,8 +324,12 @@ Each has a worked file in `examples/` (`party-game`, `connect-four`, `lobby`,
 
 An unclean disconnect is recovered automatically: the kit retries the Colyseus
 reconnection token with exponential backoff inside a window (the server holds a
-dropped seat for 30 s), **preserving the session id** — channels and seats
-survive a blip untouched. Channel `onDisconnect` handlers fire only on a
+dropped seat for `seat_hold_seconds`, default 30 s; the host keeps trying for
+`hostReconnectWindowMs`, default 55 s, since its role is held for 60 s),
+**preserving the session id** — channels and seats survive a blip untouched.
+Messages sent while reconnecting are dropped, not queued. A realtime server
+restart (a platform deploy) ends every room: clients get `'lost'` and should
+re-join. Channel `onDisconnect` handlers fire only on a
 permanent loss. Observe it with `rt.on('reconnecting')` · `rt.on('reconnected')`
 · `rt.on('lost')`. The initial join is retried too (seat-reservation races), and
 the app token is refreshed before it expires (~15 min TTL — long sessions are
@@ -312,7 +338,7 @@ list with defaults is `DEFAULT_SETTINGS` in `lib/settings.js` (join attempts,
 reconnect window/backoff, presence rate, heartbeat, token TTL, quantization).
 
 The flip side of the reconnection hold: when the **page itself dies**
-(navigation, tab close), waiting 30 s for a reconnect that can never come
+(navigation, tab close), waiting out the seat hold for a reconnect that can never come
 would leave a ghost seat — so the kit listens for `pagehide` and leaves
 **consented**, freeing the seat (and disposing an empty match room)
 immediately. Next joiners never hit "full" because of a closed tab.

@@ -43,6 +43,7 @@
 
 import { createDirectory } from './directory.js';
 import { RealtimeJoinError, toJoinError } from './errors.js';
+import { readStored, writeStored } from './storage.js';
 
 // Unambiguous code alphabet - no 0/O, 1/I/L, so codes survive being read aloud.
 const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -56,6 +57,21 @@ function randomCode(length) {
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// How long a resuming host waits for the server to confirm it got the host
+// role back (the confirmation arrives right after the join).
+const HOST_CONFIRM_WAIT_MS = 2000;
+
+/** Resolve true once `room` is confirmed host, false after `ms`. */
+function waitForHost(room, ms) {
+  return new Promise((resolve) => {
+    let off = () => {};
+    const timer = setTimeout(() => { off(); resolve(room.isHost()); }, ms);
+    off = room.onHostChange(() => {
+      if (room.isHost()) { clearTimeout(timer); off(); resolve(true); }
+    });
+  });
+}
 
 // How long ensureLobby waits for the lobby's first state sync before giving
 // up and resolving anyway. A fresh, EMPTY lobby room never receives a
@@ -149,6 +165,7 @@ export function createParty(rt, options = {}) {
       done = true;
       if (pub) pub.unpublish();
       if (hostedTable === table) hostedTable = null;
+      if (isHost) forgetHostedTable();
       room.disconnect();
     }
 
@@ -230,18 +247,53 @@ export function createParty(rt, options = {}) {
     }
   }
 
-  async function host(info = {}) {
+  // The table this browser tab hosts, remembered in sessionStorage so a
+  // reloaded host page (the TV of a couch game) resumes the SAME table - same
+  // code, same room, players still seated - instead of starting a new one.
+  const hostedKey = () => `gipity-rt:hosted-table:${rt.getAppGuid?.() || ''}:${matchName}`;
+  function rememberHostedTable(code, roomId) {
+    writeStored('sessionStorage', hostedKey(), JSON.stringify({ code, roomId }));
+  }
+  function forgetHostedTable() { writeStored('sessionStorage', hostedKey(), null); }
+
+  async function resumeHostedTable(info) {
+    let saved = null;
+    try { saved = JSON.parse(readStored('sessionStorage', hostedKey()) || 'null'); } catch { saved = null; }
+    if (!saved?.roomId || !saved?.code || (info.code && info.code.toUpperCase() !== saved.code)) return null;
+    let room;
+    try {
+      room = await rt.joinById(saved.roomId, matchName, { host: true });
+    } catch {
+      forgetHostedTable();      // the room is gone: host a fresh table
+      return null;
+    }
+    if (!(await waitForHost(room, HOST_CONFIRM_WAIT_MS))) {
+      room.disconnect();        // someone else holds the table now
+      forgetHostedTable();
+      return null;
+    }
+    const pub = dir.publish(saved.code, { ...info, code: saved.code, roomId: room.getRoomId(), seats, status: 'open' });
+    return makeTable({ room, code: saved.code, isHost: true, pub });
+  }
+
+  async function host(options = {}) {
+    const { fresh, ...info } = options;
     await ensureLobby();
     // Hosting again while a previous table is still waiting replaces it -
     // otherwise the old room lives on and its listing goes stale-but-joinable.
     if (hostedTable) hostedTable.cancel();
-    const room = await rt.create(matchName);
+    else if (!fresh) {
+      const resumed = await resumeHostedTable(info);
+      if (resumed) { hostedTable = resumed; return resumed; }
+    }
+    const room = await rt.create(matchName, { host: true });
     let code = String(info.code || '').toUpperCase() || randomCode(codeLength);
     // A fresh entry already using this code gets a re-roll, not a collision.
     while (!info.code && dir.list().some((e) => e.code === code)) code = randomCode(codeLength);
     const pub = dir.publish(code, { ...info, code, roomId: room.getRoomId(), seats, status: 'open' });
     const table = makeTable({ room, code, isHost: true, pub });
     hostedTable = table;
+    rememberHostedTable(code, room.getRoomId());
     return table;
   }
 
@@ -295,10 +347,13 @@ export function createParty(rt, options = {}) {
     },
 
     /**
-     * Host a table: creates a match room, advertises it under a share code.
-     * `info` is merged into the listing (e.g. { host: 'Sam' }); pass
-     * `info.code` to force a specific code (e.g. a rematch). Replaces any
-     * previous still-waiting hosted table.
+     * Host a table: creates a match room, advertises it under a share code,
+     * and holds the room's host role (the host is a role, not a player: a TV
+     * or big screen hosts, phones join). `info` is merged into the listing
+     * (e.g. { host: 'Sam' }); pass `info.code` to force a specific code (e.g. a
+     * rematch). Replaces any previous still-waiting hosted table. After a page
+     * reload it resumes the same table (same code, players still seated)
+     * while the server still holds it; pass `info.fresh` to start a new one.
      * @returns table - share table.code / table.inviteUrl, wire table.onFull,
      *                  and call table.cancel() if the host backs out.
      */

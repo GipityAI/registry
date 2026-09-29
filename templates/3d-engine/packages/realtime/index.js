@@ -79,6 +79,21 @@ function createRoomHandle(client, baseConfig = {}) {
     // these are the raw join/leave for lobby and disconnect/forfeit logic).
     onPeerJoin: transport.onPeerJoin,
     onPeerLeave: transport.onPeerLeave,
+    /** { sessionId, clientId, displayName } for a peer, or null. clientId is
+     *  stable per browser, so it recognizes a player who reloaded the page. */
+    peerInfo: transport.peerInfo,
+
+    // Host role (server-side; opt in with connect({ host: true }) or
+    // rt.join/create/joinById(name, { host: true })).
+    hostId: transport.getHostId,
+    isHost: transport.isHost,
+    onHostChange: transport.onHostChange,
+
+    // Server clock (synced by periodic pings).
+    serverNow: transport.serverNow,
+    rtt: transport.getRtt,
+    minRtt: transport.getMinRtt,
+    isClockSynced: transport.isClockSynced,
 
     // Observability
     on: observability.on,
@@ -159,6 +174,10 @@ export function createRealtime(config = {}) {
     /** Discover live room instances - used by lobby / directory code. */
     listRooms(name, scope) {
       return client.listRooms(name, scope);
+    },
+    /** The app's project GUID (resolved from the page). */
+    getAppGuid() {
+      return client.getAppGuid();
     },
     /** Pre-warm the app token. Resolves to the token, or null on failure. */
     ensureToken() {

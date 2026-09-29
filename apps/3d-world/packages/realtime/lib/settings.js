@@ -41,6 +41,12 @@ export const DEFAULT_SETTINGS = {
   // a dropped seat for 30s, so the window stays under that. Set to 0 to
   // disable reconnection (an unclean drop then behaves like a clean leave).
   reconnectWindowMs: 25000,
+  // A host (connect({ host: true })) keeps retrying longer: the server holds
+  // the host seat for host_hold_seconds (default 60s).
+  hostReconnectWindowMs: 55000,
+  // Server clock estimate: a __ping every this many ms (0 = off). Used by
+  // serverNow(), getRtt(), and the sentAt stamp on messages-channel sends.
+  clockSyncMs: 10000,
   reconnectBaseDelayMs: 800,
   reconnectMaxDelayMs: 8000,
   // Bounded retry around the initial room join - joinOrCreate can lose a

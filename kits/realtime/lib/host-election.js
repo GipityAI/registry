@@ -21,8 +21,14 @@ export function createHostElection({ name, transport }) {
   let watchdog = null;
   let heartbeat = null;
 
+  // Every handler/timer an init() registers, so a re-init (disconnect then
+  // connect again) tears down the previous session's instead of stacking
+  // handlers that keep acting on a dead session id.
+  let offs = [];
+  let generation = 0;
+  const track = (off) => { offs.push(off); return off; };
   const send = (t, d) => transport.send(M(t), d);
-  const on = (t, cb) => transport.on(M(t), cb);
+  const on = (t, cb) => track(transport.on(M(t), cb));
   const peerCount = () => transport.getPeers().size + 1;
 
   // The host re-asserts itself on an interval. This is what makes the
@@ -69,11 +75,12 @@ export function createHostElection({ name, transport }) {
     if (!myId) return;
 
     if (callbacks.hasWorldData?.() && !isHost) {
-      isHost = true;
-      confirmedHostId = myId;
-      console.log('[realtime] ★ HOST (previous host left, we have data)');
-      send('host-confirmed', { sid: myId });
-      callbacks.onBecomeHost?.();
+      // becomeHost starts the heartbeat; claiming directly used to leave the
+      // new host silent, so peers' watchdogs re-elected and hosts flapped.
+      // Several data-holders may claim at once; the collision rule (lower
+      // session id wins) settles it.
+      becomeHost('previous host left, we have data');
+      return;
     } else if (!isHost) {
       // Rank only against peers that are provably alive. A crashed peer stays
       // in the server's player map for its whole reconnection hold (30s) —
@@ -87,13 +94,9 @@ export function createHostElection({ name, transport }) {
       const fresh = [...transport.getPeers().entries()]
         .filter(([, p]) => Date.now() - (p.lastSeen || 0) <= s.hostLossMs)
         .map(([sid]) => sid);
-      const result = evaluateHost(myId, fresh);
-      isHost = result.isHost;
-      if (isHost) {
-        confirmedHostId = myId;
-        console.log('[realtime] ★ HOST (alphabetical fallback)');
-        send('host-confirmed', { sid: myId });
-        callbacks.onBecomeHost?.();
+      if (evaluateHost(myId, fresh).isHost) {
+        becomeHost('alphabetical fallback');
+        return;
       }
     }
     callbacks.onHostChange?.(isHost, isHost ? 1 : 2, peerCount());
@@ -130,6 +133,14 @@ export function createHostElection({ name, transport }) {
   }
 
   function init(cbs = {}) {
+    for (const off of offs) { try { off(); } catch { /* already gone */ } }
+    offs = [];
+    const gen = ++generation;
+    const live = () => gen === generation;
+    isHost = false;
+    confirmedHostId = null;
+    stopWatchdog();
+    stopHeartbeat();
     callbacks = cbs;
     const { pingWaitMs, claimWaitMs, syncTimeoutMs } = getSettings();
     const myId = transport.getSessionId();
@@ -175,6 +186,7 @@ export function createHostElection({ name, transport }) {
     send('ping', { sid: myId });
 
     setTimeout(() => {
+      if (!live()) return;
       if (confirmedHostId && confirmedHostId !== myId) {
         callbacks.onHostConfirmed?.(confirmedHostId);
         startWatchdog();
@@ -192,6 +204,7 @@ export function createHostElection({ name, transport }) {
       send('host-claim', { sid: myId });
 
       setTimeout(() => {
+        if (!live()) return;
         if (confirmedHostId && confirmedHostId !== myId) { resolveReady({ isHost: false }); return; }
         const winner = [...claims].sort()[0];
         if (winner === myId) {
@@ -200,6 +213,7 @@ export function createHostElection({ name, transport }) {
         } else {
           becomeNonHost();
           setTimeout(() => {
+            if (!live()) return;
             if (!callbacks.hasWorldData?.() && !isHost) {
               becomeHost('sync timeout (winner unresponsive)');
               resolveReady({ isHost: true });
@@ -210,21 +224,22 @@ export function createHostElection({ name, transport }) {
       }, claimWaitMs);
     }, pingWaitMs);
 
-    transport.onPeerLeave((sid) => {
+    track(transport.onPeerLeave((sid) => {
       console.log(`[realtime] peer left: ${sid}${sid === confirmedHostId ? ' (was host)' : ''}`);
       if (sid === confirmedHostId) confirmedHostId = null;
-      setTimeout(() => { if (!isHost) electHost(); else updatePeerCount(); }, 50);
-    });
-    transport.onPeerJoin((sid) => {
+      setTimeout(() => { if (!live()) return; if (!isHost) electHost(); else updatePeerCount(); }, 50);
+    }));
+    track(transport.onPeerJoin((sid) => {
       setTimeout(() => {
+        if (!live()) return;
         updatePeerCount();
         if (isHost) {
           send('host-confirmed', { sid: myId });
           callbacks.onNewPeer?.(sid);
         }
       }, 50);
-    });
-    transport.onDisconnect(() => { stopWatchdog(); stopHeartbeat(); });
+    }));
+    track(transport.onDisconnect(() => { stopWatchdog(); stopHeartbeat(); }));
 
     return ready;
   }
