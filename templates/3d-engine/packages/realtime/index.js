@@ -79,10 +79,14 @@ function createRoomHandle(client, baseConfig = {}) {
     // these are the raw join/leave for lobby and disconnect/forfeit logic).
     onPeerJoin: transport.onPeerJoin,
     onPeerLeave: transport.onPeerLeave,
-    /** { sessionId, clientId, displayName, visible } for a peer, or null.
-     *  clientId is stable per browser, so it recognizes a player who reloaded
-     *  the page; visible is false while their page is hidden (backgrounded). */
+    /** { sessionId, clientId, displayName, visible, seats } for a peer, or
+     *  null. clientId is stable per browser, so it recognizes a player who
+     *  reloaded the page; visible is false while their page is hidden
+     *  (backgrounded); seats is how many players that connection carries. */
     peerInfo: transport.peerInfo,
+    /** { used, total, mine }: seats taken (held seats included), the room's
+     *  seat capacity (0 = none), and this page's (join with { seats: N }). */
+    seats: transport.getSeats,
     /** cb(sid, visible) when a peer's page is hidden or shown. */
     onPeerVisibility: transport.onPeerVisibility,
 
@@ -172,6 +176,9 @@ export function createRealtime(config = {}) {
     joinExisting(name, opts = {}) {
       return openRoom(client, { ...opts, room: name, mode: 'join' }, `join '${name}' failed`);
     },
+    // Seats: every join takes opts.seats (players on this device, 1..8,
+    // default 1; a host may take 0), and create takes opts.maxSeats (the
+    // room's capacity in seats). A join whose seats don't fit throws 'full'.
     /** Create a fresh room instance - e.g. host a match. */
     create(name, opts = {}) {
       return openRoom(client, { ...opts, room: name, mode: 'create' }, `create '${name}' failed`);

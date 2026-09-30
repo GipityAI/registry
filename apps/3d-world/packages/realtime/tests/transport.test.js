@@ -8,6 +8,7 @@
 import assert from 'node:assert/strict';
 import { createTransport, MAX_CHECKPOINT_BYTES } from '../lib/transport.js';
 import { createObservability } from '../lib/observability.js';
+import { classifyJoinError } from '../lib/errors.js';
 
 let passed = 0, failed = 0;
 const tests = [];
@@ -31,9 +32,9 @@ function fakeRoom(sessionId = 'me') {
     /** The server sends a message. */
     deliver(type, data) { handlers.message(type, data); },
     /** The server patches state: players { sid: { visible, ... } }. */
-    patch(players) {
+    patch(players, extra = {}) {
       const map = new Map(Object.entries(players));
-      handlers.state({ players: map, data: new Map() });
+      handlers.state({ players: map, data: new Map(), ...extra });
     },
     of(type) { return this.sent.filter(([t]) => t === type).map(([, m]) => m); },
   };
@@ -334,11 +335,11 @@ test('peer visibility: state flips fire onPeerVisibility and peerInfo(); the fir
   t.onPeerVisibility((sid, visible) => vis.push([sid, visible]));
   room.patch({ me: { visible: true }, p1: { visible: true, clientId: 'c1', displayName: 'P' }, p2: { visible: false } });
   assert.deepEqual(vis, [], 'joining peers are not visibility changes');
-  assert.deepEqual(t.peerInfo('p2'), { sessionId: 'p2', clientId: '', displayName: '', visible: false });
+  assert.deepEqual(t.peerInfo('p2'), { sessionId: 'p2', clientId: '', displayName: '', visible: false, seats: 1 });
   room.patch({ me: { visible: true }, p1: { visible: false, clientId: 'c1', displayName: 'P' }, p2: { visible: false } });
   room.patch({ me: { visible: true }, p1: { visible: true, clientId: 'c1', displayName: 'P' }, p2: { visible: true } });
   assert.deepEqual(vis, [['p1', false], ['p1', true], ['p2', true]]);
-  assert.deepEqual(t.peerInfo('p1'), { sessionId: 'p1', clientId: 'c1', displayName: 'P', visible: true });
+  assert.deepEqual(t.peerInfo('p1'), { sessionId: 'p1', clientId: 'c1', displayName: 'P', visible: true, seats: 1 });
   // Relay rooms announce visibility as a message instead.
   room.deliver('__visibility', { sessionId: 'p1', visible: false });
   room.deliver('__visibility', { sessionId: 'p1', visible: false });    // no change, no event
@@ -347,6 +348,47 @@ test('peer visibility: state flips fire onPeerVisibility and peerInfo(); the fir
   assert.equal(vis.length, 4);
   assert.equal(t.peerInfo('me'), null, 'this page is not its own peer');
   t.disconnect();
+});
+
+// --- seats ---
+
+test('seats: joins carry seats, only a create carries maxSeats; peerInfo and seats() count them', async () => {
+  const { t, room, client } = await connected(undefined, { mode: 'create', seats: 3, maxSeats: 8 });
+  assert.equal(client.joins[0].seats, 3);
+  assert.equal(client.joins[0].maxSeats, 8);
+  assert.deepEqual(t.getSeats(), { used: 3, total: 8, mine: 3 }, 'known before the first patch');
+  room.patch({ me: { seats: 3 }, p1: { seats: 2 }, p2: {} }, { maxSeats: 8, seatsUsed: 6 });
+  assert.equal(t.peerInfo('p1').seats, 2);
+  assert.equal(t.peerInfo('p2').seats, 1, 'a server without seats: one per connection');
+  assert.deepEqual(t.getSeats(), { used: 6, total: 8, mine: 3 });
+  t.disconnect();
+  assert.deepEqual(t.getSeats(), { used: 0, total: 0, mine: 0 });
+
+  const j = await connected(undefined, { mode: 'joinById', roomId: 'room-1', seats: 2, maxSeats: 99 });
+  assert.equal(j.client.joins[0].seats, 2);
+  assert.equal('maxSeats' in j.client.joins[0], false, 'only the creator sets capacity');
+  j.t.disconnect();
+  const plain = await connected();
+  assert.equal('seats' in plain.client.joins[0], false, 'no seats option: the wire is as before');
+  plain.t.disconnect();
+});
+
+test('a join refused for lack of seats fails fast (no retry)', async () => {
+  let attempts = 0;
+  const client = {
+    configure() {},
+    getAppGuid: () => 'app1',
+    acquireToken: async () => 't',
+    colyseusClient: async () => ({
+      joinById: async () => { attempts += 1; throw Object.assign(new Error("Room 'match' is full: 3 seats requested, 2 of 8 free"), { code: 4216 }); },
+      reconnect: async () => { throw new Error('no seat'); },
+    }),
+  };
+  const t = createTransport({ client, observability: createObservability() });
+  const room = await t.connect({ room: 'match', mode: 'joinById', roomId: 'r', seats: 3, settings: QUIET });
+  assert.equal(room, null);
+  assert.equal(attempts, 1);
+  assert.equal(classifyJoinError(t.getLastError()), 'full');
 });
 
 (async () => {

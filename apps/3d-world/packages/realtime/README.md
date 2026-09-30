@@ -95,22 +95,22 @@ const t4 = await party.quickMatch({ host: name }); // join oldest open, else hos
 ```
 
 Every failed join **throws a `RealtimeJoinError`** — `err.code` is
-`'not-found'` (bad/expired code), `'full'` (seats taken / already playing),
+`'not-found'` (bad/expired code), `'full'` (not enough free seats / already playing),
 `'gone'` (host left), `'unprovisioned'` (the room NAME has no config — a
 deploy/provisioning mistake, not a game state), `'auth'`, `'offline'`, or
 `'failed'`. Switch on it and show the right message; never leave a spinner on
 "Joining…".
 
 The table handle: `isHost()`, `code`, `roomId`, `inviteUrl`, `room` (a full
-room handle), `channel()`, `players()`, `onFull(cb)` (fires immediately when
-already full), `onPeerJoin/onPeerLeave`, `onPeerVisibility(cb)`,
+room handle), `channel()`, `players()` (connections), `seats` (capacity),
+`seatsUsed()`, `seatsFree()`, `mySeats()`, `onFull(cb)` (every seat taken;
+fires immediately when already full), `onPeerJoin/onPeerLeave`, `onPeerVisibility(cb)`,
 `setListing(patch)`, `cancel()`, `leave()`, and the host-handoff surface:
 `hostEpoch()`, `onHostChange(cb)`, `setCheckpoint(obj)`, `setSuccessors(ids)`,
 `transferHost(sid)` (see "Host handoff" below). `isHost()` is a function
-since 3.7.0 because the role can move; `if (table.isHost)` is always true. When the table fills, its lobby listing flips to
+since 3.7.0 because the role can move; `if (table.isHost)` is always true. When every seat is taken, its lobby listing flips to
 `status: 'playing'` automatically — browsers stop steering joiners into it and
-a late `joinByCode` rejects as `'full'` (`seats` is enforced client-side;
-provision `match` with a matching `max_clients` for a server-side cap too).
+a late `joinByCode` rejects as `'full'`.
 When a seat frees again (a player left, or a dropped player's seat hold ran
 out) the listing flips back to `'open'`, so a player who reloads can rejoin
 from the invite link or code. That automatic flip stops the moment the app sets
@@ -119,9 +119,29 @@ keep a running match closed); setting it back to `'open'` hands it back.
 Hosting again while a table is still waiting **replaces** it — the old table
 is canceled, never orphaned.
 
-**`seats` counts every client at the table, the host's page included.** The
-host is a role, but the page holding it is still a client of the room: a TV
-plus 8 phones is `seats: 9`, and the `match` room needs `max_clients: 9`.
+**Seats, not connections (3.8.0+).** One computer can carry several players
+(couch co-op: 1 to 4 on one keyboard/pads). Every join takes `{ seats: N }`
+(1..8, default 1), and `seats` on `createParty` is the table's capacity: the
+sum of every join's seats, the host's page included. The **server** enforces
+it, atomically: an 8-car table with 2 seats left refuses a 3-player computer
+as `'full'` however many computers join at once, and a 2-player one fits.
+
+```js
+const party = createParty(rt, { seats: 8 });
+const table = await party.host({ host: name, seats: 2 });        // 2 players here
+await party.joinByCode(code, { seats: 3 });                     // 3 on this computer
+await party.quickMatch({ host: name, seats: 3 });               // skips tables with < 3 free
+table.seatsUsed(); table.seatsFree();                           // 5, 3
+table.room.peerInfo(sid).seats;                                 // players on that computer
+```
+
+The listing carries `seats` and `seatsUsed` (kept current by the host page),
+and the `'playing'`/`'open'` flip counts seats. A dropped computer keeps its
+seats while the server holds them (`seat_hold_seconds`), and a resume takes
+the same seats back. The host page counts too: `host({ seats: 0 })` is a
+screen that only displays (a TV + 8 phones is `seats: 8` with `host({ seats:
+0 })`, or `seats: 9` without). `max_clients` on `match` stays the cap on
+connections, so it must admit the host page too (9 for that TV).
 
 `host()` also takes the room's **host role** (server-side): a TV/screen that
 hosts a couch game keeps it while phones join as players. After a page reload
@@ -226,7 +246,8 @@ connect(cfg) → room|null        disconnect()
 isConnected()                   isSynced()      // first state sync landed?
 getRoomId()  getSessionId()     getLastError()
 peers() → Map                   onPeerJoin(cb) / onPeerLeave(cb)  // cb(sid)
-peerInfo(sid) → { sessionId, clientId, displayName, visible }  // clientId: stable per browser
+peerInfo(sid) → { sessionId, clientId, displayName, visible, seats }  // clientId: stable per browser
+seats() → { used, total, mine } // seats taken (held ones too), capacity (0 = none), this page's
 onPeerVisibility(cb)            // cb(sid, visible): a peer's page was hidden or shown
 hostId()  isHost()  hostEpoch() // the server-side host role (join with { host: true })
 onHostChange(cb)                // cb({ hostId, hostEpoch, previousHostId, reason, isMe, checkpoint })
@@ -255,6 +276,15 @@ joined: `join` (joinOrCreate), `joinExisting`, or `joinById`.
 
 Join options for the role: `{ host: true, handoff, graceSeconds }` to host,
 `{ canHost: true }` to be a possible successor (see "Host handoff").
+
+Seats: any join takes `{ seats: N }` (players on this connection, 1..8,
+default 1; a `host: true` join may take 0), and `rt.create(name, { maxSeats })`
+gives the new instance a capacity in seats (1..256; only the creator sets it).
+The server checks and claims seats in one step and refuses a join that does
+not fit as `'full'` (message `... is full: 3 seats requested, 2 of 8 free`,
+never retried). Without `maxSeats` there is no seat cap; `max_clients` always
+caps connections. A seat-full instance refuses joins rather than sharding, so
+use seats with tables you join by id or scope.
 `connect()` and the multi-room opens resolve after the server has announced
 the host, so `hostId()` / `isHost()` are right from the start.
 

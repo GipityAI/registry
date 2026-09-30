@@ -81,7 +81,9 @@ function fakeMatchRoom(id) {
       },
       _view: view,
       _core: core,
-      _addPeer(peerSid) { peers.set(peerSid, {}); for (const cb of [...joinCbs]) cb(peerSid); },
+      // seats: how many players the peer's connection carries (omitted = the
+      // pre-seats shape, which counts as 1).
+      _addPeer(peerSid, seats) { peers.set(peerSid, seats === undefined ? {} : { seats }); for (const cb of [...joinCbs]) cb(peerSid); },
       _removePeer(peerSid) { peers.delete(peerSid); for (const cb of [...leaveCbs]) cb(peerSid); },
       _setHost(hostSid, reason) {
         core.previousHostId = core.hostId;
@@ -393,7 +395,7 @@ test('host({ handoff, graceSeconds }) asks the server for handoff; they stay out
   const rt = fakeRt();
   const party = newParty(rt);
   await party.host({ host: 'TV', handoff: true, graceSeconds: 3 });
-  assert.deepEqual(rt._calls.at(-1), ['create', 'match', { host: true, handoff: true, graceSeconds: 3 }]);
+  assert.deepEqual(rt._calls.at(-1), ['create', 'match', { host: true, handoff: true, graceSeconds: 3, maxSeats: 2 }]);
   const [entry] = await party.tables();
   assert.equal('handoff' in entry, false);
   assert.equal('graceSeconds' in entry, false);
@@ -476,6 +478,90 @@ test('cancel() never hands off (it ends the table); leave() without handoff deli
   plain.leave();
   assert.equal(plain.room._core.hostId, plain.room.sessionId, 'no handoff on a plain table');
   assert.equal((await newParty(rt).tables()).length, 0, 'a plain host leaving delists the table');
+});
+
+test('seats pass through: host({ seats: 0 }) creates the table with maxSeats; joins ask for their seats', async () => {
+  const rt = fakeRt();
+  const tv = await newParty(rt, { seats: 8 }).host({ host: 'TV', seats: 0 });
+  assert.deepEqual(rt._calls.at(-1), ['create', 'match', { host: true, seats: 0, maxSeats: 8 }]);
+  assert.equal(tv.seats, 8);
+  assert.equal(tv.mySeats(), 0);
+  const [entry] = await newParty(rt).tables();
+  assert.equal(entry.seats, 8, 'the listing carries the capacity, not the host\'s own seats');
+  assert.equal(entry.seatsUsed, 0);
+  const couch = await newParty(rt, { seats: 8 }).joinByCode(tv.code, { seats: 3, timeoutMs: 1000 });
+  assert.deepEqual(rt._calls.at(-1), ['joinById', 'match', { seats: 3 }]);
+  assert.equal(couch.mySeats(), 3);
+  await newParty(rt).join(entry, { seats: 2, canHost: true });
+  assert.deepEqual(rt._calls.at(-1), ['joinById', 'match', { canHost: true, seats: 2 }]);
+});
+
+test('the listing keeps seatsUsed in step; the open/playing flip and onFull count seats, not connections', async () => {
+  const rt = fakeRt();
+  const host = newParty(rt, { seats: 8 });
+  const hosted = await host.host({ host: 'Racer' });          // the host's computer: 1 seat
+  const room = rt._joinable.get(hosted.roomId);
+  let full = 0;
+  hosted.onFull(() => { full += 1; });
+  room._addPeer('pc-2', 4);
+  let [entry] = await host.tables();
+  assert.equal(entry.seatsUsed, 5);
+  assert.equal(entry.status, 'open', '5 of 8 seats: still open with 2 connections');
+  assert.equal(hosted.players(), 2);
+  assert.equal(hosted.seatsFree(), 3);
+  room._addPeer('pc-3', 3);                                   // 8 of 8
+  assert.equal(full, 1);
+  assert.equal((await host.tables()).length, 0, 'full on seats: playing');
+  room._removePeer('pc-2');
+  [entry] = await host.tables();
+  assert.equal(entry.status, 'open');
+  assert.equal(entry.seatsUsed, 4);
+});
+
+test('a join asking for more seats than the listing has free is refused full before it reaches the server', async () => {
+  const rt = fakeRt();
+  const hosted = await newParty(rt, { seats: 8 }).host({ host: 'Racer', seats: 2 });
+  rt._joinable.get(hosted.roomId)._addPeer('pc-2', 4);        // 6 of 8
+  const before = rt._calls.length;
+  await assert.rejects(
+    newParty(rt).joinByCode(hosted.code, { seats: 3, timeoutMs: 1000 }),
+    (err) => err.code === 'full' && /2 free seats, 3 requested/.test(err.message),
+  );
+  assert.equal(rt._calls.filter((c) => c[0] === 'joinById').length, rt._calls.slice(0, before).filter((c) => c[0] === 'joinById').length, 'no join attempt');
+  const two = await newParty(rt).joinByCode(hosted.code, { seats: 2, timeoutMs: 1000 });
+  assert.equal(two.roomId, hosted.roomId);
+  // The server has the final say: a refusal there is 'full' too.
+  rt._joinable.set(hosted.roomId, 'full');
+  await assert.rejects(newParty(rt).joinByCode(hosted.code, { seats: 1, timeoutMs: 1000 }), (err) => err.code === 'full');
+});
+
+test('quickMatch skips tables without room for its seats, and hosts when none has room', async () => {
+  const rt = fakeRt();
+  const crowded = await newParty(rt, { seats: 8 }).host({ host: 'A', code: 'AAAA' });
+  rt._joinable.get(crowded.roomId)._addPeer('x', 6);         // 7 of 8: 1 free
+  const roomy = await newParty(rt, { seats: 8 }).host({ host: 'B', code: 'BBBB' });   // 1 of 8
+  const trio = await newParty(rt, { seats: 8 }).quickMatch({ host: 'C', seats: 3 });
+  assert.equal(trio.isHost(), false);
+  assert.equal(trio.roomId, roomy.roomId, 'the table with 7 free, not the one with 1');
+  assert.deepEqual(rt._calls.at(-1), ['joinById', 'match', { seats: 3 }]);
+  rt._joinable.get(roomy.roomId)._addPeer('y', 5);           // B: 6 of 8 (the fake does not seat joiners)
+  const four = await newParty(rt, { seats: 8 }).quickMatch({ host: 'D', seats: 4 });
+  assert.equal(four.isHost(), true, 'no table has 4 free: host one');
+  assert.deepEqual(rt._calls.at(-1), ['create', 'match', { host: true, seats: 4, maxSeats: 8 }]);
+  const [mine] = (await newParty(rt).tables()).filter((e) => e.host === 'D');
+  assert.equal(mine.seatsUsed, 4);
+  assert.equal(mine.seats, 8);
+});
+
+test('a listing from a pre-3.8 host (no seatsUsed) is not filtered client-side', async () => {
+  const rt = fakeRt();
+  const hosted = await newParty(rt, { seats: 4 }).host({ host: 'Old' });
+  const pub = await newParty(rt).tables();
+  // Rewrite the entry the way a 3.7 host publishes it.
+  const lobbyEntry = pub[0];
+  delete lobbyEntry.seatsUsed;
+  const table = await newParty(rt).join(lobbyEntry, { seats: 3 });
+  assert.equal(table.roomId, hosted.roomId);
 });
 
 test('inviteUrl/codeFromUrl are inert outside a browser', async () => {

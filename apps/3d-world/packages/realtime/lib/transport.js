@@ -45,6 +45,13 @@
  * sends. When the server asks for it (handoff rooms), the host heartbeats so
  * a page that stopped running is noticed. The page's visibility
  * (`document.hidden`) is reported to the room; peers see theirs.
+ *
+ * Seats: a connection can carry several players (couch co-op). connect({
+ * seats }) claims that many (default 1; 0 only for a host); connect({ mode:
+ * 'create', maxSeats }) sets the room's capacity in seats. The server checks
+ * and claims atomically and refuses a join that does not fit as 'full'.
+ * peerInfo(sid).seats and seats() report them (held seats of dropped players
+ * included).
  */
 
 import { applySettings, getSettings } from './settings.js';
@@ -98,6 +105,8 @@ export function createTransport({ client, observability }) {
   let pingTimer = null;
   let heartbeatTimer = null;
   let handoffOn = false;      // this page holds the role on a handoff table
+  let mySeats = 1;            // seats this page holds (the server's number once synced)
+  let maxSeats = 0;           // the room's seat capacity; 0 = no seat cap
   const clock = createClock();
 
   const peers = new Map();            // sid -> { lastSeen, clientId, displayName }
@@ -190,6 +199,12 @@ export function createTransport({ client, observability }) {
    *                                  uncleanly (else 'not-found'). Every mode
    *                                  but 'create' tries that resume first.
    * @param {number} [config.maxClients]
+   * @param {number} [config.seats]    Seats this connection claims (players on
+   *                                  this device), 1..8, default 1; a host may
+   *                                  claim 0 (a display-only screen).
+   * @param {number} [config.maxSeats] mode 'create' only: the room's capacity
+   *                                  in seats (1..256). Without it the room has
+   *                                  no seat cap (max_clients still applies).
    * @returns {Promise<Object|null>}  The Colyseus room, or null on failure
    *                                  (inspect getLastError() / the 'error'
    *                                  observability event for the cause).
@@ -219,6 +234,8 @@ export function createTransport({ client, observability }) {
       if (config.displayName) opts.displayName = config.displayName;
       opts.clientId = config.clientId || deviceClientId();
       if (config.canHost) opts.canHost = true;
+      if (config.seats !== undefined) opts.seats = config.seats;
+      if (config.maxSeats !== undefined && mode === 'create') opts.maxSeats = config.maxSeats;
       opts.visible = pageVisible();
       if (config.host) {
         opts.host = true;
@@ -250,6 +267,8 @@ export function createTransport({ client, observability }) {
       // announces the current host right after the join.
       host = NO_HOST;
       hostCheckpoint = null;
+      mySeats = config.seats ?? 1;
+      maxSeats = mode === 'create' ? (config.maxSeats ?? 0) : 0;
       joinKind = resumed ? 'reconnect' : mode === 'create' ? 'create' : 'join';
       awaitingSync = true;
       hasSynced = false;
@@ -322,8 +341,9 @@ export function createTransport({ client, observability }) {
         // retrying used to burn the full backoff window (~6s) on every one.
         const kind = classifyJoinError(err);
         if (kind === 'auth' || kind === 'unprovisioned' || kind === 'not-found') throw err;
-        // A full scoped table (an invite code) won't free up by retrying.
-        if (kind === 'full' && /scope is full/i.test(String(err?.message || ''))) throw err;
+        // A full scoped table (an invite code), or one without room for the
+        // seats asked for, won't free up by retrying.
+        if (kind === 'full' && /scope is full|seats requested/i.test(String(err?.message || ''))) throw err;
         console.warn(`[realtime] join attempt ${i + 1}/${attempts} failed:`, err?.message);
         if (i < attempts - 1) await sleep(reconnectDelay(i + 1, { baseMs: 450, maxMs: 3000 }));
       }
@@ -400,11 +420,16 @@ export function createTransport({ client, observability }) {
         const present = new Set();
         state.players.forEach((player, sid) => {
           present.add(sid);
-          if (sid === r.sessionId) return;
+          if (sid === r.sessionId) {
+            if (typeof player?.seats === 'number') mySeats = player.seats;
+            return;
+          }
           const known = knownPlayers.has(sid);
           const info = peers.get(sid) || { lastSeen: Date.now() };
           info.clientId = player?.clientId || '';
           info.displayName = player?.displayName || '';
+          // Servers before seats had no field: every connection was one seat.
+          info.seats = typeof player?.seats === 'number' ? player.seats : 1;
           const visible = player?.visible !== false;
           const flipped = known && info.visible !== undefined && info.visible !== visible;
           info.visible = visible;
@@ -421,6 +446,8 @@ export function createTransport({ client, observability }) {
           firePeer(peerLeaveHandlers, sid);
         }
       }
+
+      if (typeof state.maxSeats === 'number') maxSeats = state.maxSeats;
 
       // Server-synced data map (entity substrate for shared/server channels).
       if (state.data) {
@@ -717,13 +744,22 @@ export function createTransport({ client, observability }) {
   function isHost() { return !!room && !!host.hostId && host.hostId === room.sessionId; }
   function peerInfo(sid) {
     const p = peers.get(sid);
-    return p ? { sessionId: sid, clientId: p.clientId || '', displayName: p.displayName || '', visible: p.visible !== false } : null;
+    return p ? { sessionId: sid, clientId: p.clientId || '', displayName: p.displayName || '', visible: p.visible !== false, seats: p.seats ?? 1 } : null;
+  }
+  /** { used, total, mine }: seats taken in the room (this page's, and held
+   *  seats of dropped peers, included), its capacity (0 = no seat cap), and
+   *  this page's own. */
+  function getSeats() {
+    if (!room) return { used: 0, total: 0, mine: 0 };
+    let used = mySeats;
+    for (const p of peers.values()) used += p.seats ?? 1;
+    return { used, total: maxSeats, mine: mySeats };
   }
 
   return {
     connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers, getLastError,
     send, on, ping,
-    getHostId, getHostEpoch, isHost, onHostChange, peerInfo, onPeerVisibility,
+    getHostId, getHostEpoch, isHost, onHostChange, peerInfo, onPeerVisibility, getSeats,
     setCheckpoint, setSuccessors, transferHost, announceLeaving,
     getRtt: clock.rtt, getMinRtt: clock.minRtt, isClockSynced: clock.isSynced,
     serverNow: () => clock.toServer(Date.now()),
