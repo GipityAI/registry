@@ -1,7 +1,7 @@
 /**
  * @gipity/leaderboard - browser helpers for the leaderboard kit's functions.
- * Native clients (e.g. the Gipity Godot addon) call the same functions over
- * HTTPS: POST /api/<appGuid>/fn/leaderboard-submit | leaderboard-read.
+ * Native clients (e.g. the Gipity Godot addon, registry examples/godot) call
+ * the same functions over HTTPS: POST /api/<appGuid>/fn/leaderboard-submit | leaderboard-read.
  *
  *   import { submitScore, top, aroundMe, ghost } from '@gipity/leaderboard';
  *   const r = await submitScore('arcade:score', 48200);

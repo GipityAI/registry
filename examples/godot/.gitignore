@@ -1,0 +1,12 @@
+tests/project/addons/
+tests/project/.godot/
+.godot/
+demo/.godot/
+# The demo backend links to its owner's Gipity project; keep only its source.
+demo/backend/.gipity.json
+demo/backend/.gipity/
+demo/backend/.claude/
+demo/backend/CLAUDE.md
+demo/backend/docs/
+demo/backend/README.md
+demo/backend/src/

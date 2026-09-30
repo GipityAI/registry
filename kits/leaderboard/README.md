@@ -61,7 +61,7 @@ await top('puzzle:classic', { period: 'season' });            // or 'season:Seas
 const { ghost: b64 } = await ghost(entries[0].entryId);       // a stored replay
 ```
 
-**Any client (e.g. Godot):** `POST https://a.gipity.ai/api/<appGuid>/fn/leaderboard-submit` with `Authorization: Bearer <player token>` and the same JSON body. Reads go to `leaderboard-read` with an `action`: `top`, `around`, `me`, `friends`, `ghost`, `boards` or `seasons`.
+**Any client (e.g. Godot, where the [Gipity Godot addon](https://github.com/GipityAI/registry/tree/main/examples/godot) wraps these calls):** `POST https://a.gipity.ai/api/<appGuid>/fn/leaderboard-submit` with `Authorization: Bearer <player token>` and the same JSON body. Reads go to `leaderboard-read` with an `action`: `top`, `around`, `me`, `friends`, `ghost`, `boards` or `seasons`.
 
 - **Periods:** pass a kind for the current window (`all`, `day`, `week`, `month`, `season`) or a key for a past one (`2026-09-28`, `2026-W39`, `2026-09`, `season:Season 1`). The default is all-time when the board keeps it, else its first period. A period the board doesn't keep returns `{ error }`.
 - **Submit results:** `improved` has one flag per period the board keeps. `rank` and `personalBest` are for the board's main period (all-time, or its first period).

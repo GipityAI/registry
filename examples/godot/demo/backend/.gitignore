@@ -1,0 +1,6 @@
+.gipity/
+.gipity.json
+tmp/
+.tmp/
+*_tmp/
+.gipityscratch/

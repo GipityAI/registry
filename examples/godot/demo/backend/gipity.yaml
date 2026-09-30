@@ -1,0 +1,55 @@
+version: 1
+deploy:
+  phases:
+    - name: functions
+      type: functions
+      source: functions
+      function_definitions:
+        - name: race-finish
+          auth: user
+          tables:
+            - laps
+        - name: leaderboard-submit
+          auth: user
+          tables:
+            - lb_boards
+            - lb_entries
+            - lb_ghosts
+            - lb_bans
+            - lb_submissions
+            - lb_seasons
+        - name: leaderboard-read
+          auth: public
+          tables:
+            - lb_boards
+            - lb_entries
+            - lb_ghosts
+            - lb_bans
+            - lb_seasons
+        - name: leaderboard-admin
+          auth: member
+          tables:
+            - lb_boards
+            - lb_entries
+            - lb_ghosts
+            - lb_bans
+            - lb_submissions
+            - lb_seasons
+        - name: leaderboard-player-deleted
+          auth: member
+          hooks:
+            - user_deleted
+          tables:
+            - lb_entries
+            - lb_ghosts
+            - lb_bans
+            - lb_submissions
+          limits:
+            max_rows_affected: 100000
+    - name: workflows
+      type: workflows
+      source: workflows
+    - name: database
+      type: sql
+      source: migrations
+      database: gip_racer

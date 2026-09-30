@@ -1,0 +1,8 @@
+; Headless test project for the Gipity addon. run_tests.mjs copies the addon in.
+config_version=5
+
+[application]
+
+config/name="gipity-addon-tests"
+config/version="9.9.9-test"
+config/features=PackedStringArray("4.7")

@@ -51,6 +51,14 @@ A **reusable building block** added into an *existing* app. Files land under `sr
 | [`stripe`](kits/stripe/) | Charge end-users via Stripe Connect - checkout, subscriptions, billing portal. |
 | [`notify`](kits/notify/) | Web push notifications (Gipity Notify), including iOS home-screen web apps. |
 
+## Examples - [`examples/`](examples/)
+
+Sample code you **copy by hand** into your own project. Examples are not in the catalog, so `gipity add` doesn't install them; each one has a README that says what to copy and how to set up its backend.
+
+| Example | What |
+|-----|------|
+| [`godot`](examples/godot/) | Godot 4 addon plus Gip Racer, a demo lap racer. Steam and guest sign-in, calling your app's functions, leaderboards with ghosts, and an offline queue. Copy [`addons/gipity/`](examples/godot/addons/gipity/) into your game. |
+
 ## How `gipity add` resolves a name
 
 ```
@@ -68,6 +76,7 @@ registry/
 ├── templates/   # blank wiring for a new app
 ├── apps/        # complete working apps
 ├── kits/        # building blocks for an existing app
+├── examples/    # sample code you copy by hand (not installed by `gipity add`)
 └── _shared/     # canonical non-kit code synced into templates and apps
 ```
 

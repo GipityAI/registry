@@ -60,6 +60,10 @@ A kit is an npm-style package that gets copied into an app's `src/packages/<key>
 
 If a kit is meant to ship pre-installed in a template or app (like `realtime` in `3d-engine` and `3d-world`), wire that up in `platform/scripts/sync-registry.ts` so the kit is mirrored into the template at sync time.
 
+## Adding an example
+
+`examples/<name>/` holds sample code people copy by hand, such as the Godot addon in `examples/godot/`. Examples have no catalog entry and `gipity add` never installs them, so nothing in `constants.ts` changes. Give each one a README that says what to copy, how to set up its backend, and how to run its tests, and add a row to the Examples table in `registry/README.md`. If an example carries a copy of a kit's files (like `examples/godot/demo/backend/`), refresh that copy when the kit changes.
+
 ## The sync gate
 
 `registry/_shared/` is the canonical source for non-kit code reused across templates and apps (currently the `gipity-theme.css` brand theme used by the Water.css templates). Same for kits that are pre-installed (`realtime` into `3d-engine` and `3d-world`, `web-vision-mediapipe` into `web-vision-cam`).
