@@ -15,6 +15,11 @@
  *   - A page that wakes up after losing the role is a player: whatever it
  *     sent as the old host was dropped by the server ('undelivered',
  *     reason 'stale-host').
+ *   - A new host asks everyone to resend their state ('resync'): the
+ *     checkpoint can be a moment old, and a player whose last update landed
+ *     between hosts would never send it again on its own.
+ *   - table.leave() from the host hands the role on at once (reason 'left');
+ *     a reload keeps the grace, and table.cancel() ends the table.
  *
  * gipity.yaml, realtime phase:
  *
@@ -35,6 +40,7 @@ function createReferee(saved) {
     state,
     snapshot: () => structuredClone(state),
     score(sid, points) { state.scores[sid] = (state.scores[sid] || 0) + points; },
+    restate(sid, total) { state.scores[sid] = total; },
   };
 }
 
@@ -47,6 +53,7 @@ export async function play({ name, hosting, onHost, onScores }) {
 
   let referee = null;          // non-null while this page holds the role
   let checkpointTimer = null;
+  let myTotal = 0;             // this player's own state, resent on 'resync'
 
   function publishScores() {
     events.send('scores', referee.state.scores);
@@ -57,6 +64,7 @@ export async function play({ name, hosting, onHost, onScores }) {
   function becomeReferee(checkpoint) {
     referee = createReferee(checkpoint?.data);
     checkpointTimer = setInterval(() => table.setCheckpoint(referee.snapshot()), 500);
+    events.send('resync', {});                      // players resend what the checkpoint may miss
     publishScores();                                // everyone resyncs from the new referee
   }
 
@@ -73,17 +81,21 @@ export async function play({ name, hosting, onHost, onScores }) {
     table.setCheckpoint(referee.snapshot());        // an important event: checkpoint now
     publishScores();
   });
+  events.on('state', (m) => {
+    if (!table.isHost()) return;
+    referee.restate(m.senderId, m.total);
+    publishScores();
+  });
   // Only the current host's messages carry its epoch; ignore anything else.
+  events.on('resync', (m) => {
+    if (m.hostEpoch === table.hostEpoch()) events.sendToHost('state', { total: myTotal });
+  });
   events.on('scores', (m) => { if (m.hostEpoch === table.hostEpoch()) onScores(m); });
 
   return {
     table,
-    addPoints(points) { events.sendToHost('points', { points }); },
-    /** Leaving on purpose: hand the role to someone first. */
-    leave() {
-      const next = [...table.room.peers().keys()][0];
-      if (table.isHost() && next) table.transferHost(next);
-      table.leave();
-    },
+    addPoints(points) { myTotal += points; events.sendToHost('points', { points }); },
+    /** Leaving on purpose: a host hands the role on at once (reason 'left'). */
+    leave() { table.leave(); },
   };
 }

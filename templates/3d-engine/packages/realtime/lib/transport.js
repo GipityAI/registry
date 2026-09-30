@@ -97,6 +97,7 @@ export function createTransport({ client, observability }) {
   let onAnnounce = null;     // resolves connect()'s wait for the first __host
   let pingTimer = null;
   let heartbeatTimer = null;
+  let handoffOn = false;      // this page holds the role on a handoff table
   const clock = createClock();
 
   const peers = new Map();            // sid -> { lastSeen, clientId, displayName }
@@ -154,6 +155,7 @@ export function createTransport({ client, observability }) {
   // A handoff host must keep talking or the server hands the role on; the
   // server says how often (heartbeatMs) when it grants the role.
   function setHeartbeat(ms) {
+    handoffOn = ms > 0;   // the server only asks a handoff host to heartbeat
     if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null; }
     if (ms > 0) heartbeatTimer = setInterval(ping, ms);
   }
@@ -637,6 +639,13 @@ export function createTransport({ client, observability }) {
   function transferHost(sessionId) {
     return hostRequest('__transfer_host', { to: sessionId });
   }
+  /** Host, just before a deliberate leave: with handoff on, the server moves
+   *  the role to a successor now instead of waiting out the grace. A reload
+   *  (pagehide) never sends this, so a reloading host keeps its grace. */
+  function announceLeaving() {
+    if (!handoffOn) return false;
+    return hostRequest('__host_leaving', {});
+  }
 
   function ping() {
     if (!room || !connected) return;
@@ -715,7 +724,7 @@ export function createTransport({ client, observability }) {
     connect, disconnect, isConnected, isSynced, getRoomId, getSessionId, getPeers, getLastError,
     send, on, ping,
     getHostId, getHostEpoch, isHost, onHostChange, peerInfo, onPeerVisibility,
-    setCheckpoint, setSuccessors, transferHost,
+    setCheckpoint, setSuccessors, transferHost, announceLeaving,
     getRtt: clock.rtt, getMinRtt: clock.minRtt, isClockSynced: clock.isSynced,
     serverNow: () => clock.toServer(Date.now()),
     setData, deleteData, onData,

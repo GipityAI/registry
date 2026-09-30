@@ -253,6 +253,22 @@ test('setSuccessors / transferHost: false when not host; sent with the epoch whe
   assert.equal(t.transferHost('a'), false, 'disconnected: nothing to send on');
 });
 
+test('announceLeaving: sent with the epoch only by a handoff host; false otherwise', async () => {
+  // A peer, even on a handoff table, has nothing to announce.
+  const { t, room } = await connected({ hostId: 'p', hostEpoch: 2, reason: 'claimed', heartbeatMs: 30 });
+  assert.equal(t.announceLeaving(), false);
+  // The host of a table without handoff (no heartbeatMs): nothing to hand on.
+  room.deliver('__host', { hostId: 'me', hostEpoch: 3, previousHostId: 'p', reason: 'transfer' });
+  assert.equal(t.announceLeaving(), false);
+  assert.equal(room.of('__host_leaving').length, 0);
+  // A handoff host (the server asked it to heartbeat): the notice goes out, stamped.
+  room.deliver('__host', { hostId: 'me', hostEpoch: 4, previousHostId: 'me', reason: 'resumed', heartbeatMs: 40 });
+  assert.equal(t.announceLeaving(), true);
+  assert.deepEqual(room.of('__host_leaving'), [{ __hostEpoch: 4 }]);
+  t.disconnect();
+  assert.equal(t.announceLeaving(), false, 'disconnected: nothing to send on');
+});
+
 // --- the handoff heartbeat ---
 
 test('heartbeat: runs at heartbeatMs while host, stops when the role moves on', async () => {

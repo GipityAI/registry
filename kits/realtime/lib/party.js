@@ -160,10 +160,15 @@ export function createParty(rt, options = {}) {
     let done = false;         // cancel()/leave() called - ignore late events
     let pub = initialPub;     // non-null while this page publishes the listing
 
-    function takeDown() {
+    function takeDown({ handOff = false } = {}) {
       if (done) return;
       done = true;
-      if (pub) pub.unpublish();
+      // A deliberate leave hands the role on at once (handoff tables); the
+      // same socket carries the notice ahead of the leave, so order holds.
+      // The listing is then released, not deleted: the successor republishes
+      // it, and if nobody took over it simply goes stale.
+      const handedOff = handOff && room.isHost() && room.announceLeaving();
+      if (pub) { if (handedOff) pub.release(); else pub.unpublish(); }
       pub = null;
       if (hostedTable === table) hostedTable = null;
       if (room.isHost()) forgetHostedTable();
@@ -229,9 +234,13 @@ export function createParty(rt, options = {}) {
        * Host, pre-game: take the table down cleanly. The listing disappears
        * for everyone and no later joiner can resurrect the abandoned match.
        */
-      cancel: takeDown,
-      /** Leave the table (host leaving also delists it). */
-      leave: takeDown,
+      cancel: () => takeDown(),
+      /**
+       * Leave the table. A host on a handoff table passes the role to its
+       * successor immediately (reason 'left'); otherwise the host leaving
+       * delists the table.
+       */
+      leave: () => takeDown({ handOff: true }),
     };
 
     // Keep the listing's status in step with the seat count: 'playing' the

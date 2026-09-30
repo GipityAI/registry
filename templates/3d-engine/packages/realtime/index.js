@@ -96,6 +96,7 @@ function createRoomHandle(client, baseConfig = {}) {
     setCheckpoint: transport.setCheckpoint,
     setSuccessors: transport.setSuccessors,
     transferHost: transport.transferHost,
+    announceLeaving: transport.announceLeaving,
 
     // Server clock (synced by periodic pings).
     serverNow: transport.serverNow,

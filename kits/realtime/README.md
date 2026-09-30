@@ -158,7 +158,9 @@ t.hostEpoch();   // bumped by the server on every host change
   (default: the room's `host_grace_seconds`, 5). The kit heartbeats while it
   holds the role, so a page that is running never looks silent. A host that
   reloads and comes back inside the grace keeps the role (`reason: 'resumed'`,
-  and it gets its own checkpoint back).
+  and it gets its own checkpoint back). A host that calls `table.leave()`
+  hands the role on at once (`reason: 'left'`, no grace wait); a reload or
+  tab close never does, and `table.cancel()` ends the table instead.
 - **Successor**, chosen by the server: the first present player in the host's
   `setSuccessors()` list, else the longest-connected player that joined with
   `{ canHost: true }` (or `host: true`). Hidden or disconnected players are
@@ -166,7 +168,7 @@ t.hostEpoch();   // bumped by the server on every host change
   is kept for `host_hold_seconds` and the host can still come back.
 - **One host per epoch.** Every change bumps `hostEpoch` and is announced to
   everyone (`onHostChange`, `reason`: `'claimed'` | `'resumed'` |
-  `'transfer'` | `'disconnected'` | `'grace-expired'` | `'hidden'` |
+  `'transfer'` | `'left'` | `'disconnected'` | `'grace-expired'` | `'hidden'` |
   `'vacated'`). Everything a host sends is stamped with its epoch, and the
   server **drops** what a stale host sends (a phone waking up after the
   handoff, before it has read the news): peers never see it, and the sender's
@@ -466,7 +468,10 @@ Nothing is queued for a peer that is away, and nothing is replayed:
   reconnect, and the current host is re-announced (`onHostChange` fires if a
   handoff happened while the page was away).
 - **Across a host handoff**: messages that reached the old host before the
-  handoff stay with it and are not redelivered to the new host; `sendToHost`
+  handoff stay with it and are not redelivered to the new host. Don't rely on
+  the checkpoint alone: when a page becomes host, broadcast a resync request
+  and have every player answer with its latest state (a player that already
+  sent its last update will not send again on its own). `sendToHost`
   after the handoff goes to the new host. What the old host sends under its
   old epoch is dropped (`'stale-host'`). The new host starts from the last
   checkpoint, so anything newer than it (a move the old host received but

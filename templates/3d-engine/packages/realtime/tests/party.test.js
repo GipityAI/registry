@@ -46,7 +46,7 @@ function fakeMatchRoom(id) {
   const leaveCbs = new Set();
   const hostCbs = new Set();   // [sid, cb]
   const peers = new Map();
-  const core = { hostId: null, epoch: 0, previousHostId: null, reason: null, checkpoints: [] };
+  const core = { hostId: null, epoch: 0, previousHostId: null, reason: null, checkpoints: [], leaving: [], handoff: false, successor: null };
   const event = (sid) => ({ hostId: core.hostId, hostEpoch: core.epoch, previousHostId: core.previousHostId, reason: core.reason, isMe: core.hostId === sid, checkpoint: null });
   function view(sid, joinOpts = {}) {
     let disconnected = false;
@@ -71,6 +71,14 @@ function fakeMatchRoom(id) {
       setCheckpoint: (data) => { if (core.hostId !== sid) return false; core.checkpoints.push(data); return true; },
       setSuccessors: () => core.hostId === sid,
       transferHost: (to) => { if (core.hostId !== sid) return false; v._setHost(to, 'transfer'); return true; },
+      // Plays the server: a handoff host leaving on purpose passes the role to
+      // core.successor at once (reason 'left'). Records every call.
+      announceLeaving: () => {
+        core.leaving.push(sid);
+        if (core.hostId !== sid || !core.handoff) return false;
+        if (core.successor) v._setHost(core.successor, 'left');
+        return true;
+      },
       _view: view,
       _core: core,
       _addPeer(peerSid) { peers.set(peerSid, {}); for (const cb of [...joinCbs]) cb(peerSid); },
@@ -115,6 +123,7 @@ function fakeRt() {
       calls.push(['create', name, opts]);
       const id = `r${nextId++}`;
       const room = fakeMatchRoom(id)(`host-${id}`, opts);
+      room._core.handoff = opts.handoff === true;
       room._setHost(room.sessionId, 'claimed');
       joinable.set(id, room);
       return room;
@@ -431,6 +440,42 @@ test('handoff: the new host takes over the listing, so the code still works afte
   assert.equal(phone.isHost(), false);
   assert.equal(late.isHost(), true);
   assert.equal((await newParty(rt).tables())[0]?.code, tv.code);
+});
+
+test('leave() from a handoff host passes the role on at once and keeps the listing for the successor', async () => {
+  const rt = fakeRt();
+  const tvParty = newParty(rt, { seats: 4 });
+  const tv = await tvParty.host({ host: 'TV', handoff: true });
+  const phone = await newParty(rt, { seats: 4 }).joinByCode(tv.code, { canHost: true, timeoutMs: 1000 });
+  const changes = [];
+  phone.onHostChange((e) => changes.push([e.reason, e.isMe]));
+  tv.room._core.successor = phone.room.sessionId;
+
+  tv.leave();
+  assert.deepEqual(tv.room._core.leaving, [tv.room.sessionId], 'the notice went out');
+  assert.ok(tv.room._disconnected, 'and then the page left');
+  assert.equal(phone.isHost(), true);
+  assert.deepEqual(changes.at(-1), ['left', true]);
+  // Released, not deleted: the code still finds the table, now the phone's.
+  const late = await newParty(rt).joinByCode(tv.code, { timeoutMs: 1000 });
+  assert.equal(late.roomId, tv.roomId);
+});
+
+test('cancel() never hands off (it ends the table); leave() without handoff delists as before', async () => {
+  const rt = fakeRt();
+  const party = newParty(rt, { seats: 4 });
+  const handoffTable = await party.host({ host: 'TV', handoff: true });
+  handoffTable.room._core.successor = 'someone';
+  handoffTable.cancel();
+  assert.deepEqual(handoffTable.room._core.leaving, [], 'cancel sends no leaving notice');
+  assert.equal(handoffTable.room._core.hostId, handoffTable.room.sessionId, 'the role did not move');
+  assert.equal((await party.tables()).length, 0, 'cancel delists');
+
+  const plain = await newParty(rt, { seats: 4 }).host({ host: 'Solo' });
+  plain.room._core.successor = 'someone';
+  plain.leave();
+  assert.equal(plain.room._core.hostId, plain.room.sessionId, 'no handoff on a plain table');
+  assert.equal((await newParty(rt).tables()).length, 0, 'a plain host leaving delists the table');
 });
 
 test('inviteUrl/codeFromUrl are inert outside a browser', async () => {
