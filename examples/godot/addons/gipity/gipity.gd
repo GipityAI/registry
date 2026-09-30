@@ -5,7 +5,7 @@ extends Node
 ## leaderboard kit. Every call returns a Result dictionary and never throws:
 ##   { ok: bool, data: Variant, error: String, code: String, status: int, offline: bool }
 ## `error` is a message to show; `code` is the server's machine-readable code to
-## branch on (e.g. DISPLAY_NAME_REJECTED, PLAYER_CLEANUP_FAILED,
+## branch on (e.g. DISPLAY_NAME_REJECTED, DISPLAY_NAME_TAKEN, PLAYER_CLEANUP_FAILED,
 ## GAME_VERSION_TOO_OLD), "" when there is none. `offline` is true when the
 ## server couldn't be reached, so the game can carry on without its online features.
 ##
@@ -41,7 +41,11 @@ var app_guid := ""
 var api_base := "https://a.gipity.ai"
 ## Sent with every leaderboard run. Defaults to application/config/version.
 var game_version := ""
-## { guid, displayName, avatarUrl, provider, providerUserId, isNew } once signed in.
+## { guid, displayName, avatarUrl, provider, providerUserId, isNew, nameConflict }
+## once signed in. nameConflict is true when the app requires unique names and
+## the player isn't showing a name of their own (their Steam persona is taken, so
+## they got "<persona> #1234", or they share a name another player had first):
+## ask them to pick one with check_name() and rename_player().
 var player: Dictionary = {}
 ## Leaderboard kit client: submit, top, around_me, me, friends, friends_steam, ghost, boards.
 var leaderboard: LeaderboardClient
@@ -79,7 +83,8 @@ func sign_in_steam() -> Dictionary:
 ## Sign in as a guest: a player tied to this device, for builds without Steam.
 ## Link it to Steam later with link_steam() to keep its progress. The name is
 ## only taken when the player is created; change it later with rename_player().
-## A refused name fails with code DISPLAY_NAME_REJECTED: ask for another.
+## A refused name fails with code DISPLAY_NAME_REJECTED, and a name another
+## player has (apps with unique names) with DISPLAY_NAME_TAKEN: ask for another.
 func sign_in_guest(display_name := "") -> Dictionary:
 	_guest_name = display_name
 	var body := {"deviceSecret": _device_secret()}
@@ -108,17 +113,32 @@ func sign_out() -> void:
 	signed_out.emit()
 
 
-## Rename the signed-in guest player; "" or null clears the name. data: { guid, displayName }.
-## Fails with code DISPLAY_NAME_REJECTED for a refused name (show error, ask for
-## another), or CONFLICT (409) for a Steam player, who is named by their Steam persona.
+## Set the signed-in player's name in this game; "" or null clears it.
+## data: { guid, displayName, nameConflict }. For a Steam player this name wins
+## over their Steam persona on every sign-in; clearing it goes back to the persona.
+## Fails with code DISPLAY_NAME_REJECTED for a refused name, or DISPLAY_NAME_TAKEN
+## when the app requires unique names and another player has it (show error, ask
+## for another; check_name() offers free ones).
 func rename_player(display_name = null) -> Dictionary:
 	var new_name = null if display_name == null else str(display_name)
 	var res := await _authed(HTTPClient.METHOD_PATCH, "/auth/player", {"displayName": new_name})
 	if res.ok and res.data is Dictionary:
 		var saved = res.data.get("displayName")
 		player["displayName"] = saved
-		_guest_name = "" if saved == null else str(saved)
+		player["nameConflict"] = bool(res.data.get("nameConflict", false))
+		if _sign_in_method == "guest":
+			_guest_name = "" if saved == null else str(saved)
 	return res
+
+
+## Is a display name free in this app? Works before sign-in (for a name field
+## on the first screen); when signed in, the player's own name counts as free.
+## data: { name, available, uniqueNames, suggestions }, where suggestions are
+## free names close to it that pass the filter. A refused name fails with code
+## DISPLAY_NAME_REJECTED. The server allows 30 checks a minute per IP address,
+## so check when the player pauses typing or presses a button, not every keystroke.
+func check_name(display_name: String) -> Dictionary:
+	return await _request(HTTPClient.METHOD_GET, "/auth/player/name-available?name=" + display_name.uri_encode(), null, is_signed_in())
 
 
 ## Permanently delete the signed-in player (account deletion requests).

@@ -51,6 +51,15 @@ func control(body: Dictionary) -> void:
 	http.queue_free()
 
 
+func _last_call() -> Dictionary:
+	var http := HTTPRequest.new()
+	root.add_child(http)
+	http.request(base + "/__last_call")
+	var out: Array = await http.request_completed
+	http.queue_free()
+	return JSON.parse_string((out[3] as PackedByteArray).get_string_from_utf8())
+
+
 func _run() -> void:
 	check(g.game_version == "9.9.9-test", "game version falls back to application/config/version", g.game_version)
 
@@ -83,6 +92,37 @@ func _run() -> void:
 	r = await g.sign_in_guest("Guesty")
 	check(r.ok and g.player.displayName == "Guesty", "the new name sticks across sign-ins", r)
 
+	# Unique names: check before and after sign-in, and a taken name at sign-in or rename.
+	await control({"uniqueNames": true, "addPlayer": "Turbo"})
+	r = await g.check_name("TURBO")
+	check(r.ok and not r.data.available and r.data.uniqueNames and r.data.suggestions == ["TURBO27", "TURBO418", "TURBO7031"],
+		"check_name reports a taken name with suggestions", r)
+	check(r.ok and r.data.name == "TURBO", "check_name sends the name", r)
+	r = await g.check_name("Guesty")
+	check(r.ok and r.data.available, "check_name: the player's own name is free to them", r)
+	r = await g.check_name("darn it")
+	check(not r.ok and r.code == "DISPLAY_NAME_REJECTED", "check_name surfaces a refused name", r)
+	r = await g.rename_player("turbo")
+	check(not r.ok and r.status == 409 and r.code == "DISPLAY_NAME_TAKEN" and not r.offline and g.player.displayName == "Guesty",
+		"renaming to a taken name fails with DISPLAY_NAME_TAKEN and keeps the name", r)
+	var signed_in_token = g._token
+	g.sign_out()
+	r = await g.check_name("Guesty")
+	check(r.ok and not r.data.available, "signed out, the same name is taken (it was only free to its owner)", r)
+	r = await g.check_name("Space Name")
+	check(r.ok and r.data.available, "check_name works signed out", r)
+	var last_call = await _last_call()
+	check(last_call.auth == "" and "name=Space%20Name" in last_call.url, "a signed-out check sends no token and encodes the name", last_call)
+	var saved_device = g._device_secret()
+	DirAccess.remove_absolute("user://gipity/device.cfg")
+	r = await g.sign_in_guest("TURBO")
+	check(not r.ok and r.code == "DISPLAY_NAME_TAKEN" and not g.is_signed_in(), "a new guest with a taken name fails with DISPLAY_NAME_TAKEN", r)
+	var cfg := ConfigFile.new()
+	cfg.set_value("guest", "secret", saved_device)
+	cfg.save("user://gipity/device.cfg")
+	r = await g.sign_in_guest("Guesty")
+	check(r.ok and g.player.guid == first_guid and g._token != signed_in_token, "the original guest signs back in", r)
+
 	r = await g.call_function("echo", {"n": 3})
 	check(r.ok and r.data.you == first_guid and int(r.data.got.n) == 3, "call_function sends the token and unwraps data", r)
 
@@ -96,14 +136,31 @@ func _run() -> void:
 	var fake := FakeSteam.new()
 	g.steam_override = fake
 	r = await g.link_steam()
-	check(r.ok and g.player.guid == first_guid and g.player.provider == "steam", "link_steam keeps the guest player", r)
+	check(r.ok and g.player.guid == first_guid and g.player.provider == "steam" and g.player.displayName == "Guesty",
+		"link_steam keeps the guest player and the name they chose", r)
 	check(fake.identities == ["gipity"], "the Steam ticket is requested for the gipity identity", fake.identities)
-	r = await g.rename_player("Nope")
-	check(not r.ok and r.status == 409 and r.code == "CONFLICT" and g.player.displayName == "Racer X", "a Steam player can't be renamed (409 CONFLICT)", r)
+	r = await g.rename_player(null)
+	check(r.ok and g.player.displayName == "Racer X" and not g.player.nameConflict, "a Steam player clearing their name goes back to the persona", r)
+	r = await g.rename_player("Track Star")
+	check(r.ok and g.player.displayName == "Track Star", "a Steam player can set a name for this game", r)
 
+	await control({"persona": "Persona Two"})
 	g.sign_out()
 	r = await g.sign_in_steam()
-	check(r.ok and g.player.displayName == "Racer X" and g.player.guid == first_guid, "Steam sign-in picks its own ticket and reaches the linked player", r)
+	check(r.ok and g.player.displayName == "Track Star" and g.player.guid == first_guid,
+		"Steam sign-in picks its own ticket, reaches the linked player, and the game name beats the persona", r)
+
+	# The persona is taken by another player: sign-in still works, flagged.
+	await control({"persona": "Turbo"})
+	r = await g.rename_player(null)
+	check(r.ok and g.player.displayName == "Turbo #0001" and g.player.nameConflict and r.data.nameConflict,
+		"a taken persona comes back suffixed with nameConflict", r)
+	g.sign_out()
+	r = await g.sign_in_steam()
+	check(r.ok and g.player.nameConflict and g.player.displayName == "Turbo #0001", "nameConflict is on the signed-in player", r)
+	r = await g.rename_player("Racer X")
+	check(r.ok and not g.player.nameConflict and g.player.displayName == "Racer X", "picking a free name clears nameConflict", r)
+	await control({"persona": "Racer X", "uniqueNames": false})
 
 	fake.result = 2
 	g.sign_out()

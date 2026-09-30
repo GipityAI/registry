@@ -19,17 +19,29 @@ function versionRefusal(board, gameVersion) {
   return null;
 }
 
+// Like the server's name folding for unique names, reduced to case and NFKC.
+const nameKey = (name) => String(name).normalize('NFKC').trim().toLowerCase();
+const STEAM_ID = '76561190000000001';
+
 export function startMockServer() {
-  const state = { calls: [], players: new Map(), tokens: new Map(), submissions: [], failNextAuthOn: new Set(), failNextDelete: false };
+  const state = {
+    calls: [], players: new Map(), identities: new Map(), tokens: new Map(), submissions: [],
+    failNextAuthOn: new Set(), failNextDelete: false, uniqueNames: false, persona: 'Racer X',
+  };
   let n = 0;
-  const issue = (provider, id, name) => {
-    const key = `${provider}:${id}`;
-    let p = state.players.get(key);
-    if (!p) { p = { guid: `u_test${++n}`, displayName: name || null, provider, providerUserId: id, isNew: true }; state.players.set(key, p); }
-    else p = { ...p, isNew: false };
-    const token = `tok_${n}_${Math.random().toString(36).slice(2)}`;
-    state.tokens.set(token, p);
-    return { token, expiresIn: 86400, user: p };
+  const nameTaken = (name, exceptGuid) => state.uniqueNames && name != null
+    && [...state.players.values()].some(p => p.guid !== exceptGuid && p.displayName != null && nameKey(p.displayName) === nameKey(name));
+  const userOf = (p, isNew = false) => ({
+    guid: p.guid, displayName: p.displayName, provider: p.provider, providerUserId: p.providerUserId, isNew, nameConflict: p.nameConflict,
+  });
+  const tokenFor = (p) => { const token = `tok_${p.guid}_${Math.random().toString(36).slice(2)}`; state.tokens.set(token, p.guid); return token; };
+  // Like the server: a player without a name of their own takes the persona; a
+  // taken persona gets a SteamID suffix and nameConflict instead of failing.
+  const namePersona = (p) => {
+    if (p.custom) { p.nameConflict = false; return; }
+    const suffixed = `${state.persona} #${STEAM_ID.slice(-4)}`;
+    if (!nameTaken(state.persona, p.guid)) { p.displayName = state.persona; p.nameConflict = false; }
+    else { p.displayName = suffixed; p.nameConflict = true; }
   };
   const server = http.createServer((req, res) => {
     let raw = '';
@@ -39,42 +51,84 @@ export function startMockServer() {
       const auth = (req.headers.authorization || '').replace('Bearer ', '');
       state.calls.push({ method: req.method, url: req.url, body, auth });
       const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+      if (req.url === '/__last_call') {
+        const last = [...state.calls].reverse().find(c => !c.url.startsWith('/__'));
+        return send(200, last);
+      }
       if (req.url === '/__control') {
         for (const f of body.failNextAuthOn || []) state.failNextAuthOn.add(f);
         if (body.failNextDelete) state.failNextDelete = true;
+        if ('uniqueNames' in body) state.uniqueNames = body.uniqueNames;
+        if ('persona' in body) state.persona = body.persona;
+        // A player on another device who already has a name.
+        if (body.addPlayer) {
+          const guid = `u_other${++n}`;
+          state.players.set(guid, { guid, displayName: body.addPlayer, custom: true, provider: 'guest', providerUserId: guid, nameConflict: false });
+        }
         return send(200, { ok: true });
       }
-      const m = req.url.match(/^\/api\/app_test(\/.*)$/);
+      const url = new URL(req.url, 'http://mock');
+      const m = url.pathname.match(/^\/api\/app_test(\/.*)$/);
       if (!m) return send(404, { error: { code: 'NOT_FOUND', message: 'no app' } });
       const path = m[1];
+      const nameTakenError = { error: { code: 'DISPLAY_NAME_TAKEN', message: 'Another player already has that name. Please choose another.' } };
       if (path === '/auth/guest') {
         if (!body.deviceSecret || body.deviceSecret.length < 32) return send(400, { error: { code: 'VALIDATION', message: 'deviceSecret too short' } });
         if (rejectedName(body.displayName)) return send(400, nameRejected);
-        return send(200, { data: issue('guest', body.deviceSecret, body.displayName) });
+        const key = `guest:${body.deviceSecret}`;
+        const existing = state.identities.get(key);
+        if (existing) { const p = state.players.get(existing); return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p) } }); }
+        const name = body.displayName ? String(body.displayName).trim() : null;
+        if (nameTaken(name)) return send(409, nameTakenError);
+        const p = { guid: `u_test${++n}`, displayName: name, custom: !!name, provider: 'guest', providerUserId: body.deviceSecret, nameConflict: false };
+        state.players.set(p.guid, p);
+        state.identities.set(key, p.guid);
+        return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p, true) } });
       }
       if (path === '/auth/steam') {
         if (body.ticket !== 'deadbeef01') return send(401, { error: { code: 'UNAUTHORIZED', message: 'Steam sign-in failed: Invalid ticket' } });
+        let p;
+        let isNew = false;
         if (body.link) {
-          const guest = state.tokens.get(auth);
-          if (!guest) return send(401, { error: { code: 'UNAUTHORIZED', message: 'no guest' } });
-          // Like the server: the guest's player now answers to Steam, with the persona name.
-          const p = { ...guest, displayName: 'Racer X', provider: 'steam', providerUserId: '76561190000000001', isNew: false };
-          state.players.set('steam:76561190000000001', p);
-          const token = `tok_linked_${Math.random().toString(36).slice(2)}`;
-          state.tokens.set(token, p);
-          return send(200, { data: { token, expiresIn: 86400, user: p } });
+          p = state.players.get(state.tokens.get(auth));
+          if (!p) return send(401, { error: { code: 'UNAUTHORIZED', message: 'no guest' } });
+          // Like the server: the guest's player now answers to Steam.
+          Object.assign(p, { provider: 'steam', providerUserId: STEAM_ID });
+          state.identities.set(`steam:${STEAM_ID}`, p.guid);
+        } else {
+          p = state.players.get(state.identities.get(`steam:${STEAM_ID}`));
+          if (!p) {
+            isNew = true;
+            p = { guid: `u_test${++n}`, displayName: null, custom: false, provider: 'steam', providerUserId: STEAM_ID, nameConflict: false };
+            state.players.set(p.guid, p);
+            state.identities.set(`steam:${STEAM_ID}`, p.guid);
+          }
         }
-        return send(200, { data: issue('steam', '76561190000000001', 'Racer X') });
+        namePersona(p);
+        return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p, isNew) } });
       }
-      const player = state.tokens.get(auth);
+      const player = state.players.get(state.tokens.get(auth));
+      if (path === '/auth/player/name-available' && req.method === 'GET') {
+        const name = String(url.searchParams.get('name') || '').trim();
+        if (auth && !player) return send(401, { error: { code: 'UNAUTHORIZED', message: 'That player token is not valid for this app.' } });
+        if (rejectedName(name)) return send(400, nameRejected);
+        const available = !nameTaken(name, player?.guid);
+        const suggestions = available ? [] : [27, 418, 7031].map(d => `${name}${d}`).filter(s => !nameTaken(s));
+        return send(200, { data: { name, available, uniqueNames: state.uniqueNames, suggestions } });
+      }
       if (path === '/auth/player' && req.method === 'PATCH') {
         if (!player) return send(401, { error: { code: 'UNAUTHORIZED', message: 'Session expired' } });
-        if (player.provider === 'steam') return send(409, { error: { code: 'CONFLICT', message: 'This player signs in with Steam, so their name is their Steam name. Change it on Steam.' } });
         if (rejectedName(body.displayName)) return send(400, nameRejected);
         const name = body.displayName == null || String(body.displayName).trim() === '' ? null : String(body.displayName).trim();
-        // Every stored copy of the player (sign-in record and live tokens) takes the new name.
-        for (const p of [...state.players.values(), ...state.tokens.values()]) if (p.guid === player.guid) p.displayName = name;
-        return send(200, { data: { guid: player.guid, displayName: name } });
+        if (name === null && player.provider === 'steam') {
+          // Clearing a Steam player's own name goes back to the persona.
+          player.custom = false;
+          namePersona(player);
+        } else {
+          if (nameTaken(name, player.guid)) return send(409, nameTakenError);
+          Object.assign(player, { displayName: name, custom: name !== null, nameConflict: false });
+        }
+        return send(200, { data: { guid: player.guid, displayName: player.displayName, nameConflict: player.nameConflict } });
       }
       if (path === '/auth/player' && req.method === 'DELETE') {
         if (!player) return send(401, { error: { code: 'UNAUTHORIZED', message: 'Session expired' } });
@@ -90,7 +144,7 @@ export function startMockServer() {
         const name = decodeURIComponent(fn[1]);
         if (state.failNextAuthOn.has(name)) { state.failNextAuthOn.delete(name); state.tokens.delete(auth); }
         if (!state.tokens.get(auth)) return send(401, { error: { code: 'UNAUTHORIZED', message: 'Session expired' } });
-        if (name === 'echo') return send(200, { data: { you: state.tokens.get(auth).guid, got: body } });
+        if (name === 'echo') return send(200, { data: { you: state.tokens.get(auth), got: body } });
         if (name === 'leaderboard-submit') {
           state.submissions.push(body);
           const refused = versionRefusal(body.board, body.gameVersion);
