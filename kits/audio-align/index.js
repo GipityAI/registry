@@ -1,7 +1,7 @@
 /**
  * @gipity/audio-align — browser-side helpers
  *
- * The kit's compute (demucs + MMS_FA) runs as a Modal GPU job. Browser code
+ * The kit's compute (demucs + MMS_FA) runs as a Gipity Jobs GPU job. Browser code
  * can't directly submit jobs (no app-token job route yet), so the kit pattern
  * is: the app developer writes a thin wrapper function in `functions/`, the
  * browser calls that function. See `examples/wrapper-function.js`.

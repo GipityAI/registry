@@ -75,7 +75,7 @@ deploy:
           compute: gpu-small
           timeout_ms: 600000
           on_complete: song-align-complete
-          description: "Audio + lyrics → word-level timing JSON (Modal L4)"
+          description: "Audio + lyrics → word-level timing JSON (Gipity Jobs, L4 GPU)"
 
         # CPU render job (Node + Remotion + ffmpeg). cpu-large is required for
         # Remotion's headless Chromium + the larger memory budget; first deploy

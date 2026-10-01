@@ -355,7 +355,7 @@
 
       <!-- Browser sub-tab (credit_ledger operation='browser') -->
       <div class="svc-panel" data-svc-panel="browser" hidden>
-        <div class="tab-desc-wrap"><p class="tab-lede small">Headless browser sessions - page-inspect, browser_open, screenshots. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Headless browser sessions - page-inspect, browser_open, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page-inspect https://gipity.ai</code></span></p></div></div>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Headless browser sessions: page inspect, page eval, screenshots. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Headless browser sessions: page inspect, page eval, screenshots. Useful for letting agents see modern web pages. <span class="try-it">Try it: <code>$ gipity page inspect https://gipity.ai</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-browser-cost">-</span></div>
           <div class="card" title="Total service calls in this window."><span class="card-label">Calls</span><span class="card-value" id="svc-browser-calls">-</span></div>
@@ -373,11 +373,11 @@
 
       <!-- Search sub-tab (credit_ledger group=search → web_search + twitter_search + web_fetch + embedding) -->
       <div class="svc-panel" data-svc-panel="search" hidden>
-        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Search - web, Twitter/X, raw web fetch, and embeddings. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Search - web, Twitter/X, raw web fetch, and embeddings. Tools that read live data from outside Gipity, used by apps and by workflow <code>llm</code> steps. <span class="try-it">Try it: add <code>tools: [web_search]</code> to a workflow <code>llm</code> step</span></p></div></div>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Search: web search, raw web fetch, and embeddings. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Search: web search, raw web fetch, and embeddings. Tools that read live data from outside Gipity, used by apps and by workflow <code>llm</code> steps. <span class="try-it">Try it: add <code>tools: [web_search]</code> to a workflow <code>llm</code> step</span></p></div></div>
         <div class="cards">
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="svc-search-cost">-</span></div>
-          <div class="card" title="Sum of web searches + Twitter/X + raw web fetches + embeddings in this window."><span class="card-label">All calls</span><span class="card-value" id="svc-search-calls">-</span></div>
-          <div class="card" title="Subset of Search calls that aren't web search - Twitter/X queries, raw URL fetches, and embedding requests."><span class="card-label">Twitter / fetches</span><span class="card-value" id="svc-search-fetches">-</span></div>
+          <div class="card" title="Sum of web searches + raw web fetches + embeddings in this window."><span class="card-label">All calls</span><span class="card-value" id="svc-search-calls">-</span></div>
+          <div class="card" title="Subset of Search calls that aren't web search: raw URL fetches and embedding requests."><span class="card-label">Fetches / embeddings</span><span class="card-value" id="svc-search-fetches">-</span></div>
         </div>
         <div class="panel chart-panel">
           <h3>Calls over time</h3>

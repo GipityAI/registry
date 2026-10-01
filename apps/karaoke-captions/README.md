@@ -4,7 +4,7 @@ Upload audio + paste lyrics → tune word timings by ear → render a karaoke MP
 
 Three layers:
 
-1. **Forced alignment** on Modal L4 GPU (Demucs vocal isolation + MMS_FA), via the [@gipity/audio-align](src/packages/audio-align/README.md) kit pre-bundled at `src/packages/audio-align/`.
+1. **Forced alignment** on Gipity Jobs (L4 GPU) (Demucs vocal isolation + MMS_FA), via the [@gipity/audio-align](src/packages/audio-align/README.md) kit pre-bundled at `src/packages/audio-align/`.
 2. **Per-word editor** in the browser — audio player + editable timing per word + `⇤now` / `now⇥` shortcuts.
 3. **MP4 render** on a cpu-large job — Remotion + ffmpeg. Three modes: preview (1280×720), HD (1920×1080), 4K (3840×2160).
 
@@ -82,7 +82,7 @@ The **Advanced** section under the lyric box exposes two optional inputs the und
 
                   ──► song-align ──► jobs.submit('audio-align')
                                                 ▼
-                                         Modal L4 (~45 s)
+                                         L4 GPU  (~45 s)
                                                 ▼
                   (on_complete) ◄── song-align-complete ──► UPDATE alignment_json
 
@@ -105,7 +105,7 @@ No client polling against the job system — the editor + render UI just poll `s
 
 | Step | Compute | Wall clock | Credits |
 |---|---|---|---|
-| Forced alignment | gpu-small (Modal L4) | ~45 s for a 3-min song | ~0.013 |
+| Forced alignment | gpu-small (L4) | ~45 s for a 3-min song | ~0.013 |
 | Render (preview) | cpu-large | ~30 s for a 3-min song | ~0.001 |
 | Render (4K) | cpu-large | ~5-15 min | ~0.02 |
 | File storage | S3 | per GB-month | per project |

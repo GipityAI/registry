@@ -1,7 +1,7 @@
 /**
  * Data > Browse: walk one project's files, read a file, see its version
  * history and restore an older version. The same routes as `gipity file` /
- * `gipity rollback`. Scoped to the project picked in the global filter.
+ * `gipity file rollback`. Scoped to the project picked in the global filter.
  */
 import { fmtBytes, fmtTime, fmtFullTime, escapeHtml, emptyRow } from '../format.js';
 import { openDetail, openDetailAsync } from '../detail.js';

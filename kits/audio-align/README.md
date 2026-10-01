@@ -1,6 +1,6 @@
 # @gipity/audio-align
 
-Forced alignment as a kit. Hand it an audio URL + lyric text, get back word-level timings (start_ms, end_ms, confidence). Demucs vocal isolation + `torchaudio.pipelines.MMS_FA`, runs as a Modal L4 GPU job. Useful for **karaoke captions**, **subtitling**, **language learning**, **dubbing alignment**, **lyric videos**.
+Forced alignment as a kit. Hand it an audio URL + lyric text, get back word-level timings (start_ms, end_ms, confidence). Demucs vocal isolation + `torchaudio.pipelines.MMS_FA`, runs as a Gipity Jobs GPU job (NVIDIA L4). Useful for **karaoke captions**, **subtitling**, **language learning**, **dubbing alignment**, **lyric videos**.
 
 ```
 audio-align/
@@ -142,7 +142,7 @@ The two are mutually exclusive — pass `phonetic_lyrics` *or* `corrections`, no
 The kit ships a fixture audio + matching transcript under `tests/fixtures/` so anyone can confirm alignment works end-to-end on their own Gipity account. The handler is a real GPU job, so verification requires:
 
 1. **A Gipity account with GPU credits.** A full verification run is one L4 cold start + ~10-15s of GPU = ~$0.005 in credits.
-2. **A public URL** for the fixture audio (Modal fetches it). Upload `tests/fixtures/sample.mp3` to any host that serves it publicly — your own S3 bucket, your app's `app-files` API with `public: true`, etc.
+2. **A public URL** for the fixture audio (the GPU job fetches it). Upload `tests/fixtures/sample.mp3` to any host that serves it publicly: your own storage bucket, your app's `app-files` API with `public: true`, etc.
 
 Then in a fresh Gipity project:
 
@@ -173,11 +173,11 @@ If you see `unaligned_count > 0` or `status: failed`, the kit's `main.py` regres
 
 ## What's in the fat image (zero deps required)
 
-The kit's handler imports `torch`, `torchaudio`, `demucs`, `librosa`, `soundfile`. All are baked into the Modal image, so the job ships with no `requirements.txt`. If you fork the kit to add (e.g.) an LLM-based display-map step, add what you need to your job's deps file — the fat image is just a starting point.
+The kit's handler imports `torch`, `torchaudio`, `demucs`, `librosa`, `soundfile`. All are baked into the Gipity Jobs GPU image, so the job ships with no `requirements.txt`. If you fork the kit to add (e.g.) an LLM-based display-map step, add what you need to your job's deps file; the fat image is just a starting point.
 
 ## Cost
 
-L4 at $0.80/hr underlying + 100% margin = ~$0.013 per minute of compute. A 3-min song that takes ~45 sec to align costs ~$0.01 in credits. Demucs weight download (~250 MB) happens once per Modal worker and is amortized; first run on a cold worker may take an extra ~20s.
+L4 at $0.80/hr underlying + 100% margin = ~$0.013 per minute of compute. A 3-min song that takes ~45 sec to align costs ~$0.01 in credits. Demucs weight download (~250 MB) happens once per GPU worker and is amortized; first run on a cold worker may take an extra ~20s.
 
 ## Limitations / known gaps
 
