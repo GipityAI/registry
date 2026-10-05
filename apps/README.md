@@ -34,11 +34,7 @@ A playable 3D multiplayer starter - a rocket-launcher demo built on the 3D Engin
 **Build with it:** Obby/parkour, tycoon, simulator, PvP combat, shooter, tower defense, horror, racing, RPG, social spaces, chat rooms, virtual events.
 
 ```bash
-# Via Gipity CLI
 gipity add 3d-world --title "My World"
-
-# Via Gipity web agent
-add name=3d-world title="My World"
 ```
 
 **Project structure:**
