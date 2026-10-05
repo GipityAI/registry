@@ -1,6 +1,6 @@
 # Monitor
 
-The Gipity web app you sign in to: your projects, deploys, logs, compute, files, spend and account in one place. Gipity serves it from the platform's own origin, deployed from this template.
+The Gipity web app you sign in to: your projects, deploys, logs, compute, files, spend and account in one place. Every account gets its own copy at signup, a normal project served at `app.gipity.ai/<account>/monitor/`.
 
 Everything Monitor shows or changes goes through a documented REST route that the `gipity` CLI also calls. If Monitor can do it, the CLI can, and `platform/scripts/check-route-parity.ts` checks every call in `src/js/api.js` against the server's routes.
 
@@ -10,11 +10,11 @@ Everything Monitor shows or changes goes through a documented REST route that th
 - **Overview**: health verdict, what needs attention, recent deploys.
 - **Observe**: Traffic, Activity, Errors, Chats (recorded coding-agent sessions), Audit.
 - **Project**: Compute (Functions, Jobs, Sandbox, Workflows, Tests; job, workflow and test runs open a detail view with output, logs and per-step or per-test results), Data (storage, a file browser with version restore, databases), Services, Hosting.
-- **Account**: Plan (balance, limits, billing through Stripe), Usage, Devices, Alerts, Secrets, Account (profile, API tokens, delete account).
+- **Account**: Plan (balance, limits, billing through Stripe), Usage, Alerts, Secrets, Account (profile, API tokens, delete account).
 
 ## Auth
 
-Monitor signs in with the Gipity popup, which sets the session cookie on the API host. The API accepts that cookie as the account only on requests from the platform's own origin. Hosted apps all share `app.gipity.ai`, so a copy served from there can sign in but can't read account data through the cookie.
+Monitor signs in with the Gipity popup and asks for the owner-only Account scope. Every API call sends the app's token (`X-App-Token`) with the session cookie, and the platform acts as the account only when the signed-in viewer owns this copy and granted it that scope. Sign out (top right) ends the browser's Gipity session.
 
 ## Files
 

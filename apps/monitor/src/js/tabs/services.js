@@ -64,7 +64,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // from the recent/top responses since they already carry the data we need.
   const modelsForKey = models.data.items.filter((m) => filterSet.includes(m.service));
   const subCalls = modelsForKey.reduce((s, m) => s + m.count, 0);
-  const subCost = modelsForKey.reduce((s, m) => s + (m.cost_usd ?? 0), 0);
+  const subCost = modelsForKey.reduce((s, m) => s + (m.usd ?? 0), 0);
 
   $(ids.cost).textContent = fmtCredits(toCredits(subCost));
   $(ids.calls).textContent = fmtExact(subCalls);
@@ -89,7 +89,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
   // specific timeseries can land in a follow-up if useful.
   const group = groupFor(range);
   const [costTs, callsTs] = await Promise.all([
-    api.timeseries('services', range, group, projectId, 'cost_usd'),
+    api.timeseries('services', range, group, projectId, 'usd'),
     api.timeseries('services', range, group, projectId, 'count'),
   ]);
   const cost = padSeries(costTs.data.series, range, group);
@@ -110,7 +110,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
         <td class="mono">${escapeHtml(m.key)}</td>
         <td class="muted">${escapeHtml(m.service)}</td>
         <td class="num">${fmtNum(m.count)}</td>
-        <td class="num">${fmtCredits(toCredits(m.cost_usd ?? 0))}</td>
+        <td class="num">${fmtCredits(toCredits(m.usd ?? 0))}</td>
       </tr>
     `).join('');
   }
@@ -124,7 +124,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
         <td>${escapeHtml(c.email_local || '-')}</td>
         <td class="mono muted">${escapeHtml(c.key)}</td>
         <td class="num">${fmtNum(c.count)}</td>
-        <td class="num">${fmtCredits(toCredits(c.cost_usd ?? 0))}</td>
+        <td class="num">${fmtCredits(toCredits(c.usd ?? 0))}</td>
       </tr>
     `).join('');
   }
@@ -136,7 +136,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
     for (const m of modelsForKey) {
       const k = byKind.get(m.service) ?? { calls: 0, cost: 0 };
       k.calls += m.count;
-      k.cost += m.cost_usd ?? 0;
+      k.cost += m.usd ?? 0;
       byKind.set(m.service, k);
     }
     if (byKind.size === 0) kindsBody.innerHTML = emptyRow(3);
@@ -162,7 +162,7 @@ async function renderPaidSubtab(api, key, filterSet, { range, projectId }) {
           <td class="mono">${escapeHtml(truncate(c.model || '-', 40))}</td>
           <td>${statusPill(c.status)}</td>
           <td class="num muted">${fmtMs(c.latency_ms)}</td>
-          <td class="num">${c.cost_usd != null ? fmtCredits(toCredits(c.cost_usd)) : '-'}</td>
+          <td class="num">${c.credits_consumed != null ? fmtCredits(Number(c.credits_consumed)) : '-'}</td>
         </tr>
       `).join('');
     }

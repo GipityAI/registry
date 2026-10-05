@@ -5,12 +5,12 @@
  *   Overview (health verdict) sit above three groups:
  *   - Observe: Traffic / Activity / Errors / Chats / Audit            (event streams)
  *   - Project: Compute / Data / Services / Hosting                    (resources)
- *   - Account: Plan / Usage / Devices / Alerts / Secrets / Account    (account state)
+ *   - Account: Plan / Usage / Alerts / Secrets / Account              (account state)
  * - URL hash preserves the active tab + sub-tab across reloads.
  * - Range + Project filters re-render the active tab on change.
  */
 import { api } from './api.js';
-import { signIn, isSignedIn } from './auth.js';
+import { signIn, signOut, isSignedIn } from './auth.js';
 import { renderProjectsTab } from './tabs/projects.js';
 import { renderOverviewTab } from './tabs/overview.js';
 import { renderTrafficTab } from './tabs/traffic.js';
@@ -26,7 +26,6 @@ import { renderDataTab } from './tabs/data.js';
 import { renderHostingTab } from './tabs/hosting.js';
 import { renderSpendTab } from './tabs/spend.js';
 import { renderPlanTab } from './tabs/plan.js';
-import { renderDevicesTab } from './tabs/devices.js';
 import { renderAccountTab } from './tabs/account.js';
 import { deployAnnotationPlugin, crosshairPlugin, applyChartTheme } from './chart-helpers.js';
 import { initThemePicker } from './theme.js';
@@ -168,7 +167,6 @@ const TAB_RENDERERS = {
   spend: renderSpendTab,
   plan: renderPlanTab,
   chats: renderChatsTab,
-  devices: renderDevicesTab,
   audit: renderAuditTab,
   alerts: renderAlertsTab,
   secrets: renderSecretsTab,
@@ -297,10 +295,12 @@ async function populateProjectFilter() {
 function showAuthGate() {
   $('auth-gate').hidden = false;
   $('dashboard').hidden = true;
+  $('signout').hidden = true;
 }
 function showDashboard() {
   $('auth-gate').hidden = true;
   $('dashboard').hidden = false;
+  $('signout').hidden = false;
 }
 
 /**
@@ -497,6 +497,18 @@ async function init() {
         chip.classList.add('copied');
         setTimeout(() => chip.classList.remove('copied'), 1200);
       }).catch(() => { /* clipboard unavailable - the command is still visible */ });
+    }
+  });
+
+  // Sign-out: end the session, then reload into the sign-in gate.
+  $('signout').addEventListener('click', async () => {
+    $('signout').disabled = true;
+    try {
+      await signOut();
+      location.reload();
+    } catch (err) {
+      $('signout').disabled = false;
+      alert(err.message);
     }
   });
 

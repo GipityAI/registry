@@ -57,6 +57,7 @@
       </label>
       <button id="refresh" aria-label="Refresh">Refresh</button>
       <span id="freshness" class="freshness" aria-live="polite"></span>
+      <button type="button" id="signout" class="link-btn" hidden>Sign out</button>
     </div>
   </header>
 
@@ -94,7 +95,6 @@
         <h4 class="sidebar-label">Account</h4>
         <button data-tab="plan"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg><span class="nav-text">Plan</span></button>
         <button data-tab="spend"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="6" y1="20" x2="6" y2="12"/><line x1="12" y1="20" x2="12" y2="6"/><line x1="18" y1="20" x2="18" y2="15"/><line x1="3" y1="20" x2="21" y2="20"/></svg><span class="nav-text">Usage</span></button>
-        <button data-tab="devices"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="1"/><line x1="8" y1="20" x2="16" y2="20"/><line x1="12" y1="16" x2="12" y2="20"/></svg><span class="nav-text">Devices</span></button>
         <button data-tab="alerts"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 9a6 6 0 1 0-12 0c0 7-3 8-3 8h18s-3-1-3-8"/><path d="M10 20a2 2 0 0 0 4 0"/></svg><span class="nav-text">Alerts</span></button>
         <button data-tab="secrets"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg><span class="nav-text">Secrets</span></button>
         <button data-tab="account"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg><span class="nav-text">Account</span></button>
@@ -454,7 +454,7 @@
 
       <!-- Jobs sub-tab -->
       <div class="cmp-panel" data-cmp-panel="jobs" hidden>
-        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Jobs: long-running compute with CPU and GPU tiers, for ML inference, video encoding, and batch processing. Click a run for its output and logs. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Jobs - long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job run &lt;name&gt;</code></span></p></div></div>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Jobs: long-running compute with CPU and GPU tiers, for ML inference, video encoding, and batch processing. Click a run for its output and logs. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Jobs - long-running compute with CPU + GPU tiers, for ML inference, video encoding, and batch processing. <span class="try-it">Try it: define in <code>gipity.yaml</code> then <code>$ gipity job submit &lt;name&gt;</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Job runs in this window (all tiers)."><span class="card-label">Runs</span><span class="card-value" id="job-runs">-</span></div>
           <div class="card" title="Runs that ended with a non-success status."><span class="card-label">Failures</span><span class="card-value" id="job-failures">-</span></div>
@@ -542,7 +542,7 @@
 
       <!-- Files sub-tab -->
       <div class="data-panel" data-data-panel="files">
-        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Storage - your project files: the agent's working dir, deployed app source, and user-uploaded media. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Storage - your project files: the agent's working dir, deployed app source, and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file write notes.md "hello"</code></span></p></div></div>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Gipity Storage - your project files: app source and user-uploaded media. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Gipity Storage - your project files: app source and user-uploaded media. <span class="try-it">Try it: <code>$ gipity file ls</code></span></p></div></div>
         <div class="cards">
           <div class="card" title="Physical bytes actually stored in Gipity Storage - this is what you're billed for. Retained file versions are included; a blob shared by copies or identical files is counted once."><span class="card-label">Billed (stored)</span><span class="card-value" id="files-size">-</span></div>
           <div class="card" title="What you have right now: the current version of every live file."><span class="card-label">Live size</span><span class="card-value" id="files-live">-</span></div>
@@ -669,7 +669,7 @@
 
     <!-- ── Usage tab (credit ledger) ───────────────────────────── -->
     <section class="tab-panel" data-tab="spend" hidden>
-      <div class="tab-desc-wrap"><p class="tab-lede">The full credit ledger - every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">The full credit ledger - every charge across LLM, media, compute, storage, deploys, and agent tools, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p></div></div>
+      <div class="tab-desc-wrap"><p class="tab-lede">The full credit ledger - every charge across LLM, media, compute, storage and deploys, expressed in credits. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">The full credit ledger - every charge across LLM, media, compute, storage and deploys, expressed in credits. <strong>This is the source-of-truth for your usage.</strong> Most other tabs are slices of this.</p></div></div>
       <div class="cards">
         <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="spend-credits">-</span></div>
         <div class="card" title="Distinct credit-ledger rows in this window - one row per billed event."><span class="card-label">Charges</span><span class="card-value" id="spend-charges">-</span></div>
@@ -750,37 +750,6 @@
       <div class="tab-footer"><button class="export-csv-btn" data-export="chats">Download CSV</button></div>
     </section>
 
-    <!-- ── Devices tab (paired CC/Codex devices + dispatches + sessions) ── -->
-    <section class="tab-panel" data-tab="devices" hidden>
-      <div class="tab-desc-wrap"><p class="tab-lede">Local coding agents (Claude Code, Codex, Grok) paired to this account via <code>gipity connect</code>. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Local coding agents (Claude Code, Codex, Grok) paired to this account via <code>gipity connect</code>. Devices receive prompts dispatched from the web CLI's <code>cc&gt;</code> mode and stream their session transcript back here. <span class="try-it">Try it: <code>$ gipity connect</code> on your laptop, then <code>/cc</code> in the web CLI.</span></p></div></div>
-      <div class="cards">
-        <div class="card" title="Local coding agents (Claude Code, Codex, Grok) paired to your account."><span class="card-label">Active devices</span><span class="card-value" id="rmt-devices">-</span></div>
-        <div class="card" title="Prompts sent from the web CLI to a paired device in this window."><span class="card-label">Dispatches</span><span class="card-value" id="rmt-dispatches">-</span></div>
-        <div class="card" title="Dispatches still waiting for a device to pick them up."><span class="card-label">Pending</span><span class="card-value" id="rmt-pending">-</span></div>
-        <div class="card" title="Remote sessions opened from paired devices in this window."><span class="card-label">Sessions</span><span class="card-value" id="rmt-sessions">-</span></div>
-      </div>
-      <div class="panel">
-        <h3>Paired devices</h3>
-        <table class="data-table" id="table-rmt-devices">
-          <thead><tr><th>Name</th><th>Platform</th><th>Status</th><th>Last seen</th><th>Paired</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="panel">
-        <h3>Recent dispatches</h3>
-        <table class="data-table" id="table-rmt-dispatches">
-          <thead><tr><th>Time</th><th>Device</th><th>Project</th><th>Kind</th><th>Status</th><th>Message</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-      <div class="panel">
-        <h3>Recent remote sessions</h3>
-        <table class="data-table" id="table-rmt-sessions">
-          <thead><tr><th>Started</th><th>Title</th><th>Source</th><th>Project</th><th>cwd</th><th>State</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </div>
-    </section>
 
     <!-- ── Alerts tab ───────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="alerts" hidden>

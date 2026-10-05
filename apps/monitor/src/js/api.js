@@ -117,10 +117,9 @@ export const api = {
   // { data: { days, count, maxDays, maxCount, customDays, customCount } }.
   setRetention: (body) => send('PATCH', '/users/me/retention', body),
 
-  // Plan + balance + custom domains + remote-control surfaces.
+  // Plan + balance + custom domains.
   plan: () => getJson('/account/logs/plan'),
   domains: () => getJson('/account/logs/data/domains'),
-  remote: (range, appGuid) => getJson(`/account/logs/remote${qs({ range, app_guid: appGuid })}`),
 
   // Alerts CRUD
   alerts: () => getJson('/account/alerts'),

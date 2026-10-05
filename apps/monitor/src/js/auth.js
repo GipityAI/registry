@@ -83,14 +83,33 @@ export function signIn() {
   });
 }
 
-/** Probe whether this viewer can use Monitor (signed in, owns it, granted Account). */
+/**
+ * End this browser's Gipity session (the same call gipity.ai uses). The
+ * X-Gipity-Logout header is the platform's CSRF guard for the cookie logout.
+ */
+export async function signOut() {
+  const res = await fetch(`${API_BASE}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'X-Gipity-Logout': '1' },
+  });
+  if (!res.ok) throw new Error(`Sign-out failed (${res.status})`);
+}
+
+/**
+ * Whether this viewer can use Monitor (signed in and granted the Account
+ * scope). Asks the auth status endpoint, which answers 200 either way, so a
+ * signed-out visit doesn't log a failed request as an app error.
+ */
 export async function isSignedIn() {
   try {
-    const res = await fetch(`${API_BASE}/account/logs/stats?range=1h`, {
+    const res = await fetch(`${API_BASE}/api/${encodeURIComponent(APP_GUID)}/auth/status?permissions=${PERMISSIONS}`, {
       credentials: 'include',
       headers: { 'X-App-Token': await appToken() },
     });
-    return res.status === 200;
+    if (!res.ok) return false;
+    const s = await res.json();
+    return s.authenticated === true && s.consented === true;
   } catch {
     return false;
   }
