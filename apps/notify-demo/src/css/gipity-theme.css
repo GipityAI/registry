@@ -14,12 +14,13 @@
   color-scheme: dark;
   accent-color: var(--primary); /* native checkboxes, radios, range, progress */
 
-  /* Gipity brand palette — ONE knob: every orange below derives from --primary. */
+  /* Gipity brand palette — ONE knob: every amber below derives from --primary. */
   --primary: #fea60b;
   --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
   /* Label color on --primary surfaces (buttons). Dark, NOT --text-bright: white
-     on the orange is ~1.9:1 (fails WCAG AA); dark holds 4.5:1+ on all three theme
-     accents. If you rebrand --primary to a DARK accent, set this light too. */
+     on the amber is ~2:1 (fails WCAG AA); dark is 8.9:1 here and 5.4:1 on the
+     blue theme. The light theme's deep amber flips it to white. If you rebrand
+     --primary to a DARK accent, set this light too. */
   --button-text: #1a1a1a;
 
   /* Surface colors (custom components + Water's panels/inputs/code) */
@@ -36,7 +37,7 @@
   --links: var(--primary);              /* links */
   --focus: color-mix(in srgb, var(--primary) 60%, transparent); /* focus ring */
   --border: #333333;
-  --button-base: var(--primary);        /* buttons → orange */
+  --button-base: var(--primary);        /* buttons → amber */
   --button-hover: var(--primary-hover);
   --form-text: #e6e6f0;
   --form-placeholder: #6f6f78;
@@ -76,21 +77,23 @@
    shared, so it lives only in :root. */
 :root[data-theme="light"] {
   color-scheme: light;
-  accent-color: #e85d1a;
-  --primary: #e85d1a;
-  --primary-hover: #cf4f12;
+  /* Light sibling of the brand amber: bright amber is ~1.9:1 as text on a
+     near-white page, so links/code fail. This deep amber is 5.0:1 as text on
+     --background-body and 5.3:1 under the white --button-text. The focus ring,
+     selection and accent-color re-derive from it via :root's color-mix(). */
+  --primary: #9e5c00;
+  --primary-hover: color-mix(in srgb, var(--primary) 85%, black);
+  --button-text: #ffffff;
   --surface: #ffffff;
   --surface-alt: #f1efea;
   --text-muted: #6b6660;
   --background-body: #faf9f7;
   --text-main: #1c1a17;
   --text-bright: #14110e;
-  --focus: rgba(232, 93, 26, 0.5);
   --border: #e4e0d8;
   --form-text: #1c1a17;
   --form-placeholder: #9a948c;
-  --selection: rgba(232, 93, 26, 0.22);
-  --code: #b23c0a;
+  --code: color-mix(in srgb, var(--primary) 80%, black);
   --scrollbar-thumb: #cfc9be;
   --scrollbar-thumb-hover: #b8b1a4;
 }
@@ -125,7 +128,7 @@
 
 /* Brand the two native elements Water's vars + accent-color don't reach. */
 mark {
-  background-color: color-mix(in srgb, var(--primary) 55%, white); /* pale Gipity orange highlighter */
+  background-color: color-mix(in srgb, var(--primary) 55%, white); /* pale Gipity amber highlighter */
   color: #1a1a1a; /* dark text for contrast on the highlight */
 }
 meter::-webkit-meter-bar {
@@ -173,13 +176,13 @@ button, input[type="submit"], input[type="button"], input[type="reset"] {
   padding-left: 18px;
   padding-right: 18px;
   /* Water's dark build puts near-white text on the button, which is ~1.9:1
-     against the orange --button-base — an out-of-the-box WCAG AA failure on
+     against the amber --button-base — an out-of-the-box WCAG AA failure on
      every template. Pair the accent with the dark label color instead. */
   color: var(--button-text);
 }
 /* Water's dark build HARDCODES button:hover to near-black (#040a0f) instead of
-   honoring its own --button-hover variable, so the orange rebrand above vanishes on
-   hover (buttons flip orange -> black). Re-assert the brand hover so it applies. */
+   honoring its own --button-hover variable, so the amber rebrand above vanishes on
+   hover (buttons flip amber -> black). Re-assert the brand hover so it applies. */
 button:hover,
 input[type="submit"]:hover,
 input[type="button"]:hover,
@@ -193,7 +196,7 @@ code, kbd {
   border-radius: 5px;
 }
 /* Pill-shaped gauges. Styling a progress pseudo-element opts out of
-   accent-color, so the orange fill must be re-asserted here. */
+   accent-color, so the amber fill must be re-asserted here. */
 progress, meter {
   border-radius: 999px;
 }
@@ -214,7 +217,7 @@ meter::-webkit-meter-bar, meter::-webkit-meter-optimum-value {
 /* Range sliders. Water's dark.css paints the track with --background (#202020)
    and the thumb with --border (#333) — both near-black on the #0d0d0d page, so
    the control reads as invisible and (being explicitly styled) never picks up the
-   orange accent-color either. Re-assert a visible track + a Gipity-orange thumb,
+   amber accent-color either. Re-assert a visible track + a Gipity-amber thumb,
    same reason progress/meter above must re-declare their fill. */
 input[type="range"]::-webkit-slider-runnable-track {
   height: 6px;
@@ -259,4 +262,15 @@ input[type="range"]:focus::-moz-range-thumb {
 }
 h1, h2 {
   letter-spacing: -0.02em; /* subtle modern tightening on large headings */
+}
+/* Wrap short text evenly: headings, figure/table captions and the opening
+   lede of a section balance their lines (no long line + one stub word). Body
+   copy only avoids a lone last word - balancing long paragraphs reads oddly.
+   Opt a short blurb or card title in with class="balance". */
+h1, h2, h3, h4, h5, h6, caption, figcaption, legend, summary,
+:is(h1, h2, header) + p, .balance {
+  text-wrap: balance;
+}
+p, li, dd, blockquote {
+  text-wrap: pretty;
 }

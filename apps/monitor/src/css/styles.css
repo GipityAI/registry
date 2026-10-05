@@ -53,7 +53,9 @@
   --user-bg: #e9e6df;
   --text: #1c1a17; --text-muted: #6b6660; --text-faint: #9a948c; --text-on-primary: #ffffff;
   --border: #e4e0d8; --border-strong: #cfc9be;
-  --primary: #e85d1a; --primary-rgb: 232, 93, 26; --primary-hover: #cf4f12;
+  /* Light sibling of the brand amber: bright amber fails text contrast on a
+     near-white bg, so light uses a deep amber (5.0:1 as text, 5.3:1 under white). */
+  --primary: #9e5c00; --primary-rgb: 158, 92, 0; --primary-hover: #864e00;
   --error: #dc2626; --error-rgb: 220, 38, 38;
   --warning: #d97706; --warning-rgb: 217, 119, 6;
   --success: #16a34a; --success-rgb: 22, 163, 74;
@@ -97,6 +99,10 @@ body {
   font-size: var(--text-base); line-height: 1.5;
 }
 h1, h2, h3, h4, p { margin: 0 0 0.6rem; }
+/* Headings and short ledes balance-wrap (even lines, no stub last word);
+   longer copy only avoids orphans. */
+h1, h2, h3, h4, .gate-lede, .tab-lede, .tab-desc, .retention-lede { text-wrap: balance; }
+p { text-wrap: pretty; }
 h2 { font-size: var(--text-lg); }
 code, pre, kbd { font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 0.9em; }
 code { background: var(--surface-2); padding: 0.05rem 0.3rem; border-radius: var(--radius-xs); }
@@ -399,11 +405,10 @@ tr.skeleton-row td { border-bottom: none; padding: 0.5rem; }
 .digest-form select, .digest-form input { padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; font-size: var(--text-sm); min-width: 180px; }
 
 /* Version-retention editor (Data › Files) - mirrors the digest form, but the
-   number inputs are narrow and the explanatory ledes balance-wrap. */
+   number inputs are narrow. */
 .retention-form { display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap; }
 .retention-form label { display: flex; flex-direction: column; font-size: var(--text-xs); color: var(--text-muted); }
 .retention-form input { width: 96px; padding: 0.4rem 0.6rem; background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 4px; font-size: var(--text-sm); }
-.retention-lede { text-wrap: balance; }
 #retention-status.error { color: var(--error); }
 
 /* Alert form dialog */
@@ -647,7 +652,7 @@ tr.row-link, .attn-row.row-link { cursor: pointer; }
 /* ── Detail dialog (run steps, job logs, test results, file viewer) ── */
 .detail-dialog { max-width: 880px; max-height: 85vh; overflow: auto; }
 .detail-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: 0.75rem; }
-.detail-head h3 { margin: 0; text-wrap: balance; }
+.detail-head h3 { margin: 0; }
 .detail-pre { background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 0.6rem 0.8rem; font-size: var(--text-xs); white-space: pre-wrap; word-break: break-word; max-height: 360px; overflow: auto; margin: 0.3rem 0 0.8rem; }
 .detail-error { color: var(--error); }
 .detail-meta { display: flex; flex-wrap: wrap; gap: 0.4rem 1.2rem; font-size: var(--text-sm); color: var(--text-muted); margin-bottom: 0.8rem; }

@@ -23,7 +23,7 @@ version: 1
 # keep the Gipity default. See the deploy skill ("auth_branding").
 # auth_branding:
 #   app_name: My API
-#   primary_color: "#f26522"   # quote it - a bare # is a YAML comment
+#   primary_color: "#4c8dff"   # quote it - a bare # is a YAML comment
 #   tagline: Sign in to continue
 
 deploy:
