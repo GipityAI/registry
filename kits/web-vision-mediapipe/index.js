@@ -40,11 +40,15 @@
  * the app working, not a bug. Give the browser a camera to hand it a frame you
  * chose, and read back what the model made of it:
  *
- *   gipity page eval <url> --camera rock.png --wait-for '[data-vision="ready"]' \
- *     "window.__vision.gesture()"                      // -> 'Closed_Fist'
- *   gipity page screenshot <url> --camera rock.png     // see the round play out
+ *   gipity page eval <url> --camera palm.png --wait-for '[data-vision="ready"]' \
+ *     "window.__vision.gesture()"                      // -> 'Open_Palm' once held 500ms
+ *   gipity page screenshot <url> --camera palm.png     // see the round play out
  *
- * No frame to hand it? `gipity generate image "a closed fist, palm to camera"`.
+ * The picture must look like what a webcam sees: a person, upper body in frame,
+ * one hand raised beside the shoulder. A close-up of a hand filling the frame
+ * reads as NO hand (`vision.latest().gestures.length === 0`). `gipity generate
+ * image` works for open palm / peace sign / thumbs up framed that way; use a
+ * real photo for a fist. See the README ("Verifying it headlessly").
  * To check a model against a picture with no camera at all (and no app wiring
  * in the way), `vision.detectFrom(url)` runs the same model on a still image.
  *
@@ -100,7 +104,7 @@ setVisionState('loading');
  *                                       until the hand changes. See lib/gestures.js.
  * @param {Object} [config.gestureHold]  `{ holdMs = 500, minScore = 0.5, hand = 0 }`
  *                                       tuning for onGesture and gesture().
- * @returns {Promise<{switchTask:Function, flipCamera:Function, setCamera:Function, hasMultipleCameras:Function, currentTask:Function, gesture:Function, resetGesture:Function, currentFacingMode:Function, currentMirror:Function, stop:Function, video, canvas}>}
+ * @returns {Promise<{switchTask:Function, flipCamera:Function, setCamera:Function, hasMultipleCameras:Function, currentTask:Function, gesture:Function, latest:Function, resetGesture:Function, currentFacingMode:Function, currentMirror:Function, stop:Function, video, canvas}>}
  */
 export async function mountVision(config) {
   const {
@@ -148,7 +152,7 @@ export async function mountVision(config) {
     throw err;
   }
 
-  let firstFrame = true;
+  let latest = null;   // the newest live frame's raw result
   const gate = createGestureGate(gestureHold);
   const loop = createLoop({
     video,
@@ -163,8 +167,9 @@ export async function mountVision(config) {
         const thrown = gate.read(result);
         if (thrown) onGesture?.(thrown);
       }
-      if (firstFrame) {
-        firstFrame = false;
+      const first = !latest;
+      latest = result;
+      if (first) {
         setVisionState('ready');
         onReady?.();
       }
@@ -226,6 +231,14 @@ export async function mountVision(config) {
      * two rounds running would score the second round off a stale event.
      */
     gesture: () => gate.stable(),
+    /**
+     * The newest live frame's raw MediaPipe result, or null before the first
+     * frame. `gesture()` alone can't tell "no hand in view" from "a hand, not
+     * held long enough yet / no known pose": this can.
+     *
+     *   vision.latest().gestures.length   // hands in view right now (gesture task)
+     */
+    latest: () => latest,
     /** Drop any in-progress gesture hold (e.g. when a new round starts). */
     resetGesture: () => gate.reset(),
     /**
@@ -257,7 +270,7 @@ export async function mountVision(config) {
   };
 
   // The handle a headless check reaches for: `gipity page eval <url> --camera
-  // rock.png "window.__vision.gesture()"` verifies the deployed app without a
+  // palm.png "window.__vision.gesture()"` verifies the deployed app without a
   // webcam, a click, or any app-specific test hook.
   if (typeof window !== 'undefined') window.__vision = vision;
   return vision;

@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // <html data-vision="ready"> and window.__vision - so a headless browser,
   // handed a frame to look at, verifies the deployed app end to end:
   //
-  //   gipity page eval <url> --camera rock.png --wait-for '[data-vision="ready"]' \
+  //   gipity page eval <url> --camera palm.png --wait-for '[data-vision="ready"]' \
   //     "window.__vision.gesture()"
   start();
 });

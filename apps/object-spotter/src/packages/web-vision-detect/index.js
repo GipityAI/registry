@@ -24,7 +24,24 @@
  *   await vision.switchModel('s');       // trade frame rate for accuracy
  *   await vision.flipCamera();           // user <-> environment
  *   const r = await vision.detect(img);  // one-off: detect on an <img>/canvas
+ *   vision.counts();                     // { person: 3, bus: 1 } in the newest frame
  *   vision.stop();
+ *
+ * The model starts downloading alongside the camera permission prompt - so
+ * mount it on page load, not behind a click. Live state is published on <html>
+ * as data-vision="loading|ready|error|stopped" (and window.__visionReady), and
+ * the mounted instance on window.__vision.
+ *
+ * VERIFYING A DEPLOYED DETECTION APP (headless, no webcam in the room): a plain
+ * page load has NO camera, so the app lands on data-vision="error" - that is
+ * the app working, not a bug. Give the browser a camera that plays a photo you
+ * chose, and read back what the model counted in it, in one command:
+ *
+ *   gipity page eval <url> --camera street.jpg --wait-for '[data-vision="ready"]' \
+ *     --wait-timeout 25000 "window.__vision.counts()"    // -> { person: 3, bus: 1 }
+ *
+ * Use a real photograph of COCO-class objects. An empty {} means the model saw
+ * nothing in that picture - try another photo, not a longer wait.
  *
  * Low-level - compose the pieces yourself: createDetector + startCamera +
  * createLoop + drawDetections. See examples/ for worked files.
@@ -39,6 +56,23 @@ import { createDetector } from './lib/detector.js';
 import { startCamera, canSwitchFacing } from './lib/camera.js';
 import { createLoop } from './lib/loop.js';
 import { fitCanvas, clearCanvas, drawDetections } from './lib/draw.js';
+import { countLabels } from './lib/labels.js';
+
+/**
+ * Publish the vision lifecycle where anything can see it: a `data-vision`
+ * attribute on <html> ('loading' | 'ready' | 'error' | 'stopped'), mirrored
+ * onto `window.__visionReady`. 'ready' means the first inference frame has
+ * been drawn - the app is genuinely live, not just mounted - so it is what a
+ * headless check waits on. It only reaches 'ready' when the browser has a
+ * camera: pass `--camera <image>` to any `gipity page` command, or the app
+ * will correctly report 'error' instead.
+ */
+function setVisionState(state) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.dataset.vision = state;
+  window.__visionReady = state === 'ready';
+}
+setVisionState('loading');
 
 /**
  * Wire a camera, an inference loop, and a canvas overlay in one call.
@@ -59,7 +93,9 @@ import { fitCanvas, clearCanvas, drawDetections } from './lib/draw.js';
  * @param {Function} [config.onFps]      `(fps) => void` per completed inference.
  * @param {Function} [config.onResult]   `(result) => void` per frame, after drawing.
  *                                       result = { detections, inferMs, backend }.
- * @returns {Promise<{switchModel:Function, detect:Function, pause:Function,
+ * @param {Function} [config.onReady]    `() => void` once, after the first frame is drawn.
+ * @returns {Promise<{switchModel:Function, detect:Function, latest:Function,
+ *   counts:Function, pause:Function,
  *   resume:Function, setScoreThreshold:Function,
  *   setCamera:Function, flipCamera:Function, hasMultipleCameras:Function,
  *   currentModel:Function, currentBackend:Function, currentFacingMode:Function,
@@ -79,6 +115,7 @@ export async function mountDetect(config) {
     showScore = true,
     onFps,
     onResult,
+    onReady,
   } = config;
   if (!video || !canvas) throw new Error('mountDetect needs both { video, canvas } elements.');
 
@@ -89,11 +126,30 @@ export async function mountDetect(config) {
   let camOpts = { facingMode: 'environment', ...cameraOptions };
   const ctx = canvas.getContext('2d');
   let mirrored = mirror ?? (camOpts.facingMode === 'user');
-  let cam = await startCamera(video, camOpts);
+
+  // Model download and camera permission run side by side: the multi-MB fetch
+  // finishes while the user is still looking at the permission prompt.
+  const detectorPromise = createDetector({ ...detectorOptions, model });
+  let cam;
+  try {
+    cam = await startCamera(video, camOpts);
+  } catch (err) {
+    detectorPromise.then((d) => d.close(), () => {}); // no camera: don't leak the model
+    setVisionState('error');
+    throw err;
+  }
 
   // `detector` is swappable; the loop reads it through a stable closure.
-  let detector = await createDetector({ ...detectorOptions, model });
+  let detector;
+  try {
+    detector = await detectorPromise;
+  } catch (err) {
+    cam.stop();
+    setVisionState('error');
+    throw err;
+  }
 
+  let latest = null;   // the newest live frame's result
   const loop = createLoop({
     video,
     detect: (v) => detector.detect(v),
@@ -103,11 +159,17 @@ export async function mountDetect(config) {
       drawDetections(ctx, result, { mirror: mirrored, showScore });
       onFps?.(fps);
       onResult?.(result);
+      const first = !latest;
+      latest = result;
+      if (first) {
+        setVisionState('ready');
+        onReady?.();
+      }
     },
   });
   loop.start();
 
-  return {
+  const vision = {
     /** Swap the model. Closes the old one to free GPU/WASM memory. */
     async switchModel(nextModel, nextOptions = {}) {
       loop.stop();
@@ -119,6 +181,12 @@ export async function mountDetect(config) {
     },
     /** One-off detection on any drawable source (<img>, canvas, video). */
     detect: (source) => detector.detect(source),
+    /** The newest live frame's result ({ detections, inferMs, backend }), or
+     *  null before the first frame. */
+    latest: () => latest,
+    /** What the newest live frame holds, per label: { person: 3, bus: 1 }.
+     *  {} when nothing is in view (or before the first frame). */
+    counts: () => countLabels(latest?.detections ?? []),
     /** Pause the live loop (camera + model stay warm) - e.g. while showing
      *  a still-photo result. Resume with resume(). */
     pause() { loop.stop(); },
@@ -166,10 +234,17 @@ export async function mountDetect(config) {
       detector.close();
       cam.stop();
       clearCanvas(ctx);
+      setVisionState('stopped');
     },
     video,
     canvas,
   };
+
+  // The handle a headless check reaches for: `gipity page eval <url> --camera
+  // street.jpg "window.__vision.counts()"` verifies the deployed app without a
+  // webcam, a click, or any app-specific test hook.
+  if (typeof window !== 'undefined') window.__vision = vision;
+  return vision;
 }
 
 // Low-level building blocks.
@@ -179,7 +254,7 @@ export { createLoop, createFps } from './lib/loop.js';
 export { fitCanvas, clearCanvas, drawDetections } from './lib/draw.js';
 export { FORMATS, makeGrids, decodeYolox, decodeYolo, letterboxParams, mapToSource } from './lib/decode.js';
 export { nms } from './lib/nms.js';
-export { COCO_LABELS } from './lib/labels.js';
+export { COCO_LABELS, countLabels } from './lib/labels.js';
 export { PRESETS, PRESET_NAMES, resolveModel, ORT_VERSION, ORT_WASM_BASE } from './lib/models.js';
 
 export default mountDetect;

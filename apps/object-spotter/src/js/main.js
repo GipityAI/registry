@@ -1,7 +1,7 @@
 // App entry point.
 //
 // Wires the web-vision-detect kit to a fullscreen camera view: the kit runs
-// the inference loop and draws the boxes; this file owns the UI - the start
+// the inference loop and draws the boxes; this file owns the UI - the retry
 // gate, the FPS readout, live per-class counts, the model switcher, the
 // camera-flip button, and a still-photo mode (pick an image, see it boxed
 // and counted, jump back to live).
@@ -10,7 +10,7 @@
 // import map in index.html. To extend this app, read its README there.
 
 import { config } from './config.js';
-import { mountDetect, drawDetections } from '@gipity/web-vision-detect';
+import { mountDetect, drawDetections, countLabels } from '@gipity/web-vision-detect';
 
 const stage = document.getElementById('stage');
 const cam = document.getElementById('cam');
@@ -25,6 +25,7 @@ const backBtn = document.getElementById('back-live');
 const flipBtn = document.getElementById('flip-camera');
 const startGate = document.getElementById('start');
 const startBtn = document.getElementById('start-btn');
+const startHint = document.getElementById('start-hint');
 const errorGate = document.getElementById('error');
 const errorMsg = document.getElementById('error-msg');
 
@@ -38,9 +39,7 @@ let lastFps = '';
 
 /** "2 × person, 1 × cup" - aggregate one frame's detections per label. */
 function renderCounts(detections) {
-  const counts = {};
-  for (const det of detections) counts[det.label] = (counts[det.label] || 0) + 1;
-  const text = Object.entries(counts)
+  const text = Object.entries(countLabels(detections))
     .sort((a, b) => b[1] - a[1])
     .map(([label, n]) => `${n} × ${label}`)
     .join('   ') || 'nothing spotted';
@@ -151,7 +150,14 @@ function backToLive() {
   vision?.resume();
 }
 
-/** Start the camera and the vision loop. Triggered by the user gesture. */
+// A camera the browser has no camera for at all - no retry will help.
+const FATAL = ['NotFoundError', 'OverconstrainedError', 'TypeError'];
+
+/**
+ * Start the camera and the vision loop. Runs automatically on load; the start
+ * gate is the retry path for a browser that refused (permission not granted
+ * yet, or a tap required before getUserMedia).
+ */
 async function start() {
   startBtn.disabled = true;
   startBtn.textContent = 'Starting...';
@@ -177,9 +183,16 @@ async function start() {
     if (await vision.hasMultipleCameras()) flipBtn.hidden = false;
   } catch (err) {
     console.error('camera start failed:', err);
-    errorMsg.textContent = err?.message || String(err);
-    startGate.hidden = true;
-    errorGate.hidden = false;
+    if (FATAL.includes(err?.name)) {
+      errorMsg.textContent = err?.message || String(err);
+      startGate.hidden = true;
+      errorGate.hidden = false;
+      return;
+    }
+    startGate.hidden = false;
+    startBtn.disabled = false;
+    startBtn.textContent = 'Enable camera';
+    startHint.textContent = err?.message || String(err);
   }
 }
 
@@ -192,4 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
   pickBtn.addEventListener('click', () => photoInput.click());
   photoInput.addEventListener('change', () => detectPhoto(photoInput.files?.[0]));
   backBtn.addEventListener('click', backToLive);
+  // Auto-start: a camera app has exactly one job, so don't make the user (or a
+  // headless check) click for it. Browsers that want a tap first simply reject,
+  // and the gate above stays up as the retry. Once running, the kit sets
+  // <html data-vision="ready"> and window.__vision - so a headless browser,
+  // handed a real photo as its camera, verifies the deployed app end to end:
+  //
+  //   gipity page eval <url> --camera street.jpg --wait-for '[data-vision="ready"]' \
+  //     --wait-timeout 25000 "window.__vision.counts()"   // -> { person: 3, bus: 1 }
+  start();
 });

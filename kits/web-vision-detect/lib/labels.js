@@ -18,3 +18,14 @@ export const COCO_LABELS = [
   'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear',
   'hair drier', 'toothbrush',
 ];
+
+/**
+ * Per-label tally of one frame's detections: { person: 3, bus: 1 }.
+ * @param {Array<{label:string}>} detections
+ * @returns {Object<string, number>}
+ */
+export function countLabels(detections) {
+  const counts = {};
+  for (const det of detections) counts[det.label] = (counts[det.label] || 0) + 1;
+  return counts;
+}

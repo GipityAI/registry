@@ -71,7 +71,7 @@ Gesture is the kit's strongest task. Detection uses EfficientDet-Lite — fast, 
 
 ## API
 
-**`mountVision({ video, canvas, kind?, taskOptions?, camera?, onFps?, onResult?, onReady?, onGesture?, gestureHold? })`** → `{ switchTask, currentTask, gesture, resetGesture, flipCamera, stop, video, canvas }`
+**`mountVision({ video, canvas, kind?, taskOptions?, camera?, onFps?, onResult?, onReady?, onGesture?, gestureHold? })`** → `{ switchTask, currentTask, gesture, latest, resetGesture, flipCamera, stop, video, canvas }`
 
 The high-level path. `camera` is `{ facingMode, width, height }`; `taskOptions` is forwarded to `createTask`.
 
@@ -79,15 +79,26 @@ The high-level path. `camera` is `{ facingMode, width, height }`; `taskOptions` 
 
 ## Verifying it headlessly
 
-A headless browser has no webcam, so a plain page load lands the app on `data-vision="error"` — that is the app behaving, not a bug. Hand the browser a frame instead, and read back what the model made of it:
+A headless browser has no webcam, so a plain page load lands the app on `data-vision="error"`: that is the app behaving, not a bug. Hand the browser a picture as its camera, and read back what the model made of it:
 
 ```
-gipity page eval <url> --camera rock.png --wait-for '[data-vision="ready"]' \
-  "window.__vision.gesture()"                    # -> 'Closed_Fist'
-gipity page screenshot <url> --camera rock.png   # see the app react to that frame
+gipity page eval <url> --camera palm.png --wait-for '[data-vision="ready"]' --wait-timeout 25000 \
+  "(async()=>{ const v = window.__vision; const end = Date.now() + 3000; while (!v.gesture() && Date.now() < end) await new Promise(r => setTimeout(r, 100)); return { held: v.gesture(), hands: v.latest().gestures.length }; })()"
+                                                 # -> {"held":"Open_Palm","hands":1}
+gipity page screenshot <url> --camera palm.png   # see the app react to that frame
 ```
 
-`--camera <path>` plays a local image (or video) as the browser's webcam. No frame to hand it? `gipity generate image "a closed fist, palm to camera, plain background"`. `--fake-media` alone gives a camera but only a test pattern — enough to prove the app starts, never enough to prove it *sees*.
+`gesture()` needs the pose held for 500ms, so it is still `null` on the first frame; the loop polls for it. `latest()` is the newest frame's raw result, which separates the two kinds of `null`: `hands: 0` means the model found no hand in the picture (the picture is at fault, not the app or the wait); `hands: 1` with `held: null` means a hand but no pose it knows.
+
+`--camera <path>` plays a local image (or video) as the browser's webcam. `--fake-media` alone gives a camera but only a test pattern: enough to prove the app starts, never enough to prove it *sees*.
+
+**The picture has to look like what a webcam sees.** The hand model looks for a hand on a person at webcam distance. A studio close-up of a hand filling the frame on a plain background reads as zero hands, silently, whether it is a real photo or a generated one. Use a person with their upper body in frame and one hand raised beside the shoulder, palm toward the camera. `gipity generate image` makes usable fixtures when asked for exactly that:
+
+```
+gipity generate image "candid smartphone photo of a person standing in a living room raising one open hand next to their shoulder, palm facing the camera, five fingers spread, upper body visible, natural daylight, realistic" -o tmp/palm.png
+```
+
+"making a peace sign, palm facing the camera" reads `Victory` and "giving a thumbs up" reads `Thumb_Up` the same way. `Closed_Fist` is the exception: generated fists usually come back as a hand with no gesture, so use a real photo for a fist.
 
 To check a model against a picture with no camera and no app in the way, `vision.detectFrom(source)` (or the standalone `detectImage(kind, source)`) runs the same model on a still image — a URL, an app path, or an `<img>`/`<canvas>` — and returns the same result shape:
 

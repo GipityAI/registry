@@ -34,6 +34,7 @@ const vision = await mountDetect({
 
 await vision.switchModel('s');     // trade frame rate for accuracy
 const r = await vision.detect(img); // one-off detection on an <img>/canvas
+vision.counts();                    // { person: 3, bus: 1 } in the newest live frame
 vision.stop();                      // release camera + free model memory
 ```
 
@@ -71,9 +72,22 @@ model: {
 
 ## API
 
-**`mountDetect({ video, canvas, model?, backend?, scoreThreshold?, iouThreshold?, maxDetections?, camera?, mirror?, showScore?, onFps?, onResult? })`** → `{ switchModel, detect, pause, resume, setScoreThreshold, setCamera, flipCamera, hasMultipleCameras, currentModel, currentBackend, currentFacingMode, currentMirror, stop, video, canvas }`
+**`mountDetect({ video, canvas, model?, backend?, scoreThreshold?, iouThreshold?, maxDetections?, camera?, mirror?, showScore?, onFps?, onResult?, onReady? })`** → `{ switchModel, detect, latest, counts, pause, resume, setScoreThreshold, setCamera, flipCamera, hasMultipleCameras, currentModel, currentBackend, currentFacingMode, currentMirror, stop, video, canvas }`
 
 The high-level path. `camera` is `{ facingMode, width, height }` — default facing is `'environment'` (rear), the natural choice for pointing at objects. `backend` is `'auto'` (WebGPU with WASM fallback), `'webgpu'`, or `'wasm'`.
+
+**Startup and readiness.** `mountDetect` downloads the model *while* the camera permission prompt is up, so call it on page load rather than behind a click (keep an "Enable camera" button as the retry for a browser that wants a tap first). It publishes its state on `<html>` as `data-vision="loading|ready|error|stopped"` (mirrored on `window.__visionReady`), and the mounted instance on `window.__vision`. `ready` means the first inference frame has been drawn. `latest()` is the newest live frame's result and `counts()` its per-label tally.
+
+## Verifying it headlessly
+
+A headless browser has no webcam, so a plain page load lands the app on `data-vision="error"`: that is the app behaving, not a bug. Hand the browser a photo as its camera and read back what the model counted in it, in one command:
+
+```
+gipity page eval <url> --camera street.png --wait-for '[data-vision="ready"]' \
+  --wait-timeout 25000 "window.__vision.counts()"    # -> {"person":4,"dog":1,"bus":1}
+```
+
+`--camera <path>` plays a local image as the browser's webcam. No photo on hand? `gipity generate image "candid street photo of three people waiting next to a city bus, daylight, realistic" -o tmp/street.png` - an ordinary scene with COCO-class objects reads fine. An empty `{}` means the model saw nothing in that picture: swap the picture, don't wait longer.
 
 **Low-level building blocks** — compose your own loop:
 
