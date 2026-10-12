@@ -32,7 +32,7 @@ Respond with ONLY valid JSON (no markdown):
 
     const result = await llm({
         messages: [{ role: 'user', content: prompt }],
-        model: 'claude-haiku-4-5',
+        model: 'small',
         max_tokens: 200,
     });
 

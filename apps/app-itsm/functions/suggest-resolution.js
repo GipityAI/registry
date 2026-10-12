@@ -82,7 +82,7 @@ Keep the response concise and practical (under 200 words).`;
 
     const result = await llm({
         messages: [{ role: 'user', content: prompt }],
-        model: 'claude-haiku-4-5',
+        model: 'small',
         max_tokens: 512,
     });
 

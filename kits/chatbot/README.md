@@ -104,7 +104,7 @@ export default {
   model: {
     route: 'default',                       // 'default' = the project's default model.
                                             // Or a tier alias (small | fast | medium | large | thinking)
-                                            // or a concrete model id (e.g. 'claude-sonnet-5').
+                                            // or a concrete model id (e.g. 'claude-sonnet-5-5').
     temperature: 0.7,
     maxTokens: 1024,
   },

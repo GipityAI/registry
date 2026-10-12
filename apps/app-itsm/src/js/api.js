@@ -135,7 +135,7 @@ export async function callLLM(prompt, options = {}) {
     method: 'POST',
     body: JSON.stringify({
       prompt,
-      model: options.model || 'claude-haiku-4-5',
+      model: options.model || 'small',
       max_tokens: options.maxTokens || 1024,
     }),
   });
