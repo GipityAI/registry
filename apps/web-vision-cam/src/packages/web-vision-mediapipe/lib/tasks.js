@@ -22,6 +22,11 @@ import {
   PoseLandmarker,
 } from '@mediapipe/tasks-vision';
 import { WASM_BASE, MODELS, TASK_KINDS } from './models.js';
+import { blockMediaPipeTelemetry } from './no-telemetry.js';
+
+// Before any task exists: MediaPipe's npm build reports usage metrics to
+// Google, and this kit keeps everything on the device. See no-telemetry.js.
+blockMediaPipeTelemetry();
 
 // The WASM fileset is shared by every task - resolve it once, and start that
 // download the moment this module is imported (i.e. at page load) rather than

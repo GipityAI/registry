@@ -13,8 +13,8 @@
     "protocolVersion": 1,
     "permissions": {
       "network": [
-        "https://esm.sh/@mediapipe/tasks-vision@0.10.35",
-        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm",
+        "https://esm.sh/@mediapipe/tasks-vision@1.1.0",
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm",
         "https://storage.googleapis.com/mediapipe-models"
       ],
       "camera": true
@@ -24,7 +24,7 @@
       "importMap": {
         "@gipity/web-vision-mediapipe": "./packages/web-vision-mediapipe/index.js",
         "@gipity/web-vision-mediapipe/": "./packages/web-vision-mediapipe/",
-        "@mediapipe/tasks-vision": "https://esm.sh/@mediapipe/tasks-vision@0.10.35"
+        "@mediapipe/tasks-vision": "https://esm.sh/@mediapipe/tasks-vision@1.1.0"
       }
     }
   }

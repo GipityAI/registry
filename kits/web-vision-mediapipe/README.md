@@ -2,7 +2,7 @@
 
 A **browser vision kit** for Gipity apps. Wraps Google [MediaPipe Tasks](https://ai.google.dev/edge/mediapipe) — gesture recognition, body pose, object detection — behind one camera + render-loop API.
 
-Runs **fully client-side**: no server, no upload, the camera stream never leaves the device. Inference is WASM + WebGL-accelerated.
+Runs **fully client-side**: no server, no upload, the camera stream never leaves the device. Inference is WASM + WebGL-accelerated. MediaPipe's npm build also reports usage metrics to Google; the kit answers those requests locally so they never leave the device either (`lib/no-telemetry.js`).
 
 **Web only.** Needs `getUserMedia`, WASM, and a canvas — so HTTPS or `localhost`. For native iOS/Android, a separate kit would wrap the MediaPipe mobile SDKs.
 
@@ -130,4 +130,4 @@ See `examples/` — `gesture.js` (high-level), `detect.js` (low-level loop), `po
 
 ## Versioning
 
-The MediaPipe JS, WASM runtime, and WASM URL must all agree on one version. To upgrade: bump `MEDIAPIPE_VERSION` in `lib/models.js` **and** the two `@mediapipe/tasks-vision@...` URLs in `package.json`.
+The MediaPipe JS, WASM runtime, and WASM URL must all agree on one version. To upgrade: bump `MEDIAPIPE_VERSION` in `lib/models.js` **and** the two `@mediapipe/tasks-vision@...` URLs in `package.json`. After a bump, check the new bundle's metrics endpoint still matches `TELEMETRY_HOST` in `lib/no-telemetry.js` (`grep -o 'https://[a-z.]*googleapis.com/[a-z/0-9]*' vision_bundle.mjs`).

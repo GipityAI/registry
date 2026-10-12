@@ -11,7 +11,7 @@
  * kit - swap any URL for your own hosted model of the same task type.
  */
 
-export const MEDIAPIPE_VERSION = '0.10.35';
+export const MEDIAPIPE_VERSION = '1.1.0';
 
 /** Directory the MediaPipe WASM runtime is loaded from (passed to FilesetResolver). */
 export const WASM_BASE = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${MEDIAPIPE_VERSION}/wasm`;
