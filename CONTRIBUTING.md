@@ -88,7 +88,9 @@ We require tests for every new template or kit. The relevant suites:
 | `platform/server/src/__tests__/add-e2e.test.ts` | Full `gipity add <name>` flow against a live server. Extend with a block for new visible entries. |
 | `platform/server/src/__tests__/kit-install.test.ts` | Unit tests for kit install plumbing. Cover any new install-time logic your kit introduces. |
 
-Run them from `platform/server/`:
+A kit's own pure logic gets Node unit tests in `kits/<name>/tests/*.test.js` and a `"test"` script in its `package.json`. `node scripts/test.mjs` (the registry gate) finds and runs every kit that has one, then the Godot addon's tests; nothing to register.
+
+Run the platform suites from `platform/server/`:
 
 ```bash
 npm run test:fast                               # all unit + integration tests
