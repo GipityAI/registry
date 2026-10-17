@@ -8,7 +8,7 @@ demo you have to clean up - there is only code to add.
 ## Quick Start
 
 ```bash
-gipity deploy dev        # Deploy frontend, create the database, deploy functions
+gipity deploy            # Deploy frontend, create the database, deploy functions
 gipity test              # Run all API tests
 ```
 
@@ -24,7 +24,7 @@ gipity.yaml      Deploy manifest - every phase is already wired
 ```
 
 Every phase is declared and every directory is optional: a phase whose directory
-is empty is simply skipped, so `gipity deploy dev` is green from the first
+is empty is simply skipped, so `gipity deploy` is green from the first
 minute and stays green as you fill them in.
 
 ## Tests
@@ -53,7 +53,7 @@ not import them. Three things to know before writing DB tests:
 4. To run something on a schedule, drop a `workflows/<name>.yaml` with
    `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so
    `gipity deploy` creates it and arms the schedule (see the `workflow` skill).
-5. `gipity deploy dev`, then `gipity test`.
+5. `gipity deploy`, then `gipity test`.
 
 ## Calling the API
 

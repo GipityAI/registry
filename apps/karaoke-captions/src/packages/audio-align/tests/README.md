@@ -14,7 +14,7 @@ In short:
 1. Upload `fixtures/sample.mp3` to any public URL.
 2. `gipity add audio-align` into a fresh project.
 3. Add the wrapper functions from `../examples/audio-align-submit.js` and `../examples/audio-align-status.js` to your project's `functions/`.
-4. `gipity deploy dev`, then `gipity job submit audio-align '{"audio_url": "...", "lyrics": "..."}'`.
+4. `gipity deploy`, then `gipity job submit audio-align '{"audio_url": "...", "lyrics": "..."}'`.
 5. Confirm the resulting JSON has `unaligned_count: 0` and one word entry per input word.
 
 ## Fixtures

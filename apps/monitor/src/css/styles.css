@@ -676,3 +676,7 @@ tr.row-link, .attn-row.row-link { cursor: pointer; }
 .danger-btn:disabled { opacity: 0.6; cursor: default; }
 .url-link { display: block; max-width: 32ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--primary); text-decoration: none; }
 .url-link:hover { text-decoration: underline; }
+
+/* Projects tab: one line per app environment. */
+.env-row { display: flex; gap: var(--sp-2); align-items: baseline; flex-wrap: wrap; }
+.env-row + .env-row { margin-top: var(--sp-2); }

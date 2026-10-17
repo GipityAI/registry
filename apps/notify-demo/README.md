@@ -12,7 +12,7 @@ No database, no keys, no service-worker boilerplate to write.
 ## Build & deploy
 
 ```bash
-gipity deploy dev
+gipity deploy
 ```
 
 Open the dev URL, turn on notifications, and tap **Send me a ping**. Or send from the terminal:

@@ -8,7 +8,7 @@ Hidden from `gipity add --list`; install it by key.
 
 ```bash
 gipity add app-itsm --title "Acme IT"
-gipity deploy dev
+gipity deploy
 ```
 
 `gipity deploy` creates the database, applies `migrations/`, and deploys `functions/` and `workflows/` from `gipity.yaml`.

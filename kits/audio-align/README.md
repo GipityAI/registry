@@ -18,7 +18,7 @@ Cold start ~10s, run ~30-60s for a 3-min song on L4. Demucs + MMS_FA model weigh
 gipity add audio-align
 ```
 
-The installer copies the kit into `src/packages/audio-align/`, wires the import map (`import audioAlign from '@gipity/audio-align'`), and registers the `audio-align` job in your `gipity.yaml`. Next `gipity deploy dev` ships it.
+The installer copies the kit into `src/packages/audio-align/`, wires the import map (`import audioAlign from '@gipity/audio-align'`), and registers the `audio-align` job in your `gipity.yaml`. Next `gipity deploy` ships it.
 
 ## Pattern: wrapper function + browser helper
 
@@ -152,7 +152,7 @@ cd audio-align-smoke
 gipity add audio-align
 # Add the two wrapper functions from src/packages/audio-align/examples/ (audio-align-submit.js + audio-align-status.js)
 # to your project's functions/ directory and declare them in gipity.yaml.
-gipity deploy dev
+gipity deploy
 
 # Submit a real alignment and stream the result
 gipity job submit audio-align "$(cat <<EOF

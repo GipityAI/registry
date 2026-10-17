@@ -110,7 +110,7 @@ async function renderCdnSubtab(api, { projectId } = {}) {
 
   const body = $('table-cdn-projects').querySelector('tbody');
   if (!projects.length) {
-    body.innerHTML = emptyRow(5, 'No apps deployed yet - run <code>gipity deploy dev</code> or <code>gipity deploy prod</code>.');
+    body.innerHTML = emptyRow(5, 'No apps deployed yet - run <code>gipity deploy</code>.');
     return;
   }
   body.innerHTML = projects.map((p) => `

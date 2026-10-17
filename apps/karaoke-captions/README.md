@@ -59,7 +59,7 @@ gipity.yaml                     static + database + functions + jobs phases
 gipity init my-karaoke
 cd my-karaoke
 gipity add karaoke-captions
-gipity deploy dev
+gipity deploy
 ```
 
 First deploy installs the Remotion+Chromium toolchain in the render job's container (~5-10 min, cached after). The audio-align job's GPU image is already baked into the platform fat-image, so alignment starts cold in ~20 s.

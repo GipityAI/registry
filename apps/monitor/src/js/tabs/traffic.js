@@ -44,7 +44,7 @@ export async function renderTrafficTab(api, { range, appGuid, projectId }) {
     { emptyHtml: emptyState(3, {
       icon: '👁',
       message: 'Page views from your deployed apps will appear here - the analytics script ships with every Gipity template.',
-      tryit: 'gipity deploy dev',
+      tryit: 'gipity deploy',
     }) },
   );
 

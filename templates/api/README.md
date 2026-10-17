@@ -7,7 +7,7 @@ build your API by adding to it, never by deleting a demo.
 ## Quick Start
 
 ```bash
-gipity deploy dev        # Deploy functions
+gipity deploy            # Deploy functions
 gipity test              # Run all tests
 ```
 
@@ -30,7 +30,7 @@ rm functions/example.js tests/api/example.test.js
 4. To run something on a schedule, drop a `workflows/<name>.yaml` with
    `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so
    `gipity deploy` creates it and arms the schedule (see the `workflow` skill).
-5. `gipity deploy dev`, then `gipity test`.
+5. `gipity deploy`, then `gipity test`.
 
 ## Calling the API
 

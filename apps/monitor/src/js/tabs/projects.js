@@ -21,6 +21,22 @@ function targetCell(url, state) {
     <div class="phase-pills">${phases}</div>`;
 }
 
+/** The app's environments: one line each with its URL and last deploy. An app
+ *  with none, but with a pre-environments dev deploy, shows that instead. */
+function envsCell(p) {
+  if (p.envs?.length) {
+    return p.envs.map((e) => `
+      <div class="env-row">
+        <span class="pill info">${escapeHtml(e.name)}</span>
+        ${targetCell(e.url, e.deploys)}
+      </div>`).join('');
+  }
+  if (p.deploys.dev) {
+    return `${targetCell(p.urls.dev, p.deploys.dev)}<div class="muted small" title="Deployed before environments existed: it runs on prod's backend. gipity deploy dev gives it its own.">earlier dev build, shares prod's backend</div>`;
+  }
+  return '<span class="muted small">None. <code>gipity deploy dev</code> creates one.</span>';
+}
+
 function lastDeployCell(d) {
   if (!d) return '<span class="muted">-</span>';
   const pill = d.ok ? '<span class="pill ok">ok</span>' : '<span class="pill error">failed</span>';
@@ -32,7 +48,7 @@ function lastDeployCell(d) {
 
 export async function renderProjectsTab(api) {
   const projects = (await api.projects()).data;
-  const deployed = projects.filter((p) => p.deploys.dev || p.deploys.prod).length;
+  const deployed = projects.filter((p) => p.deploys.dev || p.deploys.prod || p.envs?.some((e) => e.deploys)).length;
   const failing = projects.filter((p) => p.last_deploy && !p.last_deploy.ok).length;
   $('projects-count').textContent = fmtExact(projects.length);
   $('projects-deployed').textContent = fmtExact(deployed);
@@ -51,8 +67,8 @@ export async function renderProjectsTab(api) {
         ${p.deploy_state !== 'ready' ? `<span class="pill ${p.deploy_state === 'failed' ? 'error' : 'info'}">${escapeHtml(p.deploy_state)}</span>` : ''}
         ${p.urls.custom.map((u) => `<div><a href="${escapeHtml(u)}" target="_blank" rel="noopener" class="url-link small">${escapeHtml(u.replace(/^https:\/\//, ''))}</a></div>`).join('')}
       </td>
-      <td>${targetCell(p.urls.dev, p.deploys.dev)}</td>
       <td>${targetCell(p.urls.prod, p.deploys.prod)}</td>
+      <td>${envsCell(p)}</td>
       <td>${lastDeployCell(p.last_deploy)}</td>
       <td class="row-actions">
         <button type="button" class="link-btn row-link" data-goto="data/browse" data-set-project="${escapeHtml(p.short_guid)}">Files</button>

@@ -148,7 +148,7 @@ export async function renderOverviewTab(api, { range, appGuid, projectId }) {
   // ── 4. Recent deploys ──────────────────────────────────────────────────
   const dep = $('ov-deploys');
   if (!deploys.data.length) {
-    dep.innerHTML = '<li class="attn-quiet">No deploys in this window - <code>gipity deploy dev</code> to ship one.</li>';
+    dep.innerHTML = '<li class="attn-quiet">No deploys in this window - <code>gipity deploy</code> to ship one.</li>';
   } else {
     dep.innerHTML = deploys.data.map((e) => {
       const url = e.detail && typeof e.detail.url === 'string' ? e.detail.url : null;

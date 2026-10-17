@@ -2,7 +2,7 @@
 
 `node kits/leaderboard/tests/core.test.js` covers the pure rules (including version parsing and the purge's statements). The functions need a real app database, so verify them on a deployed dev app:
 
-1. In an `api` app: copy `functions/` and `migrations/` in (or `gipity add leaderboard` once the kit is in the server catalog), add a board migration with a small `max_ghost_bytes`, and `gipity deploy dev`.
+1. In an `api` app: copy `functions/` and `migrations/` in (or `gipity add leaderboard` once the kit is in the server catalog), add a board migration with a small `max_ghost_bytes`, and `gipity deploy`.
 2. As the owner (`gipity fn call`), check:
    - a valid run is accepted with rank 1; a worse run returns `improved: false` and keeps the personal best; a better run replaces it and deletes the old ghost (`SELECT COUNT(*) FROM lb_ghosts`);
    - each rejection returns its reason: last split != score, below `min_score`, unofficial ruleset, oversized ghost; an unknown board returns `{ error }`;

@@ -8,7 +8,7 @@ A tiny top-down lap racer that uses every part of the Gipity addon: Steam or gue
    ```bash
    gipity init gip-racer && gipity add api && gipity add leaderboard
    gipity project auth app
-   gipity deploy dev
+   gipity deploy
    ```
    `backend/` already holds the game's function (`functions/race-finish.js`), migration (`migrations/001-gip-racer.sql`) and test; `gipity add` leaves them alone. It also holds a copy of the leaderboard kit's functions and migrations so you can read them here; `gipity add leaderboard` writes the current version over them.
 2. Put the project guid (`gipity project info`) in **Project Settings > gipity/app_guid**.

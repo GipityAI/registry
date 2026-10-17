@@ -108,15 +108,15 @@
     <!-- ── Overview tab (default landing) ─────────────────────── -->
     <!-- ── Projects tab (default landing) ─────────────────────── -->
     <section class="tab-panel" data-tab="projects">
-      <div class="tab-desc-wrap"><p class="tab-lede">Every project you own: where it is served and how its last deploys went, phase by phase. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Every project you own: where it is served and how its last deploys went, phase by phase (files, database, functions, jobs, workflows). <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p></div></div>
+      <div class="tab-desc-wrap"><p class="tab-lede">Every project you own: where it is served and how its last deploys went, phase by phase. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Every project you own: where it is served and how its last deploys went, phase by phase (files, database, functions, jobs, workflows). <span class="try-it">Try it: <code>$ gipity deploy</code></span></p></div></div>
       <div class="cards">
         <div class="card" title="Active projects on this account."><span class="card-label">Projects</span><span class="card-value" id="projects-count">-</span></div>
-        <div class="card" title="Projects deployed to dev or prod at least once."><span class="card-label">Deployed</span><span class="card-value" id="projects-deployed">-</span></div>
+        <div class="card" title="Projects deployed to prod or an environment at least once."><span class="card-label">Deployed</span><span class="card-value" id="projects-deployed">-</span></div>
         <div class="card" title="Projects whose most recent deploy failed."><span class="card-label">Last deploy failed</span><span class="card-value" id="projects-failing">-</span></div>
       </div>
       <div class="panel">
         <h3>Projects</h3>
-        <table class="data-table" id="table-projects"><thead><tr><th>Project</th><th>Dev</th><th>Prod</th><th>Last deploy</th><th></th></tr></thead><tbody></tbody></table>
+        <table class="data-table" id="table-projects"><thead><tr><th>Project</th><th>Prod</th><th>Environments</th><th>Last deploy</th><th></th></tr></thead><tbody></tbody></table>
       </div>
     </section>
 
@@ -616,7 +616,7 @@
 
       <!-- Deploys sub-tab -->
       <div class="hosting-panel" data-hosting-panel="deploys">
-        <div class="tab-desc-wrap"><p class="tab-lede small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps - phases that ran, what was emitted. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Every <code>gipity deploy dev</code> / <code>deploy prod</code> for your apps - phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy dev</code></span></p></div></div>
+        <div class="tab-desc-wrap"><p class="tab-lede small">Every <code>gipity deploy</code> for your apps, to prod or an environment - phases that ran, what was emitted. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc small">Every <code>gipity deploy</code> for your apps, to prod or an environment - phases that ran, what was emitted. Source: <code>audit_events</code> filtered by <code>event_type='deploy.*'</code>. <span class="try-it">Try it: <code>$ gipity deploy</code></span></p></div></div>
         <div class="panel chart-panel">
           <h3>Deploys over time</h3>
           <div class="chart-box"><canvas id="chart-hosting-deploys"></canvas></div>
@@ -654,13 +654,13 @@
         <div class="cards">
           <div class="card" title="Total bytes of your deployed app bundles served by Gipity CDN."><span class="card-label">Total size</span><span class="card-value" id="cdn-size">-</span></div>
           <div class="card" title="Total file count served by Gipity CDN across all your deployed apps."><span class="card-label">Objects</span><span class="card-value" id="cdn-objects">-</span></div>
-          <div class="card" title="Distinct projects with at least one active CDN deploy (dev or prod)."><span class="card-label">Deployed projects</span><span class="card-value" id="cdn-projects">-</span></div>
+          <div class="card" title="Distinct projects with at least one active CDN deploy (prod or an environment)."><span class="card-label">Deployed projects</span><span class="card-value" id="cdn-projects">-</span></div>
           <div class="card" title="Credits charged in this window. 1 credit = $0.001."><span class="card-label">Credits used</span><span class="card-value" id="cdn-cost-30d">0 (not metered)</span></div>
         </div>
         <div class="panel">
-          <h3>By project (prod + dev)</h3>
+          <h3>By project (prod + environments)</h3>
           <table class="data-table" id="table-cdn-projects">
-            <thead><tr><th>Project</th><th class="num">Prod size</th><th class="num">Prod objects</th><th class="num">Dev size</th><th class="num">Dev objects</th></tr></thead>
+            <thead><tr><th>Project</th><th class="num">Prod size</th><th class="num">Prod objects</th><th class="num">Environments size</th><th class="num">Environments objects</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>

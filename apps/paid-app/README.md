@@ -9,7 +9,7 @@ Connect your Stripe account so payments land in it:
 ```bash
 gipity payments connect    # Stripe-hosted onboarding (bank + identity; no API keys)
 gipity payments status     # confirm "charges enabled"
-gipity deploy dev
+gipity deploy prod         # payments run in prod only (refused in environments)
 ```
 
 Money goes to **your** Stripe account. Gipity takes a small platform fee (default 1%) on top of Stripe's processing fees. Test with Stripe test mode and card `4242 4242 4242 4242`.

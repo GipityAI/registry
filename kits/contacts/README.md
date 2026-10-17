@@ -9,7 +9,7 @@ them" substrate.
 
 ```
 gipity add contacts        # needs a database template (web-fullstack or api)
-gipity deploy dev
+gipity deploy
 ```
 
 Backend-bearing: installs four functions (`contact-import`, `contact-read`,
