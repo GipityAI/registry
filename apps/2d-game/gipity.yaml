@@ -1,6 +1,6 @@
 version: 1
 
-# Deploy manifest - `gipity deploy dev` runs these phases in order.
+# Deploy manifest - `gipity deploy` runs these phases in order.
 #
 # This is a static Phaser 3 game, so it ships with only the `files` phase.
 # As the game grows, add more phases here - or let `gipity add <kit>` wire

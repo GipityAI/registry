@@ -46,7 +46,7 @@ function buildServiceError(status, errText) {
   let visitorMessage = 'Sorry, I had trouble answering just then. Please try again.';
   if (status === 401 && /LOGIN_REQUIRED/.test(errText)) {
     message = 'chatbot: the LLM service is in `user_pays` mode, so signed-out visitors are told to log in. '
-      + 'A public chatbot must be owner-paid: run `gipity deploy dev` (installing this kit declares '
+      + 'A public chatbot must be owner-paid: run `gipity deploy` (installing this kit declares '
       + '`llm: owner_pays` under the `services` phase in gipity.yaml), or set that phase by hand if it was removed.';
   }
   const err = new Error(message);

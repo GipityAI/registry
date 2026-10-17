@@ -1,6 +1,6 @@
 version: 1
 
-# Deploy manifest - `gipity deploy dev` runs these phases in order.
+# Deploy manifest - `gipity deploy` runs these phases in order.
 #
 # This template is a static frontend app, so it ships with only the `files`
 # phase. As the app grows, add more phases here - or let `gipity add <kit>`

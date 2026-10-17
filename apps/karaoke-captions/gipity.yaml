@@ -4,7 +4,7 @@ version: 1
 # rendered to MP4. Ships with the @gipity/audio-align kit pre-bundled at
 # src/packages/audio-align/.
 #
-# Phases run top-down on `gipity deploy dev`:
+# Phases run top-down on `gipity deploy`:
 #   files     - static frontend (upload UI, editor, result view)
 #   database  - per-project DB: songs + renders tables (see migrations/)
 #   functions - song + render CRUD + on_complete handlers

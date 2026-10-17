@@ -11,7 +11,7 @@
  *     mount('#bot', config);          // (selector-or-element, config) -> the widget element
  *   </script>
  *
- * That's the whole integration - no backend, no API keys. Then `gipity deploy dev`.
+ * That's the whole integration - no backend, no API keys. Then `gipity deploy`.
  * For a custom UI instead of the corner bubble, see `createChatbot()` in README.md.
  */
 export default {

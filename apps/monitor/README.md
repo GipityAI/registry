@@ -6,7 +6,7 @@ Everything Monitor shows or changes goes through a documented REST route that th
 
 ## Tabs
 
-- **Projects** (landing): every project, its dev/prod/custom URLs, per-target deploy phases, and the last deploy's result.
+- **Projects** (landing): every project, its prod URL, each of its environments, custom domains, deploy phases, and the last deploy's result.
 - **Overview**: health verdict, what needs attention, recent deploys.
 - **Observe**: Traffic, Activity, Errors, Chats (recorded coding-agent sessions), Audit.
 - **Project**: Compute (Functions, Jobs, Sandbox, Workflows, Tests; job, workflow and test runs open a detail view with output, logs and per-step or per-test results), Data (storage, a file browser with version restore, databases), Services, Hosting.

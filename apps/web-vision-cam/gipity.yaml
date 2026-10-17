@@ -1,6 +1,6 @@
 version: 1
 
-# Deploy manifest - `gipity deploy dev` runs these phases in order.
+# Deploy manifest - `gipity deploy` runs these phases in order.
 #
 # This is a static, frontend-only app: the MediaPipe vision kit runs entirely
 # in the browser, so there is no backend, no database, and no realtime phase.
