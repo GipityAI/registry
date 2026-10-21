@@ -12,7 +12,7 @@ gipity payments status     # confirm "charges enabled"
 gipity deploy prod         # payments run in prod only (refused in environments)
 ```
 
-Money goes to **your** Stripe account. Gipity takes a small platform fee (default 1%) on top of Stripe's processing fees. Test with Stripe test mode and card `4242 4242 4242 4242`.
+Money goes to **your** Stripe account. Gipity takes a small platform fee (default 1%) on top of Stripe's processing fees. There is no Stripe test mode yet: test with a real low-value purchase on the prod URL and refund it from your Stripe dashboard.
 
 ## What's wired
 

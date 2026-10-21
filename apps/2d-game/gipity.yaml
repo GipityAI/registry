@@ -17,10 +17,11 @@ version: 1
 #                     - { name: submit-score, auth: user }
 #
 #   database  - a Postgres database (scores, profiles). Put schema in
-#               migrations/ and seed data in seeds/; the phase creates the DB
-#               and runs them (idempotent):
+#               migrations/; the phase creates the DB and runs each migration
+#               once (add `seed: seeds` to also load seeds/):
 #                 - name: database
-#                   type: database
+#                   type: sql
+#                   source: migrations
 #
 #   realtime  - multiplayer rooms (presence / shared state). Don't hand-write
 #               this: run `gipity add realtime`. The kit copies its client

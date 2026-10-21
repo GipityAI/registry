@@ -45,14 +45,14 @@ Or drop in the element (no JS wiring needed):
 ## What it ships
 
 - **Frontend** (`@gipity/stripe`): `checkout()`, `getSubscriptionStatus()`, `openBillingPortal()`, and the `<stripe-buy-button>` element.
-- **Functions**: `payment-events` (public — platform-invoked fulfillment; records to the tables below) and `payment-status` (user — the gating read).
+- **Functions**: `payment-events` (`auth: member`, and it refuses any call the platform didn't trigger with a verified Stripe event, so HTTP callers can't reach it; records to the tables below) and `payment-status` (user: the gating read).
 - **Tables**: `payments` (one row per completed checkout, idempotent on `stripe_session_id`) and `subscriptions` (one row per Stripe subscription, upserted across its lifecycle).
 
-The `payment-events` function is kit-owned (sealed) — re-`add` the kit at a newer version to upgrade it. Your own fulfillment logic (grant a role, send an email) belongs in your app code, triggered off the `payments`/`subscriptions` rows.
+The `payment-events` function is kit-owned (sealed): re-`add` the kit at a newer version to upgrade it. Your own fulfillment logic (grant a role, send an email) belongs in your app code, triggered off the `payments`/`subscriptions` rows.
 
 ## Notes
 
 - Inline `{ name, amount }` items need no pre-created Stripe products. You can also pass a Stripe `{ priceId }`.
 - `interval` is required on each item for subscription mode (`day`/`week`/`month`/`year`).
-- Test with Stripe's test mode and card `4242 4242 4242 4242`.
+- There is no Stripe test mode yet: test with a real low-value purchase on the prod URL and refund it from your Stripe dashboard.
 - Needs a database — install into a `web-fullstack` or `api` app.

@@ -28,25 +28,26 @@ Browser code can't directly submit jobs (no app-token job endpoint yet), so the 
 
 ```js
 // functions/audio-align-submit.js
-export default async function(ctx, input) {
-  const { audio_url, lyrics, skip_demucs, refine_onsets } = input;
-  const r = await ctx.jobs.submit('audio-align', {
+// `jobs` is the handler's second argument; the request body is ctx.body.
+export default async function(ctx, { jobs }) {
+  const { audio_url, lyrics, skip_demucs, refine_onsets } = ctx.body;
+  const r = await jobs.submit('audio-align', {
     audio_url, lyrics, skip_demucs, refine_onsets,
   });
-  return { run_guid: r.runGuid };
+  return { run_guid: r.run_guid };
 }
 ```
 
 ```js
 // functions/audio-align-status.js
-export default async function(ctx, input) {
-  const run = await ctx.jobs.status(input.run_guid);
+export default async function(ctx, { jobs }) {
+  const run = await jobs.status(ctx.body.run_guid);
   return {
     status:           run.status,
     progress_pct:     run.progress_pct,
     progress_message: run.progress_message,
     output:           run.output,
-    error:            run.error_message,
+    error:            run.error,
   };
 }
 ```

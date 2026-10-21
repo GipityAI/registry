@@ -9,19 +9,23 @@
  *     auth: user
  *
  * The browser (via `@gipity/audio-align`) POSTs here with the audio URL +
- * lyrics. This function then submits the GPU job and returns the runGuid.
+ * lyrics. This function then submits the GPU job and returns the run guid.
+ * `jobs` is a capability on the handler's second argument (not on ctx).
  */
-export default async function audioAlignSubmit(ctx, input) {
-  const { audio_url, lyrics, skip_demucs, refine_onsets } = input;
+export default async function audioAlignSubmit(ctx, { jobs }) {
+  const { audio_url, lyrics, skip_demucs, refine_onsets, phonetic_lyrics, corrections } = ctx.body || {};
   if (!audio_url || !lyrics) {
     throw new Error('audio_url and lyrics are required');
   }
-  const r = await ctx.jobs.submit('audio-align', {
+  const input = {
     audio_url,
     lyrics,
     skip_demucs: skip_demucs ?? false,
     refine_onsets: refine_onsets ?? true,
-  });
-  // ctx.jobs.submit returns { runGuid, status, replayed }
-  return { run_guid: r.runGuid, status: r.status };
+  };
+  if (phonetic_lyrics) input.phonetic_lyrics = phonetic_lyrics;
+  if (Array.isArray(corrections) && corrections.length) input.corrections = corrections;
+  // jobs.submit returns { run_guid, status, replayed }
+  const r = await jobs.submit('audio-align', input);
+  return { run_guid: r.run_guid, status: r.status };
 }

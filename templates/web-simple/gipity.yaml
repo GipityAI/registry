@@ -15,10 +15,13 @@ version: 1
 #                   function_definitions:
 #                     - { name: my-fn, auth: public }
 #
-#   database  - a Postgres database. Put schema in migrations/ and seed data
-#               in seeds/; the phase creates the DB and runs them (idempotent):
+#   database  - a Postgres database. Put schema in migrations/; the phase
+#               creates the DB and runs each migration once. Seed files run
+#               only from a dir you name with `seed:`:
 #                 - name: database
-#                   type: database
+#                   type: sql
+#                   source: migrations
+#                   seed: seeds        # optional
 #
 #   realtime  - multiplayer rooms (presence / shared state). Don't hand-write
 #               this: run `gipity add realtime`. The kit copies its client

@@ -8,18 +8,19 @@
  *   - name: audio-align-status
  *     auth: user
  *
- * The browser (via `@gipity/audio-align`) polls this with the runGuid; when
+ * The browser (via `@gipity/audio-align`) polls this with the run guid; when
  * status is 'success' the output field contains the full AlignmentResult JSON.
+ * `jobs` is a capability on the handler's second argument (not on ctx).
  */
-export default async function audioAlignStatus(ctx, input) {
-  const { run_guid } = input;
+export default async function audioAlignStatus(ctx, { jobs }) {
+  const { run_guid } = ctx.body || {};
   if (!run_guid) throw new Error('run_guid is required');
-  const run = await ctx.jobs.status(run_guid);
+  const run = await jobs.status(run_guid);
   return {
     status:           run.status,
     progress_pct:     run.progress_pct,
     progress_message: run.progress_message,
-    output:           run.output,        // present when status === 'success'
-    error:            run.error_message, // present when status === 'failed'
+    output:           run.output, // present when status === 'success'
+    error:            run.error,  // present when status === 'failed'
   };
 }
