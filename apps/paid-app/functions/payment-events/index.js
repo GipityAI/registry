@@ -15,7 +15,9 @@ export default async function paymentEvents(ctx, { db, guid }) {
 
   switch (event.type) {
     case 'checkout.session.completed': {
-      const userGuid = obj.client_reference_id || (obj.metadata && obj.metadata.gipity_user_guid) || null;
+      // gipity_user_guid is stamped by the platform from the signed-in buyer;
+      // client_reference_id is app-supplied, so it never names the buyer.
+      const userGuid = (obj.metadata && obj.metadata.gipity_user_guid) || null;
       const email = (obj.customer_details && obj.customer_details.email) || obj.customer_email || null;
       await db.query(
         `INSERT INTO payments

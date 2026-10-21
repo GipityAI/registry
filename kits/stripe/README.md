@@ -40,7 +40,7 @@ Or drop in the element (no JS wiring needed):
 <stripe-buy-button price-id="price_123" mode="subscription">Subscribe</stripe-buy-button>
 ```
 
-`checkout()` auto-attaches the signed-in Gipity user (so purchases and subscriptions are attributed to them, which is what `getSubscriptionStatus()` reads). Pass `{ redirect: false }` to get `{ checkoutUrl }` back instead of navigating.
+The platform attributes each purchase and subscription to the signed-in Gipity user who checks out (it stamps their guid on the Stripe session itself, so a browser can't name someone else), and that is what `getSubscriptionStatus()` reads. `openBillingPortal()` works only for that signed-in buyer: the platform refuses to open a portal for a customer whose subscription the caller didn't buy. A signed-out purchase is attributed to no one, so ask users to sign in before subscribing. Pass `{ redirect: false }` to get `{ checkoutUrl }` back instead of navigating.
 
 ## What it ships
 

@@ -35,7 +35,7 @@ const G = () => {
   return window.Gipity;
 };
 
-/** Best-effort current Gipity user (for attributing purchases); null if signed out. */
+/** Best-effort current Gipity user (to prefill the checkout email); null if signed out. */
 async function currentUser() {
   try {
     const u = await G().auth.user();
@@ -43,10 +43,6 @@ async function currentUser() {
   } catch {
     return null;
   }
-}
-
-function userGuidOf(u) {
-  return u ? (u.guid || u.shortGuid || u.userGuid || null) : null;
 }
 
 /**
@@ -57,7 +53,7 @@ function userGuidOf(u) {
  * @param {Array<{priceId?:string,name?:string,amount?:number,currency?:string,interval?:'day'|'week'|'month'|'year',quantity?:number}>} opts.items
  * @param {string} [opts.successUrl]  defaults to current URL with ?checkout=success
  * @param {string} [opts.cancelUrl]   defaults to current URL with ?checkout=cancel
- * @param {object} [opts.metadata]
+ * @param {object} [opts.metadata]  your own session metadata (`gipity_user_guid` is reserved)
  * @param {boolean} [opts.redirect=true]  when false, returns { checkoutUrl } instead of navigating
  * @returns {Promise<{checkoutUrl:string, sessionId:string}|void>}
  */
@@ -68,16 +64,17 @@ export async function checkout(opts) {
   const here = (typeof location !== 'undefined') ? location.href.split('?')[0] : '';
   const mode = opts.mode || 'payment';
   const user = await currentUser();
-  const guid = userGuidOf(user);
 
+  // The platform attributes the purchase to the signed-in caller itself (it
+  // stamps their guid on the Stripe session and subscription), so the browser
+  // never names the buyer.
   const body = {
     mode,
     items: opts.items,
     successUrl: opts.successUrl || `${here}?checkout=success`,
     cancelUrl: opts.cancelUrl || `${here}?checkout=cancel`,
-    ...(guid ? { clientReferenceId: guid } : {}),
     ...(user && user.email ? { customerEmail: user.email } : {}),
-    metadata: { ...(opts.metadata || {}), ...(guid ? { gipity_user_guid: guid } : {}) },
+    ...(opts.metadata ? { metadata: opts.metadata } : {}),
   };
 
   const res = await G().service('payments/checkout', body);
@@ -95,7 +92,8 @@ export async function getSubscriptionStatus() {
 
 /**
  * Open the Stripe Customer Portal so a subscriber can update payment method or
- * cancel. Looks up the caller's Stripe customer from their subscription.
+ * cancel. Looks up the caller's Stripe customer from their subscription; the
+ * platform opens it only for a signed-in user who bought that subscription.
  * @param {object} [opts]
  * @param {string} [opts.returnUrl] where Stripe returns the user (default: current URL)
  */
