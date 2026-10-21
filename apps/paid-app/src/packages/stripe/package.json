@@ -1,6 +1,6 @@
 {
   "name": "@gipity/stripe",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "index.js",
   "description": "Charge your app's end-users for one-time purchases and subscriptions via Stripe. Owner connects their own Stripe account through Gipity-hosted onboarding; money lands in their account, Gipity takes a small platform fee. Ships a buy-button component, a subscription-status helper, a webhook-verified fulfillment function, and the payments/subscriptions tables.",
@@ -21,7 +21,7 @@
         "function_definitions": [
           {
             "name": "payment-events",
-            "auth": "public",
+            "auth": "member",
             "tables": ["payments", "subscriptions"]
           },
           {

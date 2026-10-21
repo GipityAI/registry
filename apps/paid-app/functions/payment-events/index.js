@@ -1,11 +1,15 @@
 // Stripe payments kit — fulfillment hook.
 //
 // The PLATFORM invokes this function with a SIGNATURE-VERIFIED Stripe Connect
-// event in ctx.body (shape: { id, type, account, data: { object } }). Because
-// the platform already verified the webhook signature, this function does NO
-// crypto — it just records the outcome in the payments/subscriptions tables.
+// event in ctx.body (shape: { id, type, account, data: { object } }) and sets
+// ctx.trigger.type = 'payment_event'. An HTTP caller can't set ctx.trigger, so
+// anything else (a forged event POSTed to /fn/payment-events) is refused before
+// it can write a payment or unlock a subscription.
 // Kit-owned (sealed): re-add the kit at a newer version to upgrade it.
 export default async function paymentEvents(ctx, { db, guid }) {
+  if (ctx.trigger?.type !== 'payment_event') {
+    return { error: 'payment-events only accepts events forwarded by the platform' };
+  }
   const event = ctx.body || {};
   const obj = (event.data && event.data.object) || {};
 
