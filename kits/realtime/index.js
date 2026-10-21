@@ -151,6 +151,9 @@ async function openRoom(client, spec, context) {
  * @param {string} [config.wsUrl]      Realtime WebSocket URL.
  * @param {string} [config.appGuid]    App GUID (auto-resolved if omitted).
  * @param {Object} [config.settings]   Timing / precision overrides.
+ * @param {boolean} [config.signedIn]  Join auth_level:'user' rooms as the page's
+ *                                     signed-in Gipity.auth user (also per join).
+ * @param {string} [config.userToken]  Same, with an app player's sign-in token.
  * @returns {Object} rt instance
  */
 export function createRealtime(config = {}) {

@@ -50,6 +50,7 @@ function fakeClient(room, { onJoin } = {}) {
     configure() {},
     getAppGuid: () => 'app1',
     acquireToken: async () => 't',
+    acquireUserTicket: async (userToken) => `ticket:${userToken ?? 'cookie'}`,
     colyseusClient: async () => ({
       joinOrCreate: (_t, o) => join(o), create: (_t, o) => join(o), join: (_t, o) => join(o),
       joinById: (_id, o) => join(o), reconnect: async () => { throw new Error('no seat'); },
@@ -90,6 +91,20 @@ test('connect() still returns (after the wait) when no __host ever arrives', asy
   assert.equal(t.getHostId(), null);
   assert.equal(t.isHost(), false);
   t.disconnect();
+});
+
+// --- signed-in joins (auth_level: user rooms) ---
+
+test('signedIn / userToken joins carry a realtime user ticket; plain joins do not', async () => {
+  const plain = await connected({ hostId: null, hostEpoch: 0 });
+  assert.equal(plain.client.joins[0].userTicket, undefined);
+  plain.t.disconnect();
+  const cookie = await connected({ hostId: null, hostEpoch: 0 }, { signedIn: true });
+  assert.equal(cookie.client.joins[0].userTicket, 'ticket:cookie');
+  cookie.t.disconnect();
+  const player = await connected({ hostId: null, hostEpoch: 0 }, { userToken: 'steam-tok' });
+  assert.equal(player.client.joins[0].userTicket, 'ticket:steam-tok');
+  player.t.disconnect();
 });
 
 // --- applying __host ---

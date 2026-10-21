@@ -8,6 +8,7 @@
  */
 
 import { getSettings } from './settings.js';
+import { RealtimeJoinError } from './errors.js';
 
 // Pinned Colyseus client build. Must match the major/minor that the Gipity
 // realtime server (wss://rt.gipity.ai) is running - upgrading Colyseus means
@@ -111,6 +112,34 @@ export function createClient() {
     return tokenPromise;
   }
 
+  /**
+   * Trade the signed-in user's session for a realtime user ticket (the
+   * `userTicket` join option of an auth_level:'user' room). Uses the Gipity
+   * session cookie with the app token, or `userToken` as a Bearer token (an app
+   * player's sign-in). Fetched per join: tickets are short-lived.
+   */
+  async function acquireUserTicket(userToken) {
+    const guid = getAppGuid();
+    if (!guid) throw new RealtimeJoinError('offline', 'no app GUID - cannot sign in to a realtime room');
+    const headers = { 'Content-Type': 'application/json' };
+    if (userToken) headers.Authorization = `Bearer ${userToken}`;
+    else headers['X-App-Token'] = await acquireToken();
+    let res;
+    try {
+      res = await fetch(`${apiBase}/api/${encodeURIComponent(guid)}/realtime/ticket`, {
+        method: 'POST', headers, body: '{}', credentials: 'include',
+      });
+    } catch (err) {
+      throw new RealtimeJoinError('offline', `realtime ticket request failed: ${err.message}`, err);
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new RealtimeJoinError('auth', 'sign in to this app first to join a signed-in realtime room');
+    }
+    if (!res.ok) throw new RealtimeJoinError('failed', `realtime ticket request failed: ${res.status}`);
+    const { data: { ticket } } = await res.json();
+    return ticket;
+  }
+
   /** List live room instances - the lobby/directory uses this to discover matches. */
   async function listRooms(roomName, scope) {
     let token;
@@ -131,7 +160,7 @@ export function createClient() {
   }
 
   return {
-    configure, getAppGuid, colyseusClient, acquireToken, listRooms,
+    configure, getAppGuid, colyseusClient, acquireToken, acquireUserTicket, listRooms,
     getApiBase: () => apiBase, getWsUrl: () => wsUrl,
   };
 }

@@ -316,6 +316,31 @@ every wire key / message type. A channel exposes only its `sync` mode's methods:
 `to` is a session id, an array of them, or `'host'`; without it the message
 goes to everyone else. Delivery is immediate, reliable, and ordered per sender.
 
+**Signed-in rooms (3.9.0+).** A room provisioned `auth_level: user` needs to
+know who is joining: pass `signedIn: true` (the page is signed in with
+`Gipity.auth`; the kit trades the session for a short-lived ticket) or
+`userToken: <token>` (an app player's Steam / guest sign-in token) to
+`createRealtime` / `connect` / `rt.join*`. Not signed in throws
+`RealtimeJoinError` with `code: 'auth'`.
+
+**Messages from the app's server code (3.9.0+).** A function can publish into the room
+with the injected `realtime.publish({ room, channel, type, data, scope?,
+toUser? })` (declare `services: ['realtime']`). It arrives on the same
+listener, `ch.on(type, cb)`, with `fromServer: true` and `senderId: null`. No
+client can send `fromServer` (the server strips it), so it is safe to trust.
+List a channel in the room's `server_channels` (gipity.yaml) and clients
+cannot send on it at all: such a send is dropped and the room fires
+`'undelivered'` with `reason: 'server-only'`.
+
+```js
+const rt = createRealtime({ room: 'updates', signedIn: true });   // auth_level: user room
+const jobs = rt.channel('jobs');           // messages channel; server-only in gipity.yaml
+jobs.on('changed', (m) => {
+  if (m.fromServer) refreshJob(m.jobId);   // the webhook function said it changed
+});
+await rt.connect();
+```
+
 ### `sync: 'presence'` — ephemeral per-peer state
 `ch.setLocal(obj)` · `ch.local()` · `ch.peers() → Map(sid → peer)` ·
 `ch.onChange(cb)` · `ch.onJoin(cb)` · `ch.onLeave(cb)` · `ch.metrics()`

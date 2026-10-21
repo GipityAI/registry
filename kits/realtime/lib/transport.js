@@ -191,6 +191,13 @@ export function createTransport({ client, observability }) {
    *                                  room. Use for URL/invite-code partitioning
    *                                  without provisioning a room per value.
    * @param {string} [config.roomId]  Instance id - required for mode 'joinById'.
+   * @param {boolean} [config.signedIn] Join an `auth_level: user` room as the
+   *                                  signed-in user (Gipity.auth session cookie):
+   *                                  the kit trades it for a realtime user ticket
+   *                                  first. Not signed in -> RealtimeJoinError 'auth'.
+   * @param {string} [config.userToken] Like signedIn, for a Bearer token instead
+   *                                  of the cookie (an app player's Steam / guest
+   *                                  sign-in token).
    * @param {'joinOrCreate'|'join'|'create'|'joinById'|'resume'} [config.mode]
    *                                  Default 'joinOrCreate'. 'join' never
    *                                  creates - it fails with 'not-found' when
@@ -231,6 +238,9 @@ export function createTransport({ client, observability }) {
       // without this pass-through the kit simply could not join them (the server
       // rejects with "requires Gipity login" and there was no way to comply).
       if (config.sessionId) opts.sessionId = config.sessionId;
+      // A signed-in join (rooms provisioned auth_level:'user'): the page can't
+      // read its own session cookie, so trade it for a short-lived ticket.
+      if (config.signedIn || config.userToken) opts.userTicket = await client.acquireUserTicket(config.userToken);
       if (config.displayName) opts.displayName = config.displayName;
       opts.clientId = config.clientId || deviceClientId();
       if (config.canHost) opts.canHost = true;
