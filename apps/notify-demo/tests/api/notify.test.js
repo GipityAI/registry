@@ -20,3 +20,15 @@ test('send-ping runs signed-in and reports zero deliveries for a fresh app', asy
     assert.equal(res.sent, 0, 'no subscribers yet, so nothing is delivered');
     assert.equal(res.failed, 0);
 });
+
+test('send-ping refuses a broadcast from a signed-in non-member', async (ctx) => {
+    const res = await ctx.fn.callAs(ctx.users.alice, 'send-ping', { to: 'all', message: 'hello' });
+    assert.match(res.error, /owner or a project member/);
+    assert.equal(res.ok, undefined, 'nothing is sent');
+});
+
+test('send-ping lets the owner broadcast', async (ctx) => {
+    const res = await ctx.fn.callAs(ctx.users.owner, 'send-ping', { to: 'all', message: 'hello' });
+    assert.equal(res.ok, true);
+    assert.equal(res.sent, 0, 'no subscribers yet, so nothing is delivered');
+});
