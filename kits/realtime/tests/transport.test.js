@@ -6,7 +6,7 @@
  * Run: node tests/transport.test.js
  */
 import assert from 'node:assert/strict';
-import { createTransport, MAX_CHECKPOINT_BYTES } from '../lib/transport.js';
+import { createTransport, MAX_CHECKPOINT_BYTES, reconnectWindowForHold } from '../lib/transport.js';
 import { createObservability } from '../lib/observability.js';
 import { classifyJoinError } from '../lib/errors.js';
 
@@ -29,6 +29,8 @@ function fakeRoom(sessionId = 'me') {
     onLeave(cb) { handlers.leave = cb; },
     onError(cb) { handlers.error = cb; },
     leave() {},
+    /** The socket drops uncleanly (the kit should try to reconnect). */
+    drop() { handlers.leave(1006); },
     /** The server sends a message. */
     deliver(type, data) { handlers.message(type, data); },
     /** The server patches state: players { sid: { visible, ... } }. */
@@ -42,13 +44,14 @@ function fakeRoom(sessionId = 'me') {
 
 /** A fake shared client whose joins hand out `room`. `onJoin` runs right
  *  after the join resolves (the server's __host follows the join). */
-function fakeClient(room, { onJoin } = {}) {
+function fakeClient(room, { onJoin, defaultRoom = null } = {}) {
   const joins = [];
   const join = async (opts) => { joins.push(opts); setTimeout(() => onJoin?.(room), 0); return room; };
   return {
     joins,
     configure() {},
     getAppGuid: () => 'app1',
+    getDefaultRoom: () => defaultRoom,
     acquireToken: async () => 't',
     acquireUserTicket: async (userToken) => `ticket:${userToken ?? 'cookie'}`,
     colyseusClient: async () => ({
@@ -404,6 +407,86 @@ test('a join refused for lack of seats fails fast (no retry)', async () => {
   assert.equal(room, null);
   assert.equal(attempts, 1);
   assert.equal(classifyJoinError(t.getLastError()), 'full');
+});
+
+// --- the default room ---
+
+test('no room given: joins the default room the page carries (deploy-stamped)', async () => {
+  const room = fakeRoom();
+  const client = fakeClient(room, { defaultRoom: 'my-game', onJoin: (r) => r.deliver('__host', { hostId: null, hostEpoch: 0 }) });
+  const t = createTransport({ client, observability: createObservability() });
+  assert.equal(await t.connect({ settings: QUIET }), room);
+  assert.equal(client.joins[0].room, 'my-game');
+  t.disconnect();
+  // A named room wins over the default.
+  const named = fakeClient(fakeRoom(), { defaultRoom: 'my-game', onJoin: (r) => r.deliver('__host', { hostId: null, hostEpoch: 0 }) });
+  const t2 = createTransport({ client: named, observability: createObservability() });
+  await t2.connect({ room: 'lobby', settings: QUIET });
+  assert.equal(named.joins[0].room, 'lobby');
+  t2.disconnect();
+});
+
+test('no room given and no default room: fails as unprovisioned, saying how to fix it, without a join', async () => {
+  const client = fakeClient(fakeRoom());
+  const t = createTransport({ client, observability: createObservability() });
+  assert.equal(await t.connect({ settings: QUIET }), null);
+  assert.equal(client.joins.length, 0);
+  const err = t.getLastError();
+  assert.equal(err.code, 'unprovisioned');
+  assert.match(err.message, /createRealtime\(\{ room/);
+  assert.match(err.message, /gipity\.yaml/);
+});
+
+// --- the reconnect window follows the room's seat hold ---
+
+test('reconnectWindowForHold: the hold minus a margin; no hold, no retry', () => {
+  assert.equal(reconnectWindowForHold(30), 25000);
+  assert.equal(reconnectWindowForHold(60), 55000);
+  assert.equal(reconnectWindowForHold(300), 295000);
+  assert.equal(reconnectWindowForHold(6), 5000);
+  assert.equal(reconnectWindowForHold(0), 0);
+});
+
+/** Connect, have the server announce `roomMsg` (unless null), drop the socket,
+ *  and resolve how long the kit kept trying before 'lost'. */
+async function timeToLost(roomMsg, settings) {
+  const room = fakeRoom();
+  const client = fakeClient(room, { onJoin: (r) => {
+    if (roomMsg) r.deliver('__room', roomMsg);
+    r.deliver('__host', { hostId: null, hostEpoch: 0 });
+  } });
+  const obs = createObservability();
+  const t = createTransport({ client, observability: obs });
+  await t.connect({ room: 'table', settings: { ...QUIET, reconnectBaseDelayMs: 20, reconnectMaxDelayMs: 20, ...settings } });
+  const lost = new Promise((resolve) => obs.on('lost', resolve));
+  const started = Date.now();
+  room.drop();
+  await lost;
+  return Date.now() - started;
+}
+
+test('the reconnect window follows the hold the server announced, not the 25 s default', async () => {
+  // A 0.6 s hold -> retry for 0.5 s (the real server sends whole seconds; the
+  // math is the same). The default window would be 25 s.
+  const took = await timeToLost({ seatHoldSeconds: 0.6, hostHoldSeconds: 60 });
+  assert.ok(took >= 450 && took < 2000, `took ${took} ms`);
+});
+
+test('an announced hold of 0: the drop is final at once', async () => {
+  const took = await timeToLost({ seatHoldSeconds: 0, hostHoldSeconds: 0 });
+  assert.ok(took < 100, `took ${took} ms`);
+});
+
+test('no announcement (an older server): the reconnectWindowMs setting applies', async () => {
+  const took = await timeToLost(null, { reconnectWindowMs: 400 });
+  assert.ok(took >= 350 && took < 2000, `took ${took} ms`);
+});
+
+test('a relayed (peer-forged) __room is ignored; reconnectWindowMs: 0 still turns reconnection off', async () => {
+  const forged = await timeToLost({ seatHoldSeconds: 0, hostHoldSeconds: 0, senderId: 'peer' }, { reconnectWindowMs: 400 });
+  assert.ok(forged >= 350, `forged hold applied: ${forged} ms`);
+  const off = await timeToLost({ seatHoldSeconds: 300, hostHoldSeconds: 600 }, { reconnectWindowMs: 0 });
+  assert.ok(off < 100, `took ${off} ms`);
 });
 
 (async () => {

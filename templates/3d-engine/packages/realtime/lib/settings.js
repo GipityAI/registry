@@ -37,12 +37,14 @@ export const DEFAULT_SETTINGS = {
 
   // Connection resilience (transport).
   // On an unclean disconnect the kit retries the Colyseus reconnection token
-  // with exponential backoff until reconnectWindowMs elapses. The server holds
-  // a dropped seat for 30s, so the window stays under that. Set to 0 to
-  // disable reconnection (an unclean drop then behaves like a clean leave).
+  // with exponential backoff for as long as the server holds the seat: the
+  // server tells each joiner the room's seat_hold_seconds / host_hold_seconds,
+  // and the window is that hold minus a margin (30 s -> 25 s, 300 s -> 295 s).
+  // These two are the fallback for a server that doesn't announce its holds
+  // (the defaults match the default 30 s / 60 s holds). Set reconnectWindowMs
+  // to 0 to disable reconnection (an unclean drop then behaves like a clean
+  // leave).
   reconnectWindowMs: 25000,
-  // A host (connect({ host: true })) keeps retrying longer: the server holds
-  // the host seat for host_hold_seconds (default 60s).
   hostReconnectWindowMs: 55000,
   // Server clock estimate: a __ping every this many ms (0 = off). Used by
   // serverNow(), getRtt(), and the sentAt stamp on messages-channel sends.

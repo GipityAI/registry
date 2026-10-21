@@ -61,6 +61,18 @@ export function createClient() {
     return meta?.content || null;
   }
 
+  /**
+   * The app's default room: `gipity deploy` stamps the first room its
+   * gipity.yaml realtime phase declares onto every page as
+   * <meta name="gipity-realtime-room">. A join that names no room uses it,
+   * so it lands in a room that is actually provisioned. null when the page
+   * has none (no realtime phase, or not deployed by Gipity).
+   */
+  function getDefaultRoom() {
+    if (typeof document === 'undefined') return null;
+    return document.querySelector('meta[name="gipity-realtime-room"]')?.content || null;
+  }
+
   /** Apply connection config (apiBase / wsUrl / appGuid) - only set keys. */
   function configure(cfg = {}) {
     if (cfg.apiBase) apiBase = cfg.apiBase;
@@ -160,7 +172,7 @@ export function createClient() {
   }
 
   return {
-    configure, getAppGuid, colyseusClient, acquireToken, acquireUserTicket, listRooms,
+    configure, getAppGuid, getDefaultRoom, colyseusClient, acquireToken, acquireUserTicket, listRooms,
     getApiBase: () => apiBase, getWsUrl: () => wsUrl,
   };
 }

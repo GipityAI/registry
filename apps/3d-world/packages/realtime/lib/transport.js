@@ -61,7 +61,7 @@ import { createClock } from './clock.js';
 import { readStored, writeStored, deviceClientId } from './storage.js';
 
 /** Server-internal message types: handled here, never emitted to the app. */
-const INTERNAL = new Set(['__pong', '__host', '__host_key', '__undelivered', '__visibility']);
+const INTERNAL = new Set(['__pong', '__host', '__host_key', '__undelivered', '__visibility', '__room']);
 /** Largest checkpoint the server accepts (its JSON, in UTF-8 bytes). */
 export const MAX_CHECKPOINT_BYTES = 64 * 1024;
 // Both stores hold JSON { roomId, ... } under one key per (app, room, scope),
@@ -86,6 +86,18 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // connect() waits this long for it so hostId()/isHost() are right on return.
 const HOST_ANNOUNCE_WAIT_MS = 2000;
 
+/**
+ * How long to keep retrying a dropped connection when the server holds the
+ * seat for `holdSeconds`: the whole hold minus a margin (5 s, less for a short
+ * hold), so the kit gives up as the seat is released rather than retrying a
+ * token that can no longer succeed. 0 = no hold: the drop is final.
+ */
+export function reconnectWindowForHold(holdSeconds) {
+  const holdMs = holdSeconds * 1000;
+  if (!(holdMs > 0)) return 0;
+  return holdMs - Math.min(5000, holdMs / 6);
+}
+
 export function createTransport({ client, observability }) {
   let room = null;
   let connected = false;
@@ -107,6 +119,7 @@ export function createTransport({ client, observability }) {
   let handoffOn = false;      // this page holds the role on a handoff table
   let mySeats = 1;            // seats this page holds (the server's number once synced)
   let maxSeats = 0;           // the room's seat capacity; 0 = no seat cap
+  let holds = null;           // { seatHoldSeconds, hostHoldSeconds } from the server's __room
   const clock = createClock();
 
   const peers = new Map();            // sid -> { lastSeen, clientId, displayName }
@@ -184,7 +197,11 @@ export function createTransport({ client, observability }) {
   /**
    * Join a room.
    * @param {Object} config
-   * @param {string} [config.room]    Room name (default 'realtime-room').
+   * @param {string} [config.room]    Room name. Default: the app's default
+   *                                  room (the first room its gipity.yaml
+   *                                  realtime phase declares, stamped on the
+   *                                  page by deploy). Neither: the join fails
+   *                                  with RealtimeJoinError 'unprovisioned'.
    * @param {string} [config.scope]   Instance partition key. Same (room, scope)
    *                                  -> same instance; different scope -> a
    *                                  separate instance of the same provisioned
@@ -222,7 +239,6 @@ export function createTransport({ client, observability }) {
     intentionalLeave = false;
     lastError = null;
     const mode = config.mode || 'joinOrCreate';
-    const roomName = config.room || 'realtime-room';
     const scope = String(config.scope ?? '');
 
     try {
@@ -230,6 +246,11 @@ export function createTransport({ client, observability }) {
       if (!guid) {
         console.debug('[realtime] No app GUID - offline mode');
         return null;
+      }
+      const roomName = config.room || client.getDefaultRoom();
+      if (!roomName) {
+        throw new RealtimeJoinError('unprovisioned', 'no room to join: pass createRealtime({ room: \'<name>\' }), '
+          + 'or declare a room in a realtime phase in gipity.yaml and run gipity deploy (the first room declared is the default)');
       }
       const token = await client.acquireToken();
       const colyseus = await client.colyseusClient();
@@ -279,6 +300,7 @@ export function createTransport({ client, observability }) {
       hostCheckpoint = null;
       mySeats = config.seats ?? 1;
       maxSeats = mode === 'create' ? (config.maxSeats ?? 0) : 0;
+      holds = null;   // the server's __room follows the join (servers before it: settings)
       joinKind = resumed ? 'reconnect' : mode === 'create' ? 'create' : 'join';
       awaitingSync = true;
       hasSynced = false;
@@ -528,9 +550,7 @@ export function createTransport({ client, observability }) {
   async function startReconnect() {
     if (reconnecting || intentionalLeave) return;
     const s = getSettings();
-    const windowMs = connectConfig.host && room && host.hostId === room.sessionId
-      ? Math.max(s.reconnectWindowMs, s.hostReconnectWindowMs)
-      : s.reconnectWindowMs;
+    const windowMs = reconnectWindow(s);
     if (windowMs <= 0 || !reconnectionToken) {
       finishLost();
       return;
@@ -566,6 +586,16 @@ export function createTransport({ client, observability }) {
     }
     reconnecting = false;
     if (!intentionalLeave) finishLost();
+  }
+
+  // The window follows the hold the server announced for this room (the
+  // host's hold while this page is the host); the settings are the fallback
+  // for a server that announces none. reconnectWindowMs: 0 turns it off.
+  function reconnectWindow(s) {
+    if (s.reconnectWindowMs <= 0) return 0;
+    const asHost = !!room && host.hostId === room.sessionId;
+    if (holds) return reconnectWindowForHold(asHost ? holds.hostHoldSeconds : holds.seatHoldSeconds);
+    return asHost && connectConfig.host ? Math.max(s.reconnectWindowMs, s.hostReconnectWindowMs) : s.reconnectWindowMs;
   }
 
   function finishLost() {
@@ -639,6 +669,13 @@ export function createTransport({ client, observability }) {
       const info = peers.get(data?.sessionId);
       const visible = data?.visible !== false;
       if (info && info.visible !== visible) { info.visible = visible; fireVisibility(data.sessionId, visible); }
+      return;
+    }
+    if (type === '__room') {
+      // Only the server's own announcement (a relayed message carries a senderId).
+      if (typeof data?.senderId !== 'string' && typeof data?.seatHoldSeconds === 'number' && typeof data?.hostHoldSeconds === 'number') {
+        holds = { seatHoldSeconds: data.seatHoldSeconds, hostHoldSeconds: data.hostHoldSeconds };
+      }
       return;
     }
     if (type === '__host') applyHost(data);

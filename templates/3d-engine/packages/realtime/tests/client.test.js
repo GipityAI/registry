@@ -63,6 +63,19 @@ test('a network failure is code offline', async () => {
   await assert.rejects(client().acquireUserTicket('x'), (e) => e.code === 'offline');
 });
 
+test('getDefaultRoom reads the deploy-stamped gipity-realtime-room meta; null without one', async () => {
+  const metas = { 'meta[name="gipity-realtime-room"]': { content: 'my-game' } };
+  globalThis.document = { querySelector: (sel) => metas[sel] ?? null };
+  try {
+    assert.equal(createClient().getDefaultRoom(), 'my-game');
+    delete metas['meta[name="gipity-realtime-room"]'];
+    assert.equal(createClient().getDefaultRoom(), null);
+  } finally {
+    delete globalThis.document;
+  }
+  assert.equal(createClient().getDefaultRoom(), null, 'no document (not a browser)');
+});
+
 for (const [name, fn] of tests) {
   try { await fn(); passed++; console.log(`  ok  ${name}`); }
   catch (e) { failed++; console.error(`  FAIL ${name}\n       ${e.stack}`); }

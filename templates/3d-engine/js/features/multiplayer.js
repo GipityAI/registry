@@ -15,7 +15,10 @@
  */
 
 export const DEFAULTS = {
-  room: 'game-lobby',
+  // null: the app's default room, the first room gipity.yaml's realtime
+  // phase declares (deploy stamps it on the page). Set a name to join another
+  // provisioned room.
+  room: null,
   maxClients: 10,
   apiBase: '{{API_BASE}}',
   // Realtime endpoint: leave '' to use the one stamped on the page by the

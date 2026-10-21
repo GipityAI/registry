@@ -34,6 +34,15 @@ chat.on('msg', (m) => console.log(m.text));
 chat.send('msg', { text: 'hello' });
 ```
 
+Every room you join must be provisioned (declared in `gipity.yaml`'s realtime
+phase, or `gipity realtime room create`). `createRealtime()` with no `room`
+joins the app's default room: the first room the realtime phase declares
+(`gipity add realtime` declares one named after the project, then `lobby` and
+`match`), which `gipity deploy` stamps on every page as
+`<meta name="gipity-realtime-room">`. With no room and no default, or a name
+that isn't provisioned, the join fails with code `'unprovisioned'` and a
+message saying how to provision it.
+
 ## Pick your room model
 
 Four models cover essentially every realtime app. All are built in — pick one,
@@ -491,10 +500,12 @@ Each has a worked file in `examples/` (`party-game`, `couch-controllers`,
 ## Resilience
 
 An unclean disconnect is recovered automatically: the kit retries the Colyseus
-reconnection token with exponential backoff inside a window (the server holds a
-dropped seat for `seat_hold_seconds`, default 30 s; the host keeps trying for
-`hostReconnectWindowMs`, default 55 s, since its role is held for 60 s),
-**preserving the session id** — channels and seats survive a blip untouched.
+reconnection token with exponential backoff for as long as the server holds the
+dropped seat: the server tells each joiner the room's `seat_hold_seconds`
+(default 30 s) and `host_hold_seconds` (default 60 s, used while the page is the
+host), and the kit retries for that hold minus a margin (30 s -> 25 s, 300 s ->
+295 s; servers that don't announce it fall back to the `reconnectWindowMs` /
+`hostReconnectWindowMs` settings), **preserving the session id** — channels and seats survive a blip untouched.
 Messages sent while reconnecting are dropped, not queued. A realtime server
 restart (a platform deploy) ends every room: clients get `'lost'` and should
 re-join. Channel `onDisconnect` handlers fire only on a
