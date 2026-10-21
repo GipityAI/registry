@@ -2,11 +2,10 @@
 // ServiceNow-side Business Rule (via the GipitySync Script Include, set up by
 // scripts/connect-realtime.mjs).
 //
-// The shared secret travels inside the JSON body ({ secret, record }), NOT a
-// header - the platform's function runtime only forwards a small allowlist of
-// headers to function code (content-type, accept, user-agent, x-request-id,
-// origin, referer, x-forwarded-for, x-real-ip); a custom x-gipity-secret
-// header would be silently stripped before ctx.headers ever saw it.
+// The shared secret travels inside the JSON body ({ secret, record }), which
+// is what the GipitySync Script Include sends. (Function code now sees custom
+// request headers in ctx.headers too, so a header would also work; the body
+// form is kept so existing ServiceNow-side installs keep syncing.)
 //
 // Throws (rather than returning { error }) on auth/shape failures so the
 // caller sees a non-2xx status - ServiceNow's Script Include logs those via

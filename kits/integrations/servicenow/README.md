@@ -122,10 +122,8 @@ ServiceNow side, then stores the webhook secret as a Gipity secret:
   if it's shared with real users doing real work, their changes won't sync
   either. Deletes are out of scope (`sn_records` has no tombstone concept).
 
-The shared secret travels inside the JSON body (`{ secret, record }`), not a
-header - Gipity's function runtime only forwards a small allowlist of headers
-to function code, so a custom header would be silently dropped before
-`sn-webhook` ever saw it.
+The shared secret travels inside the JSON body (`{ secret, record }`), which is
+what the GipitySync Script Include sends.
 
 ServiceNow Business Rules are inherently per-table, so adding a new table
 later means re-running this script with the fuller `--tables` list (existing
