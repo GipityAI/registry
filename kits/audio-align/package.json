@@ -23,7 +23,7 @@
       "deployPhase": {
         "name": "audio-align-jobs",
         "type": "jobs",
-        "job_definitions": [
+        "jobs": [
           {
             "name": "audio-align",
             "handler": "src/packages/audio-align/jobs/align/main.py",

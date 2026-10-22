@@ -2,7 +2,7 @@
  * Example wrapper function for polling alignment job status from a browser.
  *
  * Copy this file to your project's `functions/` directory and declare it in
- * `gipity.yaml` (under the functions phase's `function_definitions`; the file
+ * `gipity.yaml` (under the functions phase's `functions`; the file
  * name is the function name):
  *
  *   - name: audio-align-status

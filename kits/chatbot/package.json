@@ -28,7 +28,7 @@
       "deployPhase": {
         "name": "services",
         "type": "services",
-        "service_definitions": [
+        "services": [
           {
             "service": "llm",
             "billing_mode": "owner_pays"

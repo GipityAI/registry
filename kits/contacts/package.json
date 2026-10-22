@@ -17,7 +17,7 @@
         "name": "functions",
         "type": "functions",
         "source": "functions",
-        "function_definitions": [
+        "functions": [
           {
             "name": "contact-import",
             "auth": "user",

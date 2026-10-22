@@ -2,7 +2,7 @@
  * Example wrapper function for submitting alignment jobs from a browser.
  *
  * Copy this file to your project's `functions/` directory and declare it in
- * `gipity.yaml` (under the functions phase's `function_definitions`; the file
+ * `gipity.yaml` (under the functions phase's `functions`; the file
  * name is the function name) so the browser can call it:
  *
  *   - name: audio-align-submit

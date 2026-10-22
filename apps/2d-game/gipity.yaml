@@ -13,7 +13,7 @@ version: 1
 #                 - name: functions
 #                   type: functions
 #                   source: functions
-#                   function_definitions:
+#                   functions:
 #                     - { name: submit-score, auth: user }
 #
 #   database  - a Postgres database (scores, profiles). Put schema in

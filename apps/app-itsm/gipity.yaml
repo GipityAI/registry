@@ -34,7 +34,7 @@ deploy:
     - name: functions
       type: functions
       source: functions
-      function_definitions:
+      functions:
         - name: suggest-resolution
           auth: public
           tables: [incidents, knowledge_articles]

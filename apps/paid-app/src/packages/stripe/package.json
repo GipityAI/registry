@@ -18,7 +18,7 @@
         "name": "functions",
         "type": "functions",
         "source": "functions",
-        "function_definitions": [
+        "functions": [
           {
             "name": "payment-events",
             "auth": "member",

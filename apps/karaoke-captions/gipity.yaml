@@ -25,7 +25,7 @@ deploy:
     - name: functions
       type: functions
       source: functions
-      function_definitions:
+      functions:
         # ── Song lifecycle (browser-facing) ────────────────────
         - name: song-create
           auth: public
@@ -68,7 +68,7 @@ deploy:
     # the browser only polls song-get, never the job system directly.
     - name: jobs
       type: jobs
-      job_definitions:
+      jobs:
         - name: audio-align
           handler: src/packages/audio-align/jobs/align/main.py
           runtime: python-3.11
