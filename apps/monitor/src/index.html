@@ -918,6 +918,16 @@
         <h3>API tokens</h3>
         <table class="data-table" id="table-acct-tokens"><thead><tr><th>Token</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead><tbody></tbody></table>
       </div>
+      <div class="panel" id="acct-nsfw-panel">
+        <h3>NSFW services</h3>
+        <p class="small">Lets this account use adult (NSFW) image models. Turning it on confirms you are 18 or older and accept the adult-content terms: nothing involving minors, ever; no sexual images of real people; no sexual violence or non-consent; you are responsible for what your apps show. Prompts are checked for safety and kept for abuse review. While it is on, app payments (Stripe Connect) stop working for your apps. Buying credits and your plan are not affected.</p>
+        <form id="acct-nsfw-form" class="inline-form">
+          <span id="acct-nsfw-state" class="small"></span>
+          <label id="acct-nsfw-attest-label"><input type="checkbox" id="acct-nsfw-attest" /> I am 18 or older and accept these terms</label>
+          <button type="submit" id="acct-nsfw-btn" class="primary-btn">Turn on</button>
+          <span id="acct-nsfw-status" class="small detail-error"></span>
+        </form>
+      </div>
       <div class="panel danger-panel">
         <h3>Delete account</h3>
         <p class="small">Deletes every project, file, database, function, workflow and secret on this account. This cannot be undone.</p>

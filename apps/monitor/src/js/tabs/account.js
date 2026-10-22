@@ -65,6 +65,38 @@ async function revoke(api, btn) {
   }
 }
 
+// NSFW services opt-in. Self-serve can be closed (terms not live yet): then the
+// switch is shown but disabled, and an account turned on by an admin can still
+// turn it off.
+let nsfwOn = false;
+function renderNsfw(state) {
+  nsfwOn = state.allow_nsfw_services;
+  const closed = !nsfwOn && !state.self_serve_open;
+  $('acct-nsfw-state').textContent = nsfwOn
+    ? `On${state.nsfw_attested_at ? ` (terms accepted ${state.nsfw_attested_at.slice(0, 10)})` : ''}.`
+    : closed ? 'Off. Not open yet.' : 'Off.';
+  $('acct-nsfw-attest-label').hidden = nsfwOn || closed;
+  $('acct-nsfw-btn').hidden = closed;
+  $('acct-nsfw-btn').textContent = nsfwOn ? 'Turn off' : 'Turn on';
+  $('acct-nsfw-btn').className = nsfwOn ? 'link-btn' : 'primary-btn';
+}
+
+async function toggleNsfw(api, ev) {
+  ev.preventDefault();
+  $('acct-nsfw-status').textContent = '';
+  const attest = $('acct-nsfw-attest').checked;
+  if (!nsfwOn && !attest) { $('acct-nsfw-status').textContent = 'Tick the box to accept the terms first.'; return; }
+  $('acct-nsfw-btn').disabled = true;
+  try {
+    renderNsfw((await api.setNsfw(!nsfwOn, nsfwOn ? undefined : true)).data);
+    $('acct-nsfw-attest').checked = false;
+  } catch (err) {
+    $('acct-nsfw-status').textContent = err.message;
+  } finally {
+    $('acct-nsfw-btn').disabled = false;
+  }
+}
+
 async function deleteAccount(api, ev) {
   ev.preventDefault();
   if ($('acct-delete-confirm').value.trim() !== accountSlug) {
@@ -97,8 +129,10 @@ export async function renderAccountTab(api) {
       if (btn) revoke(api, btn);
     });
     $('acct-delete-form').addEventListener('submit', (ev) => deleteAccount(api, ev));
+    $('acct-nsfw-form').addEventListener('submit', (ev) => toggleNsfw(api, ev));
   }
-  const [me, tokens] = await Promise.all([api.me(), api.agentTokens()]);
+  const [me, tokens, nsfw] = await Promise.all([api.me(), api.agentTokens(), api.nsfw()]);
   renderProfile(me.data);
   renderTokens(tokens.data);
+  renderNsfw(nsfw.data);
 }
