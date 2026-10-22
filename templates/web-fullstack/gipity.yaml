@@ -48,7 +48,12 @@ deploy:
 
     # Serverless functions. Deploy auto-declares any new functions/<name>.js
     # here as `auth: public` - you edit an entry ONLY to change something.
-    # Fields: name, auth (public|user|member), tables, fetch_domains, services
+    # Entries go in a `function_definitions:` list inside this phase (the key
+    # is function_definitions, not functions), e.g.:
+    #   function_definitions:
+    #     - name: save-note
+    #       auth: user               # public | user | member
+    #       tables: [notes]          # also: fetch_domains, services: [email]
     # Skipped while the directory is empty; deleting a file takes its endpoint down.
     - name: functions
       type: functions
