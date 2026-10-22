@@ -6,6 +6,7 @@
 import { config } from './config.js';
 
 document.addEventListener('DOMContentLoaded', async () => {
-  // Build your app here. `config` holds identity and flags
-  // (config.title, config.version, config.apiBase).
+  // Build your app here. `config` holds constants and flags
+  // (config.version, config.apiBase). The app's name is the <title> in
+  // index.html: change it there, never in code.
 });

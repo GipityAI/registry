@@ -2,7 +2,6 @@
 // Import: import { config } from './config.js';
 
 export const config = {
-  title: '{{JS_TITLE}}',
 
   // Camera: 'user' (front-facing - mirrored, good for gesture/pose on a
   // laptop) or 'environment' (rear - good for pointing at objects).

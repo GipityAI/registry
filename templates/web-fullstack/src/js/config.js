@@ -4,7 +4,6 @@
 // Import: import { config } from './config.js';
 
 export const config = {
-  title: '{{JS_TITLE}}',
   version: 1,
 
   // Function endpoints live at `${apiBase}/<name>`. The host is stamped at

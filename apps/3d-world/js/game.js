@@ -18,7 +18,7 @@ onInit(async () => {
 
   buildDemoScene();
 
-  ui.showMessage('{{JS_TITLE}}', settings.gameplay.messageDuration);
+  ui.showMessage(document.title, settings.gameplay.messageDuration);
 });
 
 // --- Audio ---

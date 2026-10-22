@@ -197,7 +197,6 @@ async function start() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.title = config.title;
   applyMirror();
   buildModelBar();
   startBtn.addEventListener('click', start);

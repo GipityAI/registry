@@ -123,7 +123,6 @@ async function start() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-  document.title = config.title;
   // Front-facing camera reads naturally mirrored; updated again after start.
   stage.classList.toggle('mirror', config.facingMode === 'user');
   buildTaskBar();

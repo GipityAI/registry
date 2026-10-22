@@ -9,42 +9,6 @@
      Shape:   --radius --shadow
    Note: --text-main/--text-bright/--text-muted are COLORS; --text-xs…xl are SIZES. */
 
-/* Language picker - rendered by the i18n kit (`gipity add i18n`) once the app
-   has translations. No-op until then; safe to keep. */
-.lang-picker {
-  position: fixed;
-  top: var(--space-sm);
-  right: var(--space-sm);
-  z-index: 10;
-}
-
-.lang-picker select {
-  margin: 0;
-  padding: 2px var(--space-sm);
-  background: #000;
-  color: #fff;
-  border: 1px solid #888;
-  border-radius: var(--radius);
-  font-size: 0.75rem;
-  line-height: 1.5;
-  text-align: center;
-  text-align-last: center;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: none;
-  transition: border-color 0.2s;
-}
-
-.lang-picker select option {
-  text-align: center;
-}
-
-.lang-picker select:hover,
-.lang-picker select:focus {
-  border-color: #fff;
-}
-
 /* Agent: add custom component styles below, using the theme tokens
    (never hardcode colors, spacing, or radii).
 

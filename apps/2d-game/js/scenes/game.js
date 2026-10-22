@@ -38,7 +38,7 @@ export class Game extends Phaser.Scene {
     initTouchControls({ buttons: [{ id: 'jump', label: 'Jump' }] });
 
     // Title text
-    this.add.text(width / 2, 30, '{{JS_TITLE}}', {
+    this.add.text(width / 2, 30, document.title, {
       fontSize: '28px',
       color: settings.colors.text,
       fontStyle: 'bold',

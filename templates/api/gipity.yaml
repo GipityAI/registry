@@ -2,7 +2,13 @@ version: 1
 
 # Project: {{PROJECT_GUID}}
 #
-# Functions (functions/) → serverless HTTP endpoints. No frontend, no database.
+# Functions (functions/) → serverless HTTP endpoints. Starts with no frontend
+# and no database; add either by writing files, no manifest edit needed:
+#   - Database: write migrations/001-<name>.sql. Deploy adds the `sql` phase
+#     (type: sql, source: migrations) and creates the database itself.
+#   - Web page: write src/index.html. Deploy adds the `static` phase
+#     (type: static, source: src) and adds the Gipity client SDK to the page,
+#     so Gipity.fn works from its scripts. See the deploy skill for the phases.
 #
 # Call an endpoint with:
 #   curl -s -X POST {{API_BASE}}/api/{{PROJECT_GUID}}/fn/<function_name> \

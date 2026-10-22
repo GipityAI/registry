@@ -55,10 +55,9 @@ function onUpdate(fn) { gameUpdate = fn; }
 /** Set game configuration */
 function setConfig(config) {
   gameConfig = config;
-  if (config.title) {
-    document.title = config.title;
-    ui.setLoadingTitle(config.title);
-  }
+  // The page <title> in index.html is the app's one name (it also drives the
+  // share card, manifest and icons), so the loading screen reads it from there.
+  ui.setLoadingTitle(document.title);
 }
 
 // --- Boot sequence ---

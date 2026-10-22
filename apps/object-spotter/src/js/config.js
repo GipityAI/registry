@@ -2,7 +2,6 @@
 // Import: import { config } from './config.js';
 
 export const config = {
-  title: '{{JS_TITLE}}',
 
   // Camera: 'environment' (rear - good for pointing at objects) or
   // 'user' (front-facing - mirrored).

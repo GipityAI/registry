@@ -1,6 +1,6 @@
 # {{TITLE}}
 
-A REST API powered by Gipity. No frontend - just functions and tests. This
+A REST API powered by Gipity. Starts as just functions and tests. This
 template is intentionally blank: the wiring is in place and deploys green, so you
 build your API by adding to it, never by deleting a demo.
 
@@ -30,7 +30,14 @@ rm functions/example.js tests/api/example.test.js
 4. To run something on a schedule, drop a `workflows/<name>.yaml` with
    `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so
    `gipity deploy` creates it and arms the schedule (see the `workflow` skill).
-5. `gipity deploy`, then `gipity test`.
+5. Need a database? Write `migrations/001-<name>.sql` (and list its tables
+   under the function's `tables:`). Deploy adds the `sql` phase and creates the
+   database; no `gipity db create`, no manifest edit.
+6. Need a page (a dashboard, a history view)? Write `src/index.html`. Deploy
+   adds the `static` phase and the Gipity client SDK, so `Gipity.fn('<name>')`
+   works from the page's scripts. Give the page a visible loading, empty and
+   error state so a failed call can't look like it is still loading.
+7. `gipity deploy`, then `gipity test`.
 
 ## Calling the API
 
@@ -56,6 +63,8 @@ URL only works from the dev environment; don't hand it out externally.
 
 ```
 functions/      Serverless functions (auto-deploy as public endpoints)
+migrations/     SQL migrations (create it when you need a database)
+src/            Web pages (create it when you need a frontend)
 workflows/      Scheduled/triggered YAML workflows (create it when you add one)
 tests/          Test files (run with gipity test)
 gipity.yaml     Deploy manifest (auto-populated for new functions)

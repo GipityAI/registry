@@ -2,7 +2,6 @@
 // Import: import { config } from './config.js';
 
 export const config = {
-  title: '{{JS_TITLE}}',
   version: 1,
 
   // Prices shown on the page are defined inline in index.html via the

@@ -1,6 +1,5 @@
 // Project configuration
 export const config = {
-  title: '{{TITLE}}',
   description: '',
   author: '',
   version: 1,
