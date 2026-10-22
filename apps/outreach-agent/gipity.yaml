@@ -92,8 +92,10 @@ deploy:
           auth: member
           tables: [messages, contacts, sequence_steps]
         # Public one-click unsubscribe (called by unsubscribe.html, no login).
+        # The write is gated by the contact's unguessable unsub_token.
         - name: unsubscribe
           auth: public
+          public_write: true
           tables: [contacts, messages]
         # --- Revise pipeline (revise-due + revise-one child) ---
         - name: revise-list

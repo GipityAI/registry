@@ -31,6 +31,7 @@
           {
             "name": "sn-webhook",
             "auth": "public",
+            "public_write": true,
             "tables": ["sn_records"]
           }
         ]
