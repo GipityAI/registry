@@ -33,7 +33,14 @@ function setLoadingTitle(title) {
 function hideLoading() {
   if (loadingScreen) {
     loadingScreen.classList.add('fade-out');
-    setTimeout(() => { loadingScreen.style.display = 'none'; }, 500);
+    setTimeout(() => {
+      loadingScreen.style.display = 'none';
+      // The scene is up and the overlay is gone: what a screenshot or eval waits
+      // on (gipity page screenshot <url> --wait-for '[data-game="ready"]').
+      document.documentElement.dataset.game = 'ready';
+    }, 500);
+  } else {
+    document.documentElement.dataset.game = 'ready';
   }
   if (hud) hud.classList.remove('hidden');
 }
