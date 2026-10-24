@@ -131,7 +131,8 @@ function toJSON(sub) {
 /**
  * Turn on notifications for the signed-in user: registers the service worker,
  * asks permission, subscribes, and stores the subscription with the platform.
- * Requires a signed-in Gipity user (push is per-user); kicks off sign-in if needed.
+ * Push is per-user: an app with its own users signs the browser in as a guest
+ * (no prompt); an app on Sign in with Gipity opens sign-in if needed.
  * Returns the new state ('enabled', 'denied', or an unsupported state).
  */
 export async function enableNotify() {
@@ -150,8 +151,16 @@ export async function enableNotify() {
   }
 
   // Push targets a user, so we need someone signed in (no popup if already in).
+  // In an app with its own users (gipity.yaml auth: { mode: app } or both) the
+  // browser signs in as its guest, with no prompt; an app on Sign in with
+  // Gipity answers 403 there, and gets the sign-in popup instead.
   let user = await G().auth.user().catch(() => null);
-  if (!user) user = await G().auth.signIn().catch(() => null);
+  if (!user) {
+    user = await G().auth.signInAsGuest().catch((err) => {
+      if (err && err.status === 403) return G().auth.signIn().catch(() => null);
+      throw err;
+    });
+  }
   if (!user) return 'ready'; // user dismissed sign-in
 
   const reg = await registerSw();

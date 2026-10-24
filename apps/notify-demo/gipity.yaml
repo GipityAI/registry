@@ -6,6 +6,12 @@ version: 1
 # subscriptions live on the platform. Enable notifications with the button, then
 # send one with the send-ping function (or `gipity notify test`).
 
+# Who signs in: `both` = the app's own users (a visitor turning on notifications
+# becomes a guest with no prompt) plus Sign in with Gipity (the owner signs in
+# with their Gipity account to use "Ping everyone").
+auth:
+  mode: both
+
 deploy:
   phases:
     # Static frontend (src/) → CDN

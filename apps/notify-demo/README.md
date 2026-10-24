@@ -4,7 +4,7 @@ A tiny working demo of **Gipity Notify** — real web push notifications, includ
 
 What it does:
 
-1. **Turn on notifications** — the `<gipity-notify-button>` signs the user in, asks permission, and subscribes the device. On iPhone it shows the "Add to Home Screen first" hint (Apple requires installed web apps for push).
+1. **Turn on notifications**: the `<gipity-notify-button>` asks permission, signs the visitor in as a guest (no prompt, no account: gipity.yaml sets `auth: mode: both`), and subscribes the device. On iPhone it shows the "Add to Home Screen first" hint (Apple requires installed web apps for push).
 2. **Send a ping**: the `send-ping` function calls the injected `notify()` service. "Send me a ping" targets the caller's own devices; "Ping everyone" (`to: 'all'`) is limited to the app owner and project members, since each broadcast is billed to the owner. The platform encrypts, signs (VAPID), and delivers; dead subscriptions are pruned automatically.
 
 No database, no keys, no service-worker boilerplate to write.
