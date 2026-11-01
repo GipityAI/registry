@@ -258,3 +258,31 @@ export function fmtBytes(n) {
 // tab converts ledger USD with this one rate.
 export const USD_PER_CREDIT = 0.001;
 export const toCredits = (usd) => Number(usd) / USD_PER_CREDIT;
+
+// ISO 3166-1 alpha-2 code ("US") -> flag emoji, built from the two regional
+// indicator symbols. Returns '' for anything that isn't two letters.
+export function countryFlag(code) {
+  const c = String(code || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return '';
+  return String.fromCodePoint(...[...c].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
+}
+
+let regionNames = null;
+// ISO code -> the country's English name ("CA" -> "Canada"), from the
+// browser's own Intl data. Falls back to the code itself.
+export function countryName(code) {
+  const c = String(code || '').toUpperCase();
+  if (!/^[A-Z]{2}$/.test(c)) return c || 'Unknown';
+  try {
+    regionNames = regionNames || new Intl.DisplayNames(['en'], { type: 'region' });
+    return regionNames.of(c) || c;
+  } catch {
+    return c;
+  }
+}
+
+// "🇨🇦 Canada" with the code as a tooltip, HTML-escaped.
+export function countryLabel(code) {
+  const flag = countryFlag(code);
+  return `<span title="${escapeHtml(code)}">${flag ? `<span class="flag" aria-hidden="true">${flag}</span> ` : ''}${escapeHtml(countryName(code))}</span>`;
+}

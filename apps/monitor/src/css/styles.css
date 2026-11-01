@@ -283,6 +283,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .data-table td.muted { color: var(--text-muted); font-size: var(--text-sm); }
 .data-table td.mono { font-family: ui-monospace, monospace; word-break: break-word; max-width: 480px; }
 .data-table.compact td, .data-table.compact th { padding: 0.3rem 0.5rem; }
+.data-table td .muted { color: var(--text-muted); font-size: var(--text-xs); }
+.data-table td .flag { font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 
 /* Status pills - the single pill vocabulary. Every status surface uses
    .pill.{ok,warn,error,info,muted}; don't add parallel class sets. */

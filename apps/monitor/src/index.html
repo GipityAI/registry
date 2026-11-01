@@ -161,7 +161,7 @@
 
     <!-- ── Traffic tab ─────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="traffic" hidden>
-      <div class="tab-desc-wrap"><p class="tab-lede">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Page views, visitor sessions, and device/browser/referrer breakdowns for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. <span class="try-it">Try it on any external page: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code></span></p></div></div>
+      <div class="tab-desc-wrap"><p class="tab-lede">Page views, visitor sessions, and where visitors come from: countries, cities, referring sites, campaigns, devices and browsers. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Page views, visitor sessions, and where visitors come from, for your deployed apps. Auto-captured by the analytics script that ships with every Gipity template. Country and city come from the visitor's IP address, looked up when the view arrives; the address itself is never stored. <span class="try-it">Works on any site, including one hosted elsewhere: <code>&lt;script defer src="https://media.gipity.ai/client/v1/gipity.js" data-app="&lt;projectGuid&gt;"&gt;&lt;/script&gt;</code>. Add <code>data-errors="off"</code> to count visits only.</span></p></div></div>
       <div class="cards">
         <div class="card" title="Total page views your deployed apps recorded in this window."><span class="card-label">Page views</span><span class="card-value" id="traffic-pageviews">-</span></div>
         <div class="card" title="Distinct browsing sessions. A session ends after ~30 min of inactivity."><span class="card-label">Sessions</span><span class="card-value" id="traffic-sessions">-</span></div>
@@ -174,12 +174,22 @@
       </div>
       <div class="grid-2">
         <div class="panel">
+          <h3>Top countries</h3>
+          <table class="data-table" id="table-countries"><thead><tr><th>Country</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Top cities</h3>
+          <table class="data-table" id="table-cities"><thead><tr><th>City</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="panel">
           <h3>Top pages</h3>
           <table class="data-table" id="table-paths"><thead><tr><th>Path</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
         </div>
         <div class="panel">
           <h3>Top referrers</h3>
-          <table class="data-table" id="table-referrers"><thead><tr><th>Referrer</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+          <table class="data-table" id="table-referrers"><thead><tr><th>Site</th><th class="num">Views</th><th class="num">Sessions</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
       <div class="grid-3">
@@ -194,6 +204,20 @@
         <div class="panel">
           <h3>Languages</h3>
           <table class="data-table compact" id="table-languages"><thead><tr><th>Language</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="panel">
+          <h3>Campaign sources</h3>
+          <table class="data-table compact" id="table-utm-sources"><thead><tr><th>utm_source</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Campaign mediums</h3>
+          <table class="data-table compact" id="table-utm-mediums"><thead><tr><th>utm_medium</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="panel">
+          <h3>Campaigns</h3>
+          <table class="data-table compact" id="table-utm-campaigns"><thead><tr><th>utm_campaign</th><th class="num">Views</th></tr></thead><tbody></tbody></table>
         </div>
       </div>
       <div class="tab-footer"><button class="export-csv-btn" data-export="traffic">Download CSV</button></div>
