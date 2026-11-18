@@ -17,10 +17,11 @@ It runs live at https://status.gipity.ai. It is a hidden catalog entry (`gipity 
 | Gipity Storage | `storage.read` of a tiny file this app owns (copied in on the first run with `storage.importUrl`) |
 | Gipity CDN | `HEAD https://media.gipity.ai/client/v1/gipity.js` |
 | Gipity Realtime | `GET https://rt.gipity.ai/health` |
+| AI services | `GET https://a.gipity.ai/health/ai` (503 while an upstream AI provider incident touches models, image, video, speech or audio; the body names only the affected Gipity services) |
 | Docs | `GET https://docs.gipity.ai/` |
 | Changelog | `GET https://a.gipity.ai/changelog?last=1` |
 
-A function may fetch only these public Gipity endpoints (GET or HEAD to `a.gipity.ai/health`, `a.gipity.ai/changelog`, `rt.gipity.ai/health`, and any path on `app`, `dev`, `media` and `docs.gipity.ai`); every other `*.gipity.ai` URL is blocked. Each host must also be in the function's `fetch_domains` in `gipity.yaml`.
+A function may fetch only these public Gipity endpoints (GET or HEAD to `a.gipity.ai/health`, `a.gipity.ai/health/ai`, `a.gipity.ai/changelog`, `rt.gipity.ai/health`, and any path on `app`, `dev`, `media` and `docs.gipity.ai`); every other `*.gipity.ai` URL is blocked. Each host must also be in the function's `fetch_domains` in `gipity.yaml`.
 
 ## States and uptime
 

@@ -9,7 +9,7 @@
  * `slowMs` counts as degraded.
  *
  * Functions may fetch only the public Gipity endpoints (GET/HEAD to
- * a.gipity.ai/health, a.gipity.ai/changelog, rt.gipity.ai/health, and any
+ * a.gipity.ai/health, a.gipity.ai/health/ai, a.gipity.ai/changelog, rt.gipity.ai/health, and any
  * path on app/dev/media/docs.gipity.ai), and each host must be listed in
  * run-checks' fetch_domains in gipity.yaml.
  */
@@ -21,6 +21,7 @@ export const COMPONENTS = [
   { key: 'storage', name: 'Gipity Storage', description: 'App files and uploads', kind: 'storage', slowMs: 1500 },
   { key: 'cdn', name: 'Gipity CDN', description: 'The client SDK and public files', url: 'https://media.gipity.ai/client/v1/gipity.js', method: 'HEAD', slowMs: 1500 },
   { key: 'realtime', name: 'Gipity Realtime', description: 'Multiplayer rooms and live updates', url: 'https://rt.gipity.ai/health', slowMs: 1500 },
+  { key: 'ai', name: 'AI services', description: 'Models, image, video, speech and audio generation', url: 'https://a.gipity.ai/health/ai', slowMs: 1500 },
   { key: 'docs', name: 'Docs', description: 'docs.gipity.ai', url: 'https://docs.gipity.ai/', slowMs: 2000 },
   { key: 'changelog', name: 'Changelog', description: 'What is new, for gipity changelog', url: 'https://a.gipity.ai/changelog?last=1', slowMs: 2000 },
 ];
