@@ -102,7 +102,7 @@ Every leaderboard run carries your build's version (**Project Settings > applica
 | `sign_in_steam()` | Signs in the running Steam account (needs GodotSteam). |
 | `sign_in_guest(name)` | A player tied to this device, for builds without Steam. |
 | `link_steam()` | Attaches Steam to the signed-in guest, keeping their progress. |
-| `sign_out()`, `is_signed_in()`, `player` | Session state. Tokens renew automatically. `player.nameConflict` is true when unique names are on and the player should pick a name (their Steam persona was taken, so they got `"<persona> #1234"`, or they share a name another player had first). |
+| `sign_out()`, `is_signed_in()`, `player` | Session state. Sign-in gives a 1-hour access token and a 60-day refresh token; the addon renews the access token with the refresh token a minute before it expires (and once on a 401), and signs in again if the refresh token was revoked. `sign_out()` revokes the refresh token on the server. `player.nameConflict` is true when unique names are on and the player should pick a name (their Steam persona was taken, so they got `"<persona> #1234"`, or they share a name another player had first). |
 | `rename_player(name)` | Sets the player's name in this game; `null` or `""` clears it. For a Steam player it wins over their persona on every sign-in; cleared, they go back to the persona. |
 | `check_name(name)` | Is a name free? `data: { name, available, uniqueNames, suggestions }`. Works before sign-in; signed in, the player's own name counts as free. 30 checks a minute per IP. |
 | `delete_player()` | Permanently deletes the player (account deletion requests). On `PLAYER_CLEANUP_FAILED` the session is kept so you can retry. |

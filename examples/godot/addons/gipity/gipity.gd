@@ -15,6 +15,12 @@ extends Node
 ##
 ## Project Settings: gipity/app_guid (required), gipity/api_base.
 ## Leaderboard runs carry application/config/version as their game version.
+##
+## Sessions: sign-in returns a 1-hour access token and a 60-day refresh token.
+## The addon renews the access token with the refresh token shortly before it
+## expires, and once more when a call comes back 401; if the refresh token is no
+## longer valid it signs in again the way the player last did (Steam or guest).
+## sign_out() revokes the refresh token on the server.
 
 signal signed_in(player: Dictionary)
 signal signed_out
@@ -34,7 +40,7 @@ const STEAM_RESULT_OK := 1
 const REQUEST_TIMEOUT_S := 15.0
 const STEAM_TICKET_TIMEOUT_MS := 10000
 const QUEUE_MAX := 50
-## Renew the player token this long before it expires.
+## Renew the access token this long before it expires.
 const TOKEN_RENEW_MARGIN_S := 60.0
 
 var app_guid := ""
@@ -53,10 +59,17 @@ var leaderboard: LeaderboardClient
 var steam_override: Object = null
 
 var _token := ""
+## Local clock time to renew the access token by (expiry minus the margin).
 var _token_expires_at := 0.0
+var _refresh_token := ""
+## Local clock time the refresh token stops working.
+var _refresh_expires_at := 0.0
+var _renewing := false
 var _sign_in_method := ""
 var _guest_name := ""
 var _flushing := false
+
+signal _renew_finished(result: Dictionary)
 
 
 func _ready() -> void:
@@ -66,6 +79,8 @@ func _ready() -> void:
 	leaderboard = LeaderboardClient.new(self)
 
 
+## True while the player holds a current access token. Once it lapses the next
+## call renews it (with the refresh token, or by signing in again).
 func is_signed_in() -> bool:
 	return _token != "" and Time.get_unix_time_from_system() < _token_expires_at
 
@@ -96,8 +111,12 @@ func sign_in_guest(display_name := "") -> Dictionary:
 
 ## Attach the running Steam account to the signed-in guest player.
 func link_steam() -> Dictionary:
-	if _sign_in_method != "guest" or not is_signed_in():
+	if _sign_in_method != "guest":
 		return _fail("Sign in as a guest before linking Steam.", 0)
+	if not is_signed_in():
+		var renewed := await _renew()
+		if not renewed.ok:
+			return renewed
 	var ticket := await _steam_ticket()
 	if not ticket.ok:
 		return ticket
@@ -105,9 +124,18 @@ func link_steam() -> Dictionary:
 	return _accept_session(res, "steam")
 
 
+## Sign out on this device: forget the session and revoke its refresh token on
+## the server (best effort; the local sign-out always happens).
 func sign_out() -> void:
+	_revoke_refresh_token(_refresh_token)
+	_clear_session()
+
+
+func _clear_session() -> void:
 	_token = ""
 	_token_expires_at = 0.0
+	_refresh_token = ""
+	_refresh_expires_at = 0.0
 	_sign_in_method = ""
 	player = {}
 	signed_out.emit()
@@ -149,7 +177,8 @@ func delete_player() -> Dictionary:
 	if res.ok:
 		if _sign_in_method == "guest":
 			DirAccess.remove_absolute(DEVICE_FILE)
-		sign_out()
+		# The server already ended every session of the deleted player.
+		_clear_session()
 	elif res.code == "PLAYER_CLEANUP_FAILED":
 		# The server answered (502, not an outage): retry later, keep the session.
 		res.offline = false
@@ -166,7 +195,7 @@ func call_function(function_name: String, body: Dictionary = {}) -> Dictionary:
 ## version has moved past the build that made it) is dropped, not retried, and
 ## reported through queued_run_dropped.
 func flush_queue() -> void:
-	if _flushing or not is_signed_in():
+	if _flushing or _sign_in_method == "":
 		return
 	_flushing = true
 	var pending := _load_queue()
@@ -196,14 +225,41 @@ func _enqueue(body: Dictionary) -> void:
 
 func _authed(method: int, path: String, body) -> Dictionary:
 	if _sign_in_method != "" and not is_signed_in():
-		await _reauth()
+		await _renew()
+	var sent_token := _token
 	var res := await _request(method, path, body, true)
-	# The token expired or was revoked mid-session: sign in again once and retry.
+	# The access token expired or was revoked mid-session: renew once and retry.
 	if res.status == 401 and _sign_in_method != "":
-		var again := await _reauth()
+		# Another call may already have renewed it while this one was in flight.
+		var again := _ok(null, 0) if _token != sent_token and _token != "" else await _renew()
 		if again.ok:
 			res = await _request(method, path, body, true)
 	return res
+
+
+## Get a fresh access token: with the refresh token while it's valid, else by
+## signing in again. One renewal at a time: a refresh token is single-use, so a
+## second concurrent refresh with it would look like theft and end the session.
+func _renew() -> Dictionary:
+	if _renewing:
+		return await _renew_finished
+	_renewing = true
+	var res := await _renew_once()
+	_renewing = false
+	_renew_finished.emit(res)
+	return res
+
+
+func _renew_once() -> Dictionary:
+	if _refresh_token != "" and Time.get_unix_time_from_system() < _refresh_expires_at:
+		var res := await _request(HTTPClient.METHOD_POST, "/auth/refresh", {"refreshToken": _refresh_token}, false)
+		if res.ok and res.data is Dictionary and _store_tokens(res.data):
+			return _ok(player, res.status)
+		if res.offline:
+			return res
+	# No usable refresh token (expired, revoked, signed out everywhere).
+	_refresh_token = ""
+	return await _reauth()
 
 
 func _reauth() -> Dictionary:
@@ -218,16 +274,66 @@ func _accept_session(res: Dictionary, method: String) -> Dictionary:
 	if not res.ok:
 		return res
 	var data: Dictionary = res.data if res.data is Dictionary else {}
-	if str(data.get("token", "")) == "":
-		return _fail("Sign-in response had no token.", res.status)
-	_token = data.token
-	_token_expires_at = Time.get_unix_time_from_system() + float(data.get("expiresIn", 3600)) - TOKEN_RENEW_MARGIN_S
+	var previous_refresh := _refresh_token
+	if not _store_tokens(data):
+		return _fail("Sign-in response had no tokens.", res.status)
+	# Signing in again (or linking Steam) replaces the old session: revoke it.
+	if previous_refresh != "" and previous_refresh != _refresh_token:
+		_revoke_refresh_token(previous_refresh)
 	_sign_in_method = method
 	player = data.get("user", {})
 	res.data = player
 	signed_in.emit(player)
 	flush_queue()
 	return res
+
+
+## Keep a token pair from a sign-in or refresh. Lifetimes are measured on the
+## server's clock (the access token's iat, and the expiry times it sent), then
+## counted from now on ours, so a wrong local clock can't break renewal.
+func _store_tokens(data: Dictionary) -> bool:
+	var access := str(data.get("accessToken", ""))
+	var refresh := str(data.get("refreshToken", ""))
+	if access == "" or refresh == "":
+		return false
+	var claims := _jwt_claims(access)
+	var server_now := float(claims.get("iat", 0))
+	var access_exp := float(claims.get("exp", 0))
+	var refresh_exp := _iso_to_unix(str(data.get("refreshTokenExpiresAt", "")))
+	if server_now <= 0 or access_exp <= server_now or refresh_exp <= server_now:
+		return false
+	var now := Time.get_unix_time_from_system()
+	_token = access
+	_token_expires_at = now + (access_exp - server_now) - TOKEN_RENEW_MARGIN_S
+	_refresh_token = refresh
+	_refresh_expires_at = now + (refresh_exp - server_now)
+	return true
+
+
+## Revoke a refresh token on the server. Fire and forget: nothing waits on it.
+func _revoke_refresh_token(token: String) -> void:
+	if token == "":
+		return
+	_request(HTTPClient.METHOD_POST, "/auth/signout", {"refreshToken": token}, false)
+
+
+## The payload of a JWT, without verifying it (the server does that).
+static func _jwt_claims(token: String) -> Dictionary:
+	var parts := token.split(".")
+	if parts.size() != 3:
+		return {}
+	var b64 := parts[1].replace("-", "+").replace("_", "/")
+	while b64.length() % 4 != 0:
+		b64 += "="
+	var parsed = JSON.parse_string(Marshalls.base64_to_utf8(b64))
+	return parsed if parsed is Dictionary else {}
+
+
+## Unix seconds from an ISO 8601 UTC time like 2026-11-18T17:05:00.000Z.
+static func _iso_to_unix(iso: String) -> float:
+	if iso.length() < 19:
+		return 0.0
+	return float(Time.get_unix_time_from_datetime_string(iso.substr(0, 19)))
 
 
 func _request(method: int, path: String, body, auth: bool) -> Dictionary:

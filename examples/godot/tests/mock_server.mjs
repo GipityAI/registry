@@ -27,6 +27,10 @@ export function startMockServer() {
   const state = {
     calls: [], players: new Map(), identities: new Map(), tokens: new Map(), submissions: [],
     failNextAuthOn: new Set(), failNextDelete: false, uniqueNames: false, persona: 'Racer X',
+    // Refresh tokens: token -> { guid, family, rotated, revoked }.
+    refresh: new Map(),
+    // Pretend the server's clock is this many seconds ahead of the client's.
+    serverSkewS: 0,
   };
   let n = 0;
   const nameTaken = (name, exceptGuid) => state.uniqueNames && name != null
@@ -34,7 +38,24 @@ export function startMockServer() {
   const userOf = (p, isNew = false) => ({
     guid: p.guid, displayName: p.displayName, provider: p.provider, providerUserId: p.providerUserId, isNew, nameConflict: p.nameConflict,
   });
-  const tokenFor = (p) => { const token = `tok_${p.guid}_${Math.random().toString(36).slice(2)}`; state.tokens.set(token, p.guid); return token; };
+  // Like the server: a JWT-shaped 1-hour access token (iat/exp on the server's
+  // clock) plus a single-use refresh token in a rotation family.
+  const b64url = (o) => Buffer.from(JSON.stringify(o)).toString('base64url');
+  const issue = (guid, family = `fam${++n}`) => {
+    const now = Math.floor(Date.now() / 1000) + state.serverSkewS;
+    const accessToken = `${b64url({ alg: 'HS256' })}.${b64url({ uid: guid, iat: now, exp: now + 3600, nonce: Math.random() })}.sig`;
+    state.tokens.set(accessToken, guid);
+    const refreshToken = `rt_${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}`;
+    state.refresh.set(refreshToken, { guid, family, rotated: false, revoked: false });
+    return {
+      accessToken,
+      accessTokenExpiresAt: new Date((now + 3600) * 1000).toISOString(),
+      refreshToken,
+      refreshTokenExpiresAt: new Date((now + 60 * 86400) * 1000).toISOString(),
+    };
+  };
+  const tokenFor = (p) => issue(p.guid);
+  const count = (path) => state.calls.filter(c => c.url.startsWith(`/api/app_test${path}`)).length;
   // Like the server: a player without a name of their own takes the persona; a
   // taken persona gets a SteamID suffix and nameConflict instead of failing.
   const namePersona = (p) => {
@@ -51,6 +72,12 @@ export function startMockServer() {
       const auth = (req.headers.authorization || '').replace('Bearer ', '');
       state.calls.push({ method: req.method, url: req.url, body, auth });
       const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
+      if (req.url.startsWith('/__count')) {
+        return send(200, { count: count(new URL(req.url, 'http://mock').searchParams.get('path')) });
+      }
+      if (req.url === '/__refresh_state') {
+        return send(200, Object.fromEntries(state.refresh));
+      }
       if (req.url === '/__last_call') {
         const last = [...state.calls].reverse().find(c => !c.url.startsWith('/__'));
         return send(200, last);
@@ -60,6 +87,11 @@ export function startMockServer() {
         if (body.failNextDelete) state.failNextDelete = true;
         if ('uniqueNames' in body) state.uniqueNames = body.uniqueNames;
         if ('persona' in body) state.persona = body.persona;
+        if ('serverSkewS' in body) state.serverSkewS = body.serverSkewS;
+        // Sign everyone out everywhere: no access or refresh token works.
+        if (body.revokeAll) { state.tokens.clear(); for (const r of state.refresh.values()) r.revoked = true; }
+        // Access tokens die (as if expired) but refresh tokens still work.
+        if (body.expireAccess) state.tokens.clear();
         // A player on another device who already has a name.
         if (body.addPlayer) {
           const guid = `u_other${++n}`;
@@ -77,13 +109,13 @@ export function startMockServer() {
         if (rejectedName(body.displayName)) return send(400, nameRejected);
         const key = `guest:${body.deviceSecret}`;
         const existing = state.identities.get(key);
-        if (existing) { const p = state.players.get(existing); return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p) } }); }
+        if (existing) { const p = state.players.get(existing); return send(200, { data: { ...tokenFor(p), user: userOf(p) } }); }
         const name = body.displayName ? String(body.displayName).trim() : null;
         if (nameTaken(name)) return send(409, nameTakenError);
         const p = { guid: `u_test${++n}`, displayName: name, custom: !!name, provider: 'guest', providerUserId: body.deviceSecret, nameConflict: false };
         state.players.set(p.guid, p);
         state.identities.set(key, p.guid);
-        return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p, true) } });
+        return send(200, { data: { ...tokenFor(p), user: userOf(p, true) } });
       }
       if (path === '/auth/steam') {
         if (body.ticket !== 'deadbeef01') return send(401, { error: { code: 'UNAUTHORIZED', message: 'Steam sign-in failed: Invalid ticket' } });
@@ -105,7 +137,24 @@ export function startMockServer() {
           }
         }
         namePersona(p);
-        return send(200, { data: { token: tokenFor(p), expiresIn: 86400, user: userOf(p, isNew) } });
+        return send(200, { data: { ...tokenFor(p), user: userOf(p, isNew) } });
+      }
+      if (path === '/auth/refresh') {
+        const r = state.refresh.get(body.refreshToken);
+        if (!r || r.revoked) return send(401, { error: { code: 'UNAUTHORIZED', message: 'That refresh token is not valid. Sign in again.' } });
+        if (r.rotated) {
+          // Reuse of a rotated token: revoke the whole family, like the server.
+          for (const x of state.refresh.values()) if (x.family === r.family) x.revoked = true;
+          return send(401, { error: { code: 'UNAUTHORIZED', message: 'That refresh token is not valid. Sign in again.' } });
+        }
+        r.rotated = true;
+        return send(200, { data: issue(r.guid, r.family) });
+      }
+      if (path === '/auth/signout') {
+        const r = state.refresh.get(body.refreshToken);
+        if (!r || r.revoked || r.rotated) return send(200, { data: { signedOut: 0 } });
+        for (const x of state.refresh.values()) if (x.family === r.family) x.revoked = true;
+        return send(200, { data: { signedOut: 1 } });
       }
       const player = state.players.get(state.tokens.get(auth));
       if (path === '/auth/player/name-available' && req.method === 'GET') {

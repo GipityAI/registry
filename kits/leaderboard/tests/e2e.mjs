@@ -40,7 +40,7 @@ const fn = async (name, body, token) => {
 async function guest(name) {
   const r = await api('POST', '/auth/guest', { deviceSecret: randomBytes(24).toString('hex'), displayName: name });
   assert.equal(r.status, 200, JSON.stringify(r.error));
-  return { name, token: r.data.token, guid: r.data.user.guid, ref: `guest:${r.data.user.providerUserId}`, id: r.data.user.providerUserId };
+  return { name, token: r.data.accessToken, guid: r.data.user.guid, ref: `guest:${r.data.user.providerUserId}`, id: r.data.user.providerUserId };
 }
 
 let failed = 0;

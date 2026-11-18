@@ -51,6 +51,20 @@ func control(body: Dictionary) -> void:
 	http.queue_free()
 
 
+func mock_get(path: String):
+	var http := HTTPRequest.new()
+	root.add_child(http)
+	http.request(base + path)
+	var out: Array = await http.request_completed
+	http.queue_free()
+	return JSON.parse_string((out[3] as PackedByteArray).get_string_from_utf8())
+
+
+func count(path: String) -> int:
+	var r = await mock_get("/__count?path=" + path.uri_encode())
+	return int(r.count)
+
+
 func _last_call() -> Dictionary:
 	var http := HTTPRequest.new()
 	root.add_child(http)
@@ -75,8 +89,18 @@ func _run() -> void:
 
 	r = await g.sign_in_guest("Guesty")
 	check(r.ok and g.is_signed_in() and g.player.displayName == "Guesty" and r.code == "", "guest sign-in", r)
+	check(g._refresh_token != "" and g._token.count(".") == 2, "sign-in keeps an access token and a refresh token", g._refresh_token)
+	var ttl: float = g._token_expires_at - Time.get_unix_time_from_system()
+	check(ttl > 3500.0 and ttl <= 3540.0, "the access token renews a minute before its hour is up", ttl)
+	var refresh_ttl: float = g._refresh_expires_at - Time.get_unix_time_from_system()
+	check(refresh_ttl > 59.0 * 86400.0 and refresh_ttl <= 60.0 * 86400.0, "the refresh token lasts 60 days", refresh_ttl)
+	var first_refresh: String = g._refresh_token
 	var first_guid = g.player.guid
 	g.sign_out()
+	check(g._refresh_token == "" and not g.is_signed_in(), "sign_out forgets the tokens", g._refresh_token)
+	await create_timer(0.5).timeout
+	var rstate = await mock_get("/__refresh_state")
+	check(rstate[first_refresh].revoked, "sign_out revokes the refresh token on the server", rstate[first_refresh])
 	r = await g.sign_in_guest("Guesty")
 	check(r.ok and g.player.guid == first_guid and not g.player.isNew, "the device secret persists: same guest again", r)
 
@@ -129,9 +153,52 @@ func _run() -> void:
 	r = await g.call_function("missing-fn", {})
 	check(not r.ok and r.status == 404 and "not found" in r.error and r.code == "NOT_FOUND", "server errors come back as messages with their code", r)
 
-	await control({"failNextAuthOn": ["echo"]})
+	# Renewal before expiry uses the refresh token, not a new sign-in.
+	var guests_before := await count("/auth/guest")
+	var refreshes_before := await count("/auth/refresh")
+	var old_refresh: String = g._refresh_token
+	g._token_expires_at = 0.0
 	r = await g.call_function("echo", {})
-	check(r.ok and r.data.you == first_guid, "a revoked token re-signs in once and retries", r)
+	check(r.ok and r.data.you == first_guid, "a call with an expiring access token still works", r)
+	check(await count("/auth/refresh") == refreshes_before + 1 and await count("/auth/guest") == guests_before,
+		"an expiring access token is renewed with the refresh token, not a new sign-in")
+	check(g._refresh_token != old_refresh and g.is_signed_in(), "the refresh token rotates on renewal", g._refresh_token)
+
+	# A 401 mid-session: refresh once and retry.
+	await control({"failNextAuthOn": ["echo"]})
+	refreshes_before = await count("/auth/refresh")
+	r = await g.call_function("echo", {})
+	check(r.ok and r.data.you == first_guid and await count("/auth/refresh") == refreshes_before + 1,
+		"a rejected access token is refreshed once and the call retried", r)
+
+	# Two calls at once with a lapsed token share one refresh (a second refresh
+	# with the same single-use token would end the session).
+	refreshes_before = await count("/auth/refresh")
+	g._token_expires_at = 0.0
+	var both: Array = []
+	var one_call := func(): both.append(await g.call_function("echo", {}))
+	one_call.call()
+	one_call.call()
+	while both.size() < 2:
+		await process_frame
+	check(both[0].ok and both[1].ok and await count("/auth/refresh") == refreshes_before + 1,
+		"concurrent calls share one refresh", both)
+
+	# Signed out everywhere: the refresh fails, so the addon signs in again.
+	await control({"revokeAll": true})
+	guests_before = await count("/auth/guest")
+	r = await g.call_function("echo", {})
+	check(r.ok and r.data.you == first_guid and await count("/auth/guest") == guests_before + 1,
+		"when the refresh token is revoked the addon signs in again and retries", r)
+
+	# The server's clock runs ahead of ours: lifetimes come from the server's
+	# own times, so the access token still renews about an hour from now.
+	await control({"serverSkewS": 7200})
+	g._token_expires_at = 0.0
+	r = await g.call_function("echo", {})
+	ttl = g._token_expires_at - Time.get_unix_time_from_system()
+	check(r.ok and ttl > 3500.0 and ttl <= 3540.0, "a skewed client clock doesn't break renewal timing", ttl)
+	await control({"serverSkewS": 0})
 
 	var fake := FakeSteam.new()
 	g.steam_override = fake
