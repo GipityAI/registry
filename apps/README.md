@@ -12,6 +12,7 @@ Complete, working [Gipity](https://gipity.ai) apps: run one as-is, learn from it
 | [`paid-app`](paid-app/) | Storefront that charges real money: Stripe checkout, subscriptions, a members area (the `stripe` kit). |
 | [`notify-demo`](notify-demo/) | Web push demo: turn on notifications, send a real ping (the `notify` kit). |
 | [`monitor`](monitor/) | The account dashboard every Gipity account gets: traffic, errors, spend, functions, jobs. Auto-installed; add your own copy to customize it. |
+| [`status`](status/) | Gipity's own status page (status.gipity.ai): every-minute checks of each Gipity service, uptime, 90-day history, incidents, a JSON feed. Hidden from listings. |
 | [`app-itsm`](app-itsm/) | IT service management: incidents, knowledge base, SLAs, service catalog, agent and employee portals. Hidden from listings; install by key. |
 | [`outreach-agent`](outreach-agent/) | **Incomplete.** A staged outreach-email funnel. Its LLM steps were built for the retired chat agent (Gmail tools, agent memory) and need porting to workflow `tools:` before it runs. Hidden from listings. |
 

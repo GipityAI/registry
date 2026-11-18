@@ -1,0 +1,233 @@
+/* Gipity Status styles. Brand + design tokens come from gipity-theme.css,
+   which loads before this file. The four state colors below are the only
+   colors this app adds. */
+:root {
+  --state-operational: #3fb950;
+  --state-degraded: var(--primary);
+  --state-down: #f85149;
+  --state-none: var(--border);
+}
+
+main {
+  max-width: 880px;
+  padding: var(--space-md);
+}
+
+h1, h2, h3, .lede {
+  text-wrap: balance;
+}
+
+.masthead h1 {
+  margin-bottom: var(--space-xs);
+}
+
+.lede {
+  margin-top: 0;
+  color: var(--text-muted);
+}
+
+.muted {
+  color: var(--text-muted);
+}
+
+section {
+  margin-top: var(--space-lg);
+}
+
+/* Overall banner */
+.overall {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left: 6px solid var(--state-none);
+  background: var(--surface);
+  font-size: var(--text-lg);
+}
+.overall[data-state="operational"] { border-left-color: var(--state-operational); }
+.overall[data-state="degraded"] { border-left-color: var(--state-degraded); }
+.overall[data-state="partial"],
+.overall[data-state="major"] { border-left-color: var(--state-down); }
+.overall #updated {
+  font-size: var(--text-sm);
+}
+
+/* Legend */
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-xs) var(--space-sm);
+  font-size: var(--text-sm);
+}
+.key {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  margin-left: var(--space-sm);
+}
+.key:first-child { margin-left: 0; }
+
+[data-state="operational"].key, .bar[data-state="operational"] { background: var(--state-operational); }
+[data-state="degraded"].key, .bar[data-state="degraded"] { background: var(--state-degraded); }
+[data-state="down"].key, .bar[data-state="down"] { background: var(--state-down); }
+[data-state="none"].key, .bar[data-state="none"] { background: var(--state-none); }
+
+/* Components */
+.components {
+  display: grid;
+  gap: var(--space-md);
+}
+
+.component {
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.component-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+.component h3 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.component .desc {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+
+.pill {
+  flex-shrink: 0;
+  padding: 2px var(--space-sm);
+  border-radius: 999px;
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border: 1px solid currentColor;
+  color: var(--text-muted);
+}
+.pill[data-state="operational"] { color: var(--state-operational); }
+.pill[data-state="degraded"] { color: var(--state-degraded); }
+.pill[data-state="down"] { color: var(--state-down); }
+
+.bars {
+  display: flex;
+  gap: 1px;
+  height: 28px;
+  margin-top: var(--space-md);
+}
+.bar {
+  flex: 1;
+  min-width: 0;
+  border-radius: 1px;
+}
+
+.bars-axis {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  margin-top: var(--space-xs);
+  font-size: var(--text-xs);
+}
+.axis-30 { display: none; }
+
+.component-stats {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.uptime {
+  display: flex;
+  gap: var(--space-md);
+  margin: 0;
+}
+.uptime div { margin: 0; }
+.uptime dt {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  font-weight: normal;
+  margin: 0;
+}
+.uptime dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.latency {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+.spark {
+  width: 120px;
+  height: 32px;
+}
+.spark polyline {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 1.5;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Incidents */
+.incident {
+  padding: var(--space-md);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--state-degraded);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: var(--space-md);
+}
+.incident[data-impact="major"] { border-left-color: var(--state-down); }
+.incident[data-status="resolved"] { border-left-color: var(--state-none); }
+.incident h3 {
+  margin: 0 0 var(--space-xs);
+  font-size: var(--text-base);
+}
+.incident > p {
+  margin: 0;
+  font-size: var(--text-sm);
+}
+.updates {
+  margin: var(--space-sm) 0 0;
+  padding-left: var(--space-md);
+}
+.updates li { margin-top: var(--space-sm); }
+.updates p {
+  margin: var(--space-xs) 0 0;
+  text-wrap: pretty;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-md);
+  justify-content: space-between;
+  margin-top: var(--space-xl);
+  padding-top: var(--space-md);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+/* Phones: show the last 30 days so each bar stays tappable. */
+@media (max-width: 600px) {
+  .bar:nth-child(-n+60) { display: none; }
+  .axis-90, .uptime-90 { display: none; }
+  .axis-30 { display: inline; }
+  .overall { font-size: var(--text-base); }
+}

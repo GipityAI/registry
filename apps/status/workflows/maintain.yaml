@@ -1,0 +1,11 @@
+# Nightly: roll finished days into status_daily, then prune raw checks older
+# than 90 days (functions/maintain.js).
+name: status-maintain
+description: Roll up daily uptime and prune old checks
+trigger: schedule
+cron: "10 0 * * *"
+steps:
+  - name: maintain
+    step_type: function
+    config: { name: maintain }
+    on_failure: retry

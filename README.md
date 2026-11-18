@@ -31,6 +31,7 @@ A **complete, working app** for an empty project: run it as-is, learn from it, t
 | [`paid-app`](apps/paid-app/) | Storefront that charges real money via Stripe. |
 | [`notify-demo`](apps/notify-demo/) | Web push notifications demo. |
 | [`monitor`](apps/monitor/) | The per-account dashboard (auto-installed; add your own copy to customize). |
+| [`status`](apps/status/) | Gipity's own status page (status.gipity.ai), built on Gipity. Hidden. |
 | [`app-itsm`](apps/app-itsm/) | IT service management (hidden from listings). |
 | [`outreach-agent`](apps/outreach-agent/) | Outreach-email funnel - incomplete, hidden from listings. |
 

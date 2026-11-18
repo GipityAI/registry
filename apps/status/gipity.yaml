@@ -1,0 +1,55 @@
+version: 1
+
+# Gipity Status - project {{PROJECT_GUID}}
+#
+# Frontend (src/)          -> CDN
+# Migrations (migrations/) -> the app's Gipity DB
+# Functions (functions/)   -> serverless endpoints
+# Workflows (workflows/)   -> the every-minute checks and the nightly rollup
+#
+# The public JSON feed (what the page reads):
+#   curl -s {{API_BASE}}/api/{{PROJECT_GUID}}/fn/status
+
+deploy:
+  phases:
+    - name: files
+      type: static
+      source: src
+
+    - name: database
+      type: sql
+      source: migrations
+      database: {{DATABASE}}
+
+    - name: functions
+      type: functions
+      source: functions
+      functions:
+        - name: status
+          auth: public
+          tables: [status_checks, status_daily, status_incidents, status_incident_updates]
+        - name: run-checks
+          auth: member
+          tables: [status_checks, status_settings]
+          # Functions may fetch only the public Gipity endpoints (GET/HEAD),
+          # and each host must be listed here.
+          fetch_domains: [a.gipity.ai, rt.gipity.ai, app.gipity.ai, dev.gipity.ai, media.gipity.ai, docs.gipity.ai]
+          timeout_ms: 25000
+          limits:
+            max_fetches: 15
+        - name: maintain
+          auth: member
+          tables: [status_checks, status_daily]
+          timeout_ms: 30000
+          limits:
+            max_rows_affected: 100000
+        - name: incident-post
+          auth: member
+          tables: [status_incidents, status_incident_updates]
+        - name: incident-delete
+          auth: member
+          tables: [status_incidents]
+
+    - name: workflows
+      type: workflows
+      source: workflows

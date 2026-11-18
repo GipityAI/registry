@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Apply the saved Gipity theme before styles load (no flash). Set via Gipity.setTheme('dark'|'light'|'blue'). -->
+  <script>(function(){try{var t=localStorage.getItem('gipity-theme');if(t==='light'||t==='blue')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">{{HEAD_BLOCK}}
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
+  <link rel="stylesheet" href="./css/gipity-theme.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script type="importmap">
+  { "imports": {} }
+  </script>
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <main>
+    <header class="masthead">
+      <h1>{{TITLE}}</h1>
+      <p class="lede">Live health of every Gipity service, checked every minute.</p>
+    </header>
+
+    <section id="overall" class="overall" data-state="loading" aria-live="polite">
+      <strong id="overall-text">Checking Gipity...</strong>
+      <span id="updated" class="muted"></span>
+    </section>
+
+    <section id="active-incidents" hidden>
+      <h2>Current incidents</h2>
+      <div id="active-list"></div>
+    </section>
+
+    <section>
+      <h2>Services</h2>
+      <p class="legend muted">
+        <span class="key" data-state="operational"></span> Operational
+        <span class="key" data-state="degraded"></span> Degraded or slow
+        <span class="key" data-state="down"></span> Down
+        <span class="key" data-state="none"></span> No data
+      </p>
+      <div id="components" class="components"></div>
+    </section>
+
+    <section id="past-incidents">
+      <h2>Past incidents</h2>
+      <div id="past-list"><p class="muted">No incidents in the last 30 days.</p></div>
+    </section>
+
+    <footer class="foot muted">
+      <a id="feed-link" href="#">JSON feed</a>
+      <span>Uptime counts degraded checks as up. Days are UTC.</span>
+      <span>Powered by <a href="https://gipity.ai">Gipity</a></span>
+    </footer>
+  </main>
+
+  <template id="component-tpl">
+    <article class="component">
+      <div class="component-head">
+        <div>
+          <h3 class="name"></h3>
+          <p class="desc muted"></p>
+        </div>
+        <span class="pill"></span>
+      </div>
+      <div class="bars" role="img"></div>
+      <div class="bars-axis muted">
+        <span class="axis-90">90 days ago</span><span class="axis-30">30 days ago</span>
+        <span class="uptime-90"></span>
+        <span>Today</span>
+      </div>
+      <div class="component-stats">
+        <dl class="uptime">
+          <div><dt>24 h</dt><dd class="u24"></dd></div>
+          <div><dt>7 days</dt><dd class="u7"></dd></div>
+          <div><dt>90 days</dt><dd class="u90"></dd></div>
+        </dl>
+        <div class="latency">
+          <svg class="spark" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"><polyline points=""></polyline></svg>
+          <span class="latency-now muted"></span>
+        </div>
+      </div>
+    </article>
+  </template>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

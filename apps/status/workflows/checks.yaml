@@ -1,0 +1,10 @@
+# Probe every component once a minute (functions/run-checks.js). Needs a plan
+# with no minimum schedule interval.
+name: status-checks
+description: Check every Gipity component and record the result
+trigger: schedule
+cron: "* * * * *"
+steps:
+  - name: run
+    step_type: function
+    config: { name: run-checks }
