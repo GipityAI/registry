@@ -150,7 +150,7 @@ Summarize: what needs attention, any patterns, recommended priorities. Keep it t
             { maxTokens: 512 }
         );
 
-        const text = result?.data?.content || result?.data?.text || result?.content || 'Summary unavailable.';
+        const text = result?.choices?.[0]?.message?.content || 'Summary unavailable.';
         content.innerHTML = `<div style="white-space: pre-wrap; font-size: var(--text-sm); line-height: 1.7; color: var(--text-1);">${escapeHtml(text)}</div>`;
     } catch (err) {
         console.error('Shift summary failed:', err);

@@ -1,4 +1,6 @@
 // collect-kpis.js - Calculate yesterday's ITSM KPIs and insert into kpi_scores
+// Run daily by the "KPI Collection" cron workflow (auth: member). Re-running
+// for the same day replaces that day's scores instead of duplicating them.
 
 export default async function collectKpis(ctx, { db }) {
     // Calculate for yesterday
@@ -94,7 +96,8 @@ export default async function collectKpis(ctx, { db }) {
         : 0;
     kpis.push({ kpi_name: 'reopen_rate', value: reopenRate, dimension: 'daily' });
 
-    // Bulk insert all KPIs
+    // Replace this day's scores, then insert
+    await db.query(`DELETE FROM kpi_scores WHERE period_date = $1`, [periodDate]);
     for (const kpi of kpis) {
         await db.query(
             `INSERT INTO kpi_scores (kpi_name, value, dimension, period_date)

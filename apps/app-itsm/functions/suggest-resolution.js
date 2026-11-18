@@ -86,7 +86,7 @@ Keep the response concise and practical (under 200 words).`;
         max_tokens: 512,
     });
 
-    const suggestion = result?.choices?.[0]?.message?.content || result?.content || 'Unable to generate suggestion.';
+    const suggestion = result?.text || 'Unable to generate suggestion.';
 
     return {
         incident_id,

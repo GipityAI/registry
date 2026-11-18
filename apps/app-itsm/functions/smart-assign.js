@@ -1,7 +1,35 @@
 // smart-assign.js - Intelligent incident assignment based on workload + expertise
+// Run by the "Auto-Categorize & Assign" workflow after classification
+// (auth: member). team_id defaults to the incident's own team.
+
+async function setting(db, key, fallback) {
+    const { rows: [row] } = await db.query(`SELECT value FROM app_settings WHERE key = $1`, [key]);
+    return row ? row.value : fallback;
+}
 
 export default async function smartAssign(ctx, { db }) {
-    const { incident_id, team_id } = ctx.body;
+    const { incident_id } = ctx.body;
+    if (!(await setting(db, 'ai_auto_assign_enabled', false))) {
+        return { assigned: false, reason: 'AI auto-assign is off' };
+    }
+
+    // Get the incident's category for expertise matching
+    const { rows: [incident] } = await db.query(
+        `SELECT category_id, subcategory_id, team_id, assigned_to FROM incidents WHERE id = $1`,
+        [incident_id]
+    );
+    if (!incident) {
+        return { assigned: false, reason: 'Incident not found' };
+    }
+    if (incident.assigned_to) {
+        return { assigned: false, reason: 'Already assigned' };
+    }
+    const requestedTeam = Number.parseInt(ctx.body.team_id, 10);
+    const team_id = Number.isInteger(requestedTeam) ? requestedTeam : incident.team_id;
+    if (!team_id) {
+        return { assigned: false, reason: 'Incident has no team' };
+    }
+
     // Get team members
     const { rows: members } = await db.query(
         `SELECT tm.user_id, up.display_name
@@ -14,12 +42,6 @@ export default async function smartAssign(ctx, { db }) {
     if (members.length === 0) {
         return { assigned: false, reason: 'No team members found' };
     }
-
-    // Get the incident's category for expertise matching
-    const { rows: [incident] } = await db.query(
-        `SELECT category_id, subcategory_id FROM incidents WHERE id = $1`,
-        [incident_id]
-    );
 
     const scores = [];
 
@@ -72,6 +94,12 @@ export default async function smartAssign(ctx, { db }) {
     await db.query(
         `UPDATE incidents SET assigned_to = $1, updated_at = NOW() WHERE id = $2`,
         [bestMatch.user_id, incident_id]
+    );
+
+    await db.query(
+        `INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+         VALUES ('incidents', $1, 'work_note', $2, 'Workflow: Smart Assign', true)`,
+        [incident_id, `Auto-assigned to ${bestMatch.display_name || bestMatch.user_id} (score ${bestMatch.total_score}).`]
     );
 
     return {

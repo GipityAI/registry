@@ -75,7 +75,7 @@ Provide a concise answer based on what you know about ITSM data patterns. If you
             { maxTokens: 256 }
         );
 
-        const answer = result?.choices?.[0]?.message?.content || result?.content || 'Unable to process query.';
+        const answer = result?.choices?.[0]?.message?.content || 'Unable to process query.';
         resultContainer.innerHTML = `
             <div style="font-size: var(--text-sm); color: var(--text-secondary); line-height: 1.7;">
                 ${escapeHtml(answer)}

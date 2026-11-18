@@ -50,8 +50,9 @@ src/                    # Vanilla JS SPA frontend
     components.css      # Component styles
 migrations/             # schema, applied by `gipity deploy`
 seed/                   # default data (SLA policies, categories, catalog)
-functions/              # 9 V8 serverless functions (AI + SLA + reporting)
+functions/              # 12 serverless functions (AI + SLA + reporting)
 workflows/              # 10 YAML automation workflows
+tests/                  # gipity test suites
 ```
 
 ## Key Files
@@ -75,3 +76,16 @@ workflows/              # 10 YAML automation workflows
 | P2 High | 30 min | 8 hours | 24x7 |
 | P3 Moderate | 4 hours | 3 days | Business hours |
 | P4 Low | 8 hours | 5 days | Business hours |
+
+## Automation and access
+
+The browser calls one function, `suggest-resolution` (read-only, `auth: public`). Every other function is run by a workflow in `workflows/` (record triggers and cron schedules) and is `auth: member`: the workflow runs it as the app owner, you and project members can run it by hand (`gipity fn call collect-kpis --env dev`), and anyone else gets 403.
+
+Optional secrets (`gipity secrets set <NAME> <value>`):
+
+| Secret | Used by |
+|--------|---------|
+| `SLACK_WEBHOOK_URL` | `escalate-incident` posts new P1/P2 incidents to Slack |
+| `DIGEST_RECIPIENTS` | `generate-weekly-digest` emails these comma-separated addresses instead of the app owner |
+
+The Records API tables are still `public` so the demo works without sign-in; see the SECURITY note in `gipity.yaml` before loading real data.

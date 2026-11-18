@@ -1,6 +1,9 @@
 // generate-weekly-digest.js - Gather past week KPIs and generate narrative summary
+// Run every Monday by the "Weekly Digest" cron workflow (auth: member). Emails
+// the digest to the app owner, or to the comma-separated addresses in the
+// DIGEST_RECIPIENTS secret when it is set.
 
-export default async function generateWeeklyDigest(ctx, { db, llm }) {
+export default async function generateWeeklyDigest(ctx, { db, llm, email, secrets }) {
     const today = new Date();
     const weekAgo = new Date(today);
     weekAgo.setDate(weekAgo.getDate() - 7);
@@ -89,9 +92,19 @@ Use simple, inline-styled HTML suitable for email. Keep it professional and data
         max_tokens: 1024,
     });
 
-    const digestHtml = result?.choices?.[0]?.message?.content || result?.content || '<p>Unable to generate digest.</p>';
+    const digestHtml = result?.text || '<p>Unable to generate digest.</p>';
+
+    const recipients = String((await secrets.get('DIGEST_RECIPIENTS')) || '')
+        .split(',').map((a) => a.trim()).filter(Boolean);
+    const sent = await email({
+        to: recipients.length ? recipients : 'owner',
+        subject: `ITSM Weekly Digest: ${startDate} - ${endDate}`,
+        html: digestHtml,
+        fromName: 'ITSM Digest',
+    });
 
     return {
+        emailed: sent?.sent ?? 0,
         period: { start: startDate, end: endDate },
         stats,
         major_incidents: majorIncidents.length,

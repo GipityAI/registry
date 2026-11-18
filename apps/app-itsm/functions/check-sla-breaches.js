@@ -1,4 +1,15 @@
 // check-sla-breaches.js - Check for SLA breaches and warnings
+// Run every 5 minutes by the "SLA Breach Check" cron workflow (auth: member).
+// Flags breached / at-risk SLA tasks, notes them on the incident, and notifies
+// the assigned agent.
+
+async function notifyAssignee(db, assignedTo, title, body) {
+    if (!assignedTo) return;
+    await db.query(
+        `INSERT INTO notifications (user_id, title, body, link) VALUES ($1, $2, $3, '/agent/incidents')`,
+        [assignedTo, title, body]
+    );
+}
 
 export default async function checkSlaBreaches(ctx, { db }) {
     const now = new Date();
@@ -8,7 +19,7 @@ export default async function checkSlaBreaches(ctx, { db }) {
     const { rows: breachedTasks } = await db.query(
         `SELECT st.id, st.incident_id, st.target_time, st.sla_definition_id,
                 sd.target_type, sd.name as sla_name,
-                i.number as incident_number, i.short_description
+                i.number as incident_number, i.short_description, i.assigned_to
          FROM sla_tasks st
          JOIN sla_definitions sd ON st.sla_definition_id = sd.id
          JOIN incidents i ON st.incident_id = i.id
@@ -45,8 +56,11 @@ export default async function checkSlaBreaches(ctx, { db }) {
         await db.query(
             `INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
              VALUES ('incidents', $1, 'work_note', $2, 'SLA Monitor', true)`,
-            [task.incident_id, `SLA BREACHED: ${task.sla_name} target of ${task.target_time.toISOString()} has been exceeded.`]
+            [task.incident_id, `SLA BREACHED: ${task.sla_name} target of ${new Date(task.target_time).toISOString()} has been exceeded.`]
         );
+
+        await notifyAssignee(db, task.assigned_to, `SLA Breached: ${task.incident_number}`,
+            `${task.short_description} - SLA target has been exceeded.`);
 
         results.breached.push({
             sla_task_id: task.id,
@@ -61,7 +75,7 @@ export default async function checkSlaBreaches(ctx, { db }) {
         `SELECT st.id, st.incident_id, st.start_time, st.target_time, st.percentage,
                 st.paused_duration_minutes,
                 sd.target_type, sd.name as sla_name,
-                i.number as incident_number
+                i.number as incident_number, i.short_description, i.assigned_to
          FROM sla_tasks st
          JOIN sla_definitions sd ON st.sla_definition_id = sd.id
          JOIN incidents i ON st.incident_id = i.id
@@ -88,8 +102,11 @@ export default async function checkSlaBreaches(ctx, { db }) {
             await db.query(
                 `INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
                  VALUES ('incidents', $1, 'work_note', $2, 'SLA Monitor', true)`,
-                [task.incident_id, `SLA WARNING: ${task.sla_name} is at ${percentage}% of target time. Target: ${task.target_time.toISOString()}`]
+                [task.incident_id, `SLA WARNING: ${task.sla_name} is at ${percentage}% of target time. Target: ${new Date(task.target_time).toISOString()}`]
             );
+
+            await notifyAssignee(db, task.assigned_to, `SLA Warning: ${task.incident_number}`,
+                `${task.short_description} - SLA approaching deadline.`);
 
             results.warnings.push({
                 sla_task_id: task.id,

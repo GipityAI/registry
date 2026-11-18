@@ -1,8 +1,19 @@
 // classify-incident.js - AI-powered incident classification
-// Reads incident, loads categories + teams, calls LLM for classification
+// Reads incident, loads categories + teams, calls LLM for classification, and
+// applies it when the model is confident enough. Run by the "Auto-Categorize &
+// Assign" workflow on each new incident (auth: member, so only the workflow,
+// the owner and project members can call it).
+
+async function setting(db, key, fallback) {
+    const { rows: [row] } = await db.query(`SELECT value FROM app_settings WHERE key = $1`, [key]);
+    return row ? row.value : fallback;
+}
 
 export default async function classifyIncident(ctx, { db, llm }) {
     const { incident_id } = ctx.body;
+    if (!(await setting(db, 'ai_auto_categorize_enabled', false))) {
+        return { incident_id, skipped: true, reason: 'AI auto-categorize is off', team_id: null };
+    }
     // Load the incident
     const { rows: [incident] } = await db.query(
         `SELECT id, short_description, description, category_id, subcategory_id, team_id
@@ -10,7 +21,7 @@ export default async function classifyIncident(ctx, { db, llm }) {
         [incident_id]
     );
     if (!incident) {
-        return { error: 'Incident not found' };
+        return { error: 'Incident not found', team_id: null };
     }
 
     // Load all categories (parent + children)
@@ -57,7 +68,7 @@ Respond with ONLY valid JSON (no markdown, no explanation):
     "suggested_impact": <1-3, where 1=high>,
     "suggested_urgency": <1-3, where 1=high>,
     "confidence": <0.0-1.0>,
-    "reasoning": "<brief explanation>"
+    "reasoning": "<one short sentence>"
 }
 
 Rules:
@@ -70,10 +81,11 @@ Rules:
     const result = await llm({
         messages: [{ role: 'user', content: prompt }],
         model: 'small',
-        max_tokens: 256,
+        max_tokens: 512,
+        response_format: { type: 'json_object' },
     });
 
-    const content = result?.choices?.[0]?.message?.content || result?.content || '';
+    const content = result?.text || '';
 
     // Parse JSON response
     let classification;
@@ -82,7 +94,7 @@ Rules:
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         classification = JSON.parse(jsonMatch ? jsonMatch[0] : content);
     } catch (err) {
-        return { error: 'Failed to parse LLM classification response', raw: content };
+        return { error: 'Failed to parse LLM classification response', raw: content, team_id: null };
     }
 
     // Look up priority from the matrix
@@ -113,8 +125,44 @@ Rules:
         ]
     );
 
+    // Apply the classification when the model is confident enough
+    const threshold = Number(await setting(db, 'ai_confidence_threshold', 0.7));
+    const applied = Number(classification.confidence) >= threshold;
+    if (applied) {
+        await db.query(
+            `UPDATE incidents SET
+                category_id = COALESCE($1, category_id),
+                subcategory_id = COALESCE($2, subcategory_id),
+                team_id = COALESCE($3, team_id),
+                priority = COALESCE($4, priority),
+                updated_at = NOW()
+             WHERE id = $5`,
+            [
+                classification.category_id ?? null,
+                classification.subcategory_id ?? null,
+                classification.team_id ?? null,
+                classification.priority,
+                incident_id,
+            ]
+        );
+    }
+
+    const categoryName = categories.find((c) => c.id === classification.category_id)?.name || 'none';
+    const teamName = teams.find((t) => t.id === classification.team_id)?.name || 'none';
+    await db.query(
+        `INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+         VALUES ('incidents', $1, 'work_note', $2, 'Workflow: Auto-Categorize', true)`,
+        [
+            incident_id,
+            `AI classified with ${classification.confidence} confidence. Category: ${categoryName}, Team: ${teamName}. `
+                + (applied ? 'Applied.' : `Below the ${threshold} threshold, not applied.`),
+        ]
+    );
+
     return {
         incident_id,
         classification,
+        applied,
+        team_id: applied ? (classification.team_id ?? null) : null,
     };
 }

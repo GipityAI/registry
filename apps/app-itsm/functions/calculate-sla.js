@@ -1,4 +1,6 @@
 // calculate-sla.js - Calculate SLA targets and create SLA task records
+// Run by the "SLA Assignment" workflow on each new incident (auth: member).
+// Idempotent: an incident that already has SLA tasks is left alone.
 
 export default async function calculateSla(ctx, { db }) {
     const { incident_id } = ctx.body;
@@ -9,6 +11,14 @@ export default async function calculateSla(ctx, { db }) {
     );
     if (!incident) {
         return { error: 'Incident not found' };
+    }
+
+    const { rows: [existing] } = await db.query(
+        `SELECT COUNT(*)::int AS count FROM sla_tasks WHERE incident_id = $1`,
+        [incident_id]
+    );
+    if (existing.count > 0) {
+        return { incident_id, priority: incident.priority, sla_tasks_created: 0, message: 'SLA tasks already exist' };
     }
 
     // Find matching SLA definitions for this priority
@@ -61,6 +71,12 @@ export default async function calculateSla(ctx, { db }) {
             resolutionSla?.target_time || null,
             incident_id,
         ]
+    );
+
+    await db.query(
+        `INSERT INTO comments (target_table, target_id, comment_type, body, author_name, is_ai_generated)
+         VALUES ('incidents', $1, 'work_note', $2, 'Workflow: SLA Assignment', true)`,
+        [incident_id, `SLA targets assigned: ${tasksCreated.length} SLA task(s) created for priority ${incident.priority}.`]
     );
 
     return {

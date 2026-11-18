@@ -1,7 +1,24 @@
 // generate-kb-article.js - Generate a KB article from a resolved incident
+// Run by the "KB Auto-Generate" workflow when an incident is resolved
+// (auth: member). One draft per incident: skips if one already exists.
+
+async function setting(db, key, fallback) {
+    const { rows: [row] } = await db.query(`SELECT value FROM app_settings WHERE key = $1`, [key]);
+    return row ? row.value : fallback;
+}
 
 export default async function generateKbArticle(ctx, { db, llm }) {
     const { incident_id } = ctx.body;
+    if (!(await setting(db, 'ai_kb_generation_enabled', false))) {
+        return { incident_id, skipped: true, reason: 'AI KB generation is off' };
+    }
+    const { rows: [existing] } = await db.query(
+        `SELECT id FROM knowledge_articles WHERE source_incident_id = $1 LIMIT 1`,
+        [incident_id]
+    );
+    if (existing) {
+        return { incident_id, skipped: true, reason: 'A KB article already exists for this incident', article_id: existing.id };
+    }
     // Load the incident with resolution details
     const { rows: [incident] } = await db.query(
         `SELECT i.id, i.number, i.short_description, i.description,
@@ -19,7 +36,7 @@ export default async function generateKbArticle(ctx, { db, llm }) {
     }
 
     if (!incident.resolution_notes) {
-        return { error: 'Incident has no resolution notes', incident_id };
+        return { incident_id, skipped: true, reason: 'Incident has no resolution notes' };
     }
 
     // Load work notes for additional context
@@ -58,15 +75,16 @@ Guidelines:
 - Body should be helpful to someone encountering the same issue
 - Use semantic HTML tags for structure
 - Include specific steps, not vague instructions
-- Keep it concise but complete`;
+- Keep it concise but complete: under 350 words`;
 
     const result = await llm({
         messages: [{ role: 'user', content: prompt }],
         model: 'small',
-        max_tokens: 1024,
+        max_tokens: 2048,
+        response_format: { type: 'json_object' },
     });
 
-    const content = result?.choices?.[0]?.message?.content || result?.content || '';
+    const content = result?.text || '';
 
     let article;
     try {
