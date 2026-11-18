@@ -399,6 +399,7 @@ tr.skeleton-row td { border-bottom: none; padding: 0.5rem; }
 .small { font-size: var(--text-sm); }
 .primary-btn { background: var(--primary); border: none; color: var(--text-on-primary); padding: 0.4rem 0.9rem; font-size: var(--text-sm); cursor: pointer; border-radius: 4px; font-weight: 500; }
 .primary-btn:hover { filter: brightness(1.1); }
+a.primary-btn { display: inline-block; text-decoration: none; }
 .link-btn { background: transparent; border: none; color: var(--primary); padding: 0 0.4rem; cursor: pointer; font-size: var(--text-sm); }
 .link-btn:hover { text-decoration: underline; }
 .link-btn.danger { color: var(--error); }

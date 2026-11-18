@@ -916,7 +916,7 @@
 
     <!-- ── Account tab ──────────────────────────────────────────── -->
     <section class="tab-panel" data-tab="account" hidden>
-      <div class="tab-desc-wrap"><p class="tab-lede">Your account, the API tokens that act as you, and closing the account. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your account, the API tokens that act as you, and closing the account. Account-wide secrets live on the <a href="#secrets">Secrets</a> tab. <span class="try-it">Try it: <code>$ gipity token create</code></span></p></div></div>
+      <div class="tab-desc-wrap"><p class="tab-lede">Your account, how you sign in, the API tokens that act as you, and closing the account. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">Your account, your sign-in passkeys, the API tokens that act as you, and closing the account. Account-wide secrets live on the <a href="#secrets">Secrets</a> tab. <span class="try-it">Try it: <code>$ gipity token create</code></span></p></div></div>
       <div class="grid-2">
         <div class="panel">
           <h3>Profile</h3>
@@ -941,6 +941,13 @@
       <div class="panel">
         <h3>API tokens</h3>
         <table class="data-table" id="table-acct-tokens"><thead><tr><th>Token</th><th>Created</th><th>Last used</th><th>Expires</th><th></th></tr></thead><tbody></tbody></table>
+      </div>
+      <div class="panel" id="acct-passkeys-panel">
+        <h3>Sign-in passkeys</h3>
+        <p class="small">Sign in with a passkey (Face ID, Touch ID, a security key) instead of an email code. Turn on "require passkey" and an email code alone no longer signs in, including for <code>gipity login</code>. Passkeys are added and removed on a Gipity page, because only that page can use them.</p>
+        <p class="small" id="acct-passkeys-state"></p>
+        <table class="data-table" id="table-acct-passkeys"><thead><tr><th>Passkey</th><th>Fingerprint</th><th>Added</th><th>Last used</th></tr></thead><tbody></tbody></table>
+        <p><a id="acct-passkeys-manage" class="primary-btn" href="#" target="_blank" rel="noopener">Manage sign-in passkeys</a></p>
       </div>
       <div class="panel" id="acct-nsfw-panel">
         <h3>NSFW services</h3>

@@ -1,7 +1,8 @@
 /**
- * Account tab: who you are, the API tokens that act as you (gip_at_*, for
- * headless agents and CI), and deleting the account. The same routes as
- * `gipity token create / list / revoke`.
+ * Account tab: who you are, your sign-in passkeys (read here, managed on the
+ * hosted page they link to; same route as `gipity account passkeys`), the API
+ * tokens that act as you (gip_at_*, for headless agents and CI), and deleting
+ * the account. The same routes as `gipity token create / list / revoke`.
  */
 import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyRow } from '../format.js';
 
@@ -63,6 +64,24 @@ async function revoke(api, btn) {
   } catch (err) {
     btn.textContent = err.message;
   }
+}
+
+function renderPasskeys(state) {
+  $('acct-passkeys-state').textContent = state.requirePasskey
+    ? 'Require passkey: on. A passkey is needed to sign in.'
+    : state.passkeys.length
+      ? 'Require passkey: off. A passkey or an email code signs in.'
+      : 'No sign-in passkeys yet. You sign in with an email code.';
+  $('acct-passkeys-manage').href = state.manageUrl;
+  const body = $('table-acct-passkeys').querySelector('tbody');
+  if (!state.passkeys.length) { body.innerHTML = emptyRow(4, 'No sign-in passkeys.'); return; }
+  body.innerHTML = state.passkeys.map((p) => `
+    <tr>
+      <td>${escapeHtml(p.label || 'Passkey')}</td>
+      <td class="mono small">${escapeHtml(p.fingerprint)}</td>
+      <td class="muted">${fmtTime(p.createdAt)}</td>
+      <td class="muted">${p.lastUsedAt ? fmtTime(p.lastUsedAt) : 'never'}</td>
+    </tr>`).join('');
 }
 
 // NSFW services opt-in. Self-serve can be closed (terms not live yet): then the
@@ -131,8 +150,9 @@ export async function renderAccountTab(api) {
     $('acct-delete-form').addEventListener('submit', (ev) => deleteAccount(api, ev));
     $('acct-nsfw-form').addEventListener('submit', (ev) => toggleNsfw(api, ev));
   }
-  const [me, tokens, nsfw] = await Promise.all([api.me(), api.agentTokens(), api.nsfw()]);
+  const [me, tokens, nsfw, passkeys] = await Promise.all([api.me(), api.agentTokens(), api.nsfw(), api.signinPasskeys()]);
   renderProfile(me.data);
+  renderPasskeys(passkeys.data);
   renderTokens(tokens.data);
   renderNsfw(nsfw.data);
 }

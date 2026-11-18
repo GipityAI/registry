@@ -173,6 +173,8 @@ export const api = {
   createAgentToken: (name, expiresInDays) => send('POST', '/auth/agent-tokens', { name, expiresInDays }),
   revokeAgentToken: (guid) => send('DELETE', `/auth/agent-tokens/${encodeURIComponent(guid)}`),
   deleteAccount: () => send('DELETE', '/users/me'),
+  // Sign-in passkeys (read only: changes happen on the hosted page it links to).
+  signinPasskeys: () => getJson('/auth/passkeys/state'),
   nsfw: () => getJson('/users/me/nsfw'),
   setNsfw: (allow, attest) => send('PATCH', '/users/me/nsfw', { allow, attest }),
 
