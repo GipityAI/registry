@@ -107,7 +107,14 @@ The device must check signatures against a key it already trusts, not one the se
 gipity approval show <ap_id> --json   # proof.publicKeyJwk
 ```
 
-Check it with the approver (it's their passkey), and save it on the device as `/etc/boiler/approver.jwk`. If they add a new passkey, pin that one too.
+Compare its fingerprint with the one the approver sees on their passkey page (https://a.gipity.ai/approvals/passkeys lists a fingerprint for each passkey). `gipity approval show <ap_id>` prints it, or on the device:
+
+```python
+from gipity_device import key_fingerprint
+print(key_fingerprint(jwk))   # e.g. "3f2a 9c1d 77b0 e412"
+```
+
+If they match, save the key on the device as `/etc/boiler/approver.jwk`. Gipity emails the approver whenever a passkey is added to or removed from their approvals; if they add a new one on purpose, pin that one too.
 
 ### 4. The device
 
@@ -227,7 +234,7 @@ A `POST` whose response was lost is not repeated, because it may already have ru
 | `client.records.list(table, filter=, any=, sort=, limit=, offset=, fields=, q=)` | `RecordPage(rows, total)` |
 | `client.records.create(table, data)` | the created row |
 | `client.upload(source, filename=, content_type=, public=False, table=, record_id=, path="uploads", size=)` | the stored file `{guid, name, size, content_type, url, ...}` |
-| `client.get_approval(id)` | `{id, status, payloadHash, expiresAt, approver, resolvedAt, consumedAt, proof}` |
+| `client.get_approval(id)` | `{id, status, summary, details, summaryHash, payloadHash, expiresAt, approver, resolvedAt, consumedAt, proof}` |
 | `client.consume_approval(id, payload_hash)` | `True` only if this call consumed it |
 | `client.subscribe(table, on_event, last_event_id=None, **options)` | a `Subscription` |
 

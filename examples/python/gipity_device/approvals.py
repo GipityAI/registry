@@ -9,7 +9,8 @@ is checked against a public key the device pinned when it was set up.
 Rules (the ``app-approvals`` skill documents the same):
 
 * ``payloadHash`` = hex sha256 of the canonical JSON of the payload;
-* ``challenge`` = sha256("gipity-approval:v1|" + id + "|" + payloadHash + "|" + expiresAt);
+* ``summaryHash`` = hex sha256 of the canonical JSON of ``{"details": details or null, "summary": summary}``;
+* ``challenge`` = sha256("gipity-approval:v2|" + id + "|" + payloadHash + "|" + summaryHash + "|" + expiresAt);
 * ``clientDataJSON``: ``type == "webauthn.get"``, ``challenge == base64url(challenge)``,
   ``origin == origin``;
 * ``authenticatorData``: rpIdHash == sha256(hostname of origin), flags UP (0x01)
@@ -34,7 +35,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
-from .canonical import approval_challenge, payload_hash
+from .canonical import approval_challenge, payload_hash, summary_hash
 
 __all__ = ["VerifyCheck", "VerifyResult", "verify_approval", "DEFAULT_ORIGIN"]
 
@@ -174,7 +175,13 @@ def verify_approval(
     hash_ok = local_hash == approval.get("payloadHash")
     add("payload hash matches", hash_ok, None if hash_ok else f"local {local_hash}")
 
-    challenge = approval_challenge(str(approval.get("id")), local_hash, str(approval.get("expiresAt")))
+    summary = approval.get("summary")
+    details = approval.get("details")
+    if not isinstance(summary, str) or not (details is None or isinstance(details, str)):
+        add("summary present", False, "the approval has no summary/details to recompute the challenge from")
+        summary, details = "", None
+    sum_hash = summary_hash(summary, details)
+    challenge = approval_challenge(str(approval.get("id")), local_hash, sum_hash, str(approval.get("expiresAt")))
     client_data: dict[str, Any] = {}
     try:
         client_data_bytes = _b64url_decode(str(proof.get("clientDataJSON", "")))

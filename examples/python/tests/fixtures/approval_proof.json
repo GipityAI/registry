@@ -1,27 +1,29 @@
 {
   "approval": {
-    "id": "ap_ewu76wbj",
+    "id": "ap_f6fqnxkk",
     "status": "approved",
     "summary": "Set boiler to 65C",
+    "details": "Kitchen controller",
+    "summaryHash": "420b7a5c41bf256ff007a819a194866b1b27342218da54a93ad443fc1533ff61",
     "payloadHash": "e5077358c282959159ce2019ee996d068d65bd580a323329cb79f4b9f803b7a3",
-    "expiresAt": "2026-11-18T17:27:16.000Z",
-    "approver": "u_e9qWnmtN",
-    "resolvedAt": "2026-11-18T17:22:16.591Z",
+    "expiresAt": "2026-11-18T19:11:03.000Z",
+    "approver": "u_cE7Ry4ZP",
+    "resolvedAt": "2026-11-18T19:06:04.392Z",
     "consumedAt": null,
     "proof": {
       "rpId": "a.gipity.ai",
       "origin": "https://a.gipity.ai",
-      "challenge": "T6P81U4FY3wefVvH9jM8JH758iGkoSoUr9j4uIc9eyc",
-      "signature": "MEQCIHcw7FxbQnohdmfB_3BceP_5wZZ-lzzAUHJQzXnmIlAMAiBwnPgB1KPtTKWrgfaCjsyeKFN4xyDIs2xsA8yDMqTBBg",
-      "credentialId": "KLJUsmtQyuhzW-pulVHo-A",
+      "challenge": "dMRmST9w94cDZTeh61f3f5uI_lL94NcriT5Nko_UXOo",
+      "signature": "MEUCIQCJ0pgK93EnCSGBaXvI9e5Q9jBYpor5Jmd6uLtI4eXYpgIgf7OkMT0Z4ZEyXZqZrIWO5oVYPSTI-k9s7bRj_amuM-g",
+      "credentialId": "Clj3r_QGGVcOvj4lPFIzDw",
       "publicKeyJwk": {
-        "x": "mwfxpA__m7K80nWy-XFYBK-mIYh4cHSV6O1f--O6tT8",
-        "y": "DryOs9WWcHdh25nHZYVUDCL9IkTXnc3cQ8YrmRQHzAM",
+        "x": "mL_dOR6nPZJ-qrnmkV9duae4wibw_7l6efzJtbeaLCw",
+        "y": "3zSEhuyO8xQncBqJaesq9VtYFNzn_fRwN9h3lgN5MH8",
         "alg": "ES256",
         "crv": "P-256",
         "kty": "EC"
       },
-      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVDZQODFVNEZZM3dlZlZ2SDlqTThKSDc1OGlHa29Tb1VyOWo0dUljOWV5YyIsIm9yaWdpbiI6Imh0dHBzOi8vYS5naXBpdHkuYWkiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiZE1SbVNUOXc5NGNEWlRlaDYxZjNmNXVJX2xMOTROY3JpVDVOa29fVVhPbyIsIm9yaWdpbiI6Imh0dHBzOi8vYS5naXBpdHkuYWkiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
       "authenticatorData": "N4A08rFf6oofD0rATEu86Zw9VoPTEyUl7LLGA6OQvyEFAAAAAQ"
     }
   },
@@ -32,8 +34,8 @@
   },
   "pinnedJwk": {
     "kty": "EC",
-    "x": "mwfxpA__m7K80nWy-XFYBK-mIYh4cHSV6O1f--O6tT8",
-    "y": "DryOs9WWcHdh25nHZYVUDCL9IkTXnc3cQ8YrmRQHzAM",
+    "x": "mL_dOR6nPZJ-qrnmkV9duae4wibw_7l6efzJtbeaLCw",
+    "y": "3zSEhuyO8xQncBqJaesq9VtYFNzn_fRwN9h3lgN5MH8",
     "crv": "P-256"
   }
 }

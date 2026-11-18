@@ -15,7 +15,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from gipity_device import Client, approval_challenge, payload_hash, verify_approval
+from gipity_device import Client, approval_challenge, payload_hash, summary_hash, verify_approval
 from mock_server import MockServer
 
 FX = json.loads((Path(__file__).parent / "fixtures" / "approval_proof.json").read_text())
@@ -109,10 +109,10 @@ def _synthetic(sign: Any, jwk: dict[str, Any]) -> tuple[dict[str, Any], dict[str
     expires_at = expires.strftime("%Y-%m-%dT%H:%M:%S.000Z")
     h = payload_hash(payload)
     ad = hashlib.sha256(b"a.gipity.ai").digest() + bytes([0x05]) + (1).to_bytes(4, "big")
-    cd = json.dumps({"type": "webauthn.get", "challenge": approval_challenge("ap_synth", h, expires_at), "origin": ORIGIN}).encode()
+    cd = json.dumps({"type": "webauthn.get", "challenge": approval_challenge("ap_synth", h, summary_hash("Synthetic", None), expires_at), "origin": ORIGIN}).encode()
     sig = sign(ad + hashlib.sha256(cd).digest())
     approval = {
-        "id": "ap_synth", "status": "approved", "payloadHash": h, "expiresAt": expires_at,
+        "id": "ap_synth", "status": "approved", "summary": "Synthetic", "details": None, "payloadHash": h, "expiresAt": expires_at,
         "proof": {"credentialId": "x", "publicKeyJwk": jwk, "authenticatorData": b64u(ad),
                   "clientDataJSON": b64u(cd), "signature": b64u(sig), "rpId": "a.gipity.ai", "origin": ORIGIN, "challenge": ""},
     }

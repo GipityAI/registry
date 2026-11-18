@@ -8,7 +8,7 @@ from __future__ import annotations
 __version__ = "0.1.0"
 
 from .approvals import DEFAULT_ORIGIN, VerifyCheck, VerifyResult, verify_approval
-from .canonical import approval_challenge, canonical_json, payload_hash
+from .canonical import approval_challenge, canonical_json, key_fingerprint, payload_hash, summary_hash
 from .client import DEFAULT_BASE_URL, Client, Functions, RecordPage, Records
 from .errors import GipityError
 from .sse import CursorStore, FileCursor, RecordEvent, Subscription
@@ -29,7 +29,9 @@ __all__ = [
     "VerifyCheck",
     "canonical_json",
     "payload_hash",
+    "summary_hash",
     "approval_challenge",
+    "key_fingerprint",
     "DEFAULT_BASE_URL",
     "DEFAULT_ORIGIN",
 ]

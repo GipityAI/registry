@@ -22,14 +22,15 @@ from __future__ import annotations
 
 import hashlib
 import math
+import json
 import re
 from base64 import urlsafe_b64encode
-from typing import Any
+from typing import Any, Mapping, Optional
 
-__all__ = ["canonical_json", "payload_hash", "approval_challenge", "CHALLENGE_PREFIX"]
+__all__ = ["canonical_json", "payload_hash", "summary_hash", "approval_challenge", "key_fingerprint", "CHALLENGE_PREFIX"]
 
-#: Domain separator of the approval challenge (version 1 of the format).
-CHALLENGE_PREFIX = "gipity-approval:v1|"
+#: Domain separator of the approval challenge (version 2 of the format).
+CHALLENGE_PREFIX = "gipity-approval:v2|"
 
 _MAX_SAFE_INTEGER = 2**53
 
@@ -132,11 +133,30 @@ def b64url(data: bytes) -> str:
     return urlsafe_b64encode(data).rstrip(b"=").decode("ascii")
 
 
-def approval_challenge(approval_id: str, payload_hash_hex: str, expires_at: str) -> str:
+def summary_hash(summary: str, details: Optional[str]) -> str:
+    """Hex SHA-256 of the canonical JSON of ``{"details": details or null, "summary": summary}``:
+    the words the approver read, which the passkey signs too."""
+    return payload_hash({"summary": summary, "details": details})
+
+
+def approval_challenge(approval_id: str, payload_hash_hex: str, summary_hash_hex: str, expires_at: str) -> str:
     """The WebAuthn challenge of an approval, base64url (no padding).
 
-    ``sha256("gipity-approval:v1|" + id + "|" + payloadHash + "|" + expiresAt)``,
+    ``sha256("gipity-approval:v2|" + id + "|" + payloadHash + "|" + summaryHash + "|" + expiresAt)``,
     with ``expires_at`` exactly as the server returned it.
     """
-    digest = hashlib.sha256(f"{CHALLENGE_PREFIX}{approval_id}|{payload_hash_hex}|{expires_at}".encode("utf-8")).digest()
-    return b64url(digest)
+    text = f"{CHALLENGE_PREFIX}{approval_id}|{payload_hash_hex}|{summary_hash_hex}|{expires_at}"
+    return b64url(hashlib.sha256(text.encode("utf-8")).digest())
+
+
+def key_fingerprint(jwk: Mapping[str, Any]) -> str:
+    """The passkey fingerprint Gipity shows on its passkey pages: the first 16 hex
+    characters of the RFC 7638 JWK thumbprint, in groups of four ("3f2a 9c1d 77b0 e412").
+    Compare it with https://a.gipity.ai/approvals/passkeys before pinning a key."""
+    kty = jwk.get("kty")
+    names = {"EC": ("crv", "kty", "x", "y"), "OKP": ("crv", "kty", "x"), "RSA": ("e", "kty", "n")}.get(str(kty))
+    if names is None or any(not isinstance(jwk.get(n), str) for n in names):
+        raise ValueError("not an EC, OKP or RSA public key")
+    members = json.dumps({n: jwk[n] for n in names}, separators=(",", ":"))
+    digest = hashlib.sha256(members.encode("utf-8")).hexdigest()[:16]
+    return " ".join(digest[i:i + 4] for i in range(0, 16, 4))
