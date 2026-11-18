@@ -58,6 +58,7 @@ Sample code you **copy by hand** into your own project. Examples are not in the 
 | Example | What |
 |-----|------|
 | [`godot`](examples/godot/) | Godot 4 addon plus Gip Racer, a demo lap racer. Steam and guest sign-in, calling your app's functions, leaderboards with ghosts, and an offline queue. Copy [`addons/gipity/`](examples/godot/addons/gipity/) into your game. |
+| [`python`](examples/python/) | `gipity_device`, a Python client for devices and scripts (Raspberry Pi, a box behind NAT, a cron job): call functions, read and create Records, follow a table's change stream without ever missing an event, upload files of any size, and verify passkey approvals offline. `pip install` it from the folder or copy [`gipity_device/`](examples/python/gipity_device/). |
 
 ## How `gipity add` resolves a name
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 /**
  * The registry's test gate: every kit's own Node unit tests, then the Godot
- * addon's tests. Kits are discovered, not listed: any kits/** /package.json
+ * addon's tests, then the Python device client's pytest suite (run with uv,
+ * which builds a locked venv from examples/python/uv.lock; a machine without
+ * uv fails the gate with an install hint instead of skipping the suite). Kits are discovered, not listed: any kits/** /package.json
  * with a `test` script runs, so a new kit is covered the moment it ships tests
  * (the old gate named only kits/realtime, and four other kits' suites never ran).
  *
@@ -42,6 +44,15 @@ for (const kit of kitsWithTests(join(ROOT, 'kits'))) {
   if (!run(name, 'npm', ['test', '--silent'], kit)) failed.push(name);
 }
 if (!run('examples/godot', 'node', ['tests/run_tests.mjs'], join(ROOT, 'examples', 'godot'))) failed.push('examples/godot');
+
+const uv = spawnSync('uv', ['--version'], { encoding: 'utf-8' });
+if (uv.status !== 0) {
+  console.log('\n=== examples/python\nuv is not installed, so the Python device client tests cannot run.'
+    + ' Install it (https://docs.astral.sh/uv/getting-started/installation/) and re-run the gate.');
+  failed.push('examples/python (uv missing)');
+} else if (!run('examples/python', 'uv', ['run', '--locked', '--extra', 'test', 'pytest', '-q'], join(ROOT, 'examples', 'python'))) {
+  failed.push('examples/python');
+}
 
 if (failed.length) {
   console.log(`\nFAILED: ${failed.join(', ')}`);

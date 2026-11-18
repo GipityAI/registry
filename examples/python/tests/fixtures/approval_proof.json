@@ -1,0 +1,39 @@
+{
+  "approval": {
+    "id": "ap_ewu76wbj",
+    "status": "approved",
+    "summary": "Set boiler to 65C",
+    "payloadHash": "e5077358c282959159ce2019ee996d068d65bd580a323329cb79f4b9f803b7a3",
+    "expiresAt": "2026-11-18T17:27:16.000Z",
+    "approver": "u_e9qWnmtN",
+    "resolvedAt": "2026-11-18T17:22:16.591Z",
+    "consumedAt": null,
+    "proof": {
+      "rpId": "a.gipity.ai",
+      "origin": "https://a.gipity.ai",
+      "challenge": "T6P81U4FY3wefVvH9jM8JH758iGkoSoUr9j4uIc9eyc",
+      "signature": "MEQCIHcw7FxbQnohdmfB_3BceP_5wZZ-lzzAUHJQzXnmIlAMAiBwnPgB1KPtTKWrgfaCjsyeKFN4xyDIs2xsA8yDMqTBBg",
+      "credentialId": "KLJUsmtQyuhzW-pulVHo-A",
+      "publicKeyJwk": {
+        "x": "mwfxpA__m7K80nWy-XFYBK-mIYh4cHSV6O1f--O6tT8",
+        "y": "DryOs9WWcHdh25nHZYVUDCL9IkTXnc3cQ8YrmRQHzAM",
+        "alg": "ES256",
+        "crv": "P-256",
+        "kty": "EC"
+      },
+      "clientDataJSON": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiVDZQODFVNEZZM3dlZlZ2SDlqTThKSDc1OGlHa29Tb1VyOWo0dUljOWV5YyIsIm9yaWdpbiI6Imh0dHBzOi8vYS5naXBpdHkuYWkiLCJjcm9zc09yaWdpbiI6ZmFsc2V9",
+      "authenticatorData": "N4A08rFf6oofD0rATEu86Zw9VoPTEyUl7LLGA6OQvyEFAAAAAQ"
+    }
+  },
+  "payload": {
+    "cmd": "set",
+    "target": 65,
+    "unit": "C"
+  },
+  "pinnedJwk": {
+    "kty": "EC",
+    "x": "mwfxpA__m7K80nWy-XFYBK-mIYh4cHSV6O1f--O6tT8",
+    "y": "DryOs9WWcHdh25nHZYVUDCL9IkTXnc3cQ8YrmRQHzAM",
+    "crv": "P-256"
+  }
+}
