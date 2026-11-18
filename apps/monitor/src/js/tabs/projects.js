@@ -1,6 +1,6 @@
 /**
  * Projects tab (the landing view): every project you own, where it is served,
- * and how its last deploys went, per target and per deploy phase. The same
+ * and how its last deploys went, for prod and each environment, per deploy phase. The same
  * data as `gipity status` / `gipity deploy`, from GET /account/logs/projects.
  */
 import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyState } from '../format.js';
@@ -9,7 +9,7 @@ const $ = (id) => document.getElementById(id);
 
 const PHASE_CLASS = { ok: 'ok', skipped: 'muted', warning: 'warn', failed: 'error' };
 
-/** One target's deploy: when, and each phase's status as a small pill. */
+/** One deploy's state: when, and each phase's status as a small pill. */
 function targetCell(url, state) {
   const link = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="url-link mono small" title="${escapeHtml(url)}">${escapeHtml(url.replace(/^https:\/\//, ''))}</a>`;
   if (!state) return `${link}<div class="muted small">Never deployed</div>`;
@@ -21,8 +21,7 @@ function targetCell(url, state) {
     <div class="phase-pills">${phases}</div>`;
 }
 
-/** The app's environments: one line each with its URL and last deploy. An app
- *  with none, but with a pre-environments dev deploy, shows that instead. */
+/** The app's environments: one line each with its URL and last deploy. */
 function envsCell(p) {
   if (p.envs?.length) {
     return p.envs.map((e) => `
@@ -30,9 +29,6 @@ function envsCell(p) {
         <span class="pill info">${escapeHtml(e.name)}</span>
         ${targetCell(e.url, e.deploys)}
       </div>`).join('');
-  }
-  if (p.deploys.dev) {
-    return `${targetCell(p.urls.dev, p.deploys.dev)}<div class="muted small" title="Deployed before environments existed: it runs on prod's backend. gipity deploy dev gives it its own.">earlier dev build, shares prod's backend</div>`;
   }
   return '<span class="muted small">None. <code>gipity deploy dev</code> creates one.</span>';
 }
@@ -43,12 +39,12 @@ function lastDeployCell(d) {
   const detail = d.ok ? '' : (d.failed_phases?.length
     ? `<div class="small detail-error">${escapeHtml(d.failed_phases.join(', '))}</div>`
     : d.error ? `<div class="small detail-error">${escapeHtml(d.error)}</div>` : '');
-  return `${pill} <span class="muted small">${escapeHtml(d.target || '')} · ${fmtTime(d.at)}</span>${detail}`;
+  return `${pill} <span class="muted small">${escapeHtml(d.env || '')} · ${fmtTime(d.at)}</span>${detail}`;
 }
 
 export async function renderProjectsTab(api) {
   const projects = (await api.projects()).data;
-  const deployed = projects.filter((p) => p.deploys.dev || p.deploys.prod || p.envs?.some((e) => e.deploys)).length;
+  const deployed = projects.filter((p) => p.deploys || p.envs?.some((e) => e.deploys)).length;
   const failing = projects.filter((p) => p.last_deploy && !p.last_deploy.ok).length;
   $('projects-count').textContent = fmtExact(projects.length);
   $('projects-deployed').textContent = fmtExact(deployed);
@@ -67,7 +63,7 @@ export async function renderProjectsTab(api) {
         ${p.deploy_state !== 'ready' ? `<span class="pill ${p.deploy_state === 'failed' ? 'error' : 'info'}">${escapeHtml(p.deploy_state)}</span>` : ''}
         ${p.urls.custom.map((u) => `<div><a href="${escapeHtml(u)}" target="_blank" rel="noopener" class="url-link small">${escapeHtml(u.replace(/^https:\/\//, ''))}</a></div>`).join('')}
       </td>
-      <td>${targetCell(p.urls.prod, p.deploys.prod)}</td>
+      <td>${targetCell(p.urls.prod, p.deploys)}</td>
       <td>${envsCell(p)}</td>
       <td>${lastDeployCell(p.last_deploy)}</td>
       <td class="row-actions">
