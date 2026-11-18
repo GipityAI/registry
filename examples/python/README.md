@@ -81,7 +81,8 @@ and a function the phone app calls, `functions/request-command.js` (declared wit
 export default async function (ctx, { approval, records }) {
   const { device, payload, summary } = ctx.body;  // payload: {"cmd":"set","target":65,"unit":"C"}
   const req = await approval.request({ summary, payload, approver: 'owner', ttlSeconds: 600 });
-  // Through records.create, not db.query, so the row goes out on the change stream.
+  // Through records.create so the row is validated and audited (a db.query insert
+  // streams too, but skips both).
   const row = await records.create('commands', { device, payload, approval_id: req.id });
   return { command: row.id, approveUrl: req.approveUrl, delivery: req.delivery };
 }
