@@ -28,6 +28,22 @@ const API_BASE = (typeof document !== 'undefined'
   || 'https://a.gipity.ai';
 const TOKEN_TTL_MS = 10 * 60 * 1000; // 10 min; token is good for ~15
 
+// The LLM service accepts at most 20 messages per request (APP_LLM_MAX_MESSAGES),
+// so each request carries only the most recent turns. The full conversation
+// stays in history(); older turns simply drop out of what the model sees.
+export const HISTORY_WINDOW = 20;
+
+/**
+ * The slice of the conversation sent with one request: the last
+ * HISTORY_WINDOW messages, starting at a user message (a window that would
+ * open on an assistant reply drops that reply).
+ */
+export function requestWindow(messages) {
+  const window = messages.slice(-HISTORY_WINDOW);
+  while (window.length > 0 && window[0].role !== 'user') window.shift();
+  return window;
+}
+
 export { ChatbotConfigError };
 
 /**
@@ -168,7 +184,7 @@ export function createChatbot(rawConfig) {
     const guid = resolveAppGuid();
 
     const body = {
-      messages,
+      messages: requestWindow(messages),
       system_prompt: systemPrompt,
       stream: true,
       temperature: config.model.temperature,

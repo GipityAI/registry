@@ -3,7 +3,7 @@
  * Run: node src/packages/chatbot/tests/engine.test.js
  */
 import assert from 'node:assert/strict';
-import { createChatbot } from '../lib/engine.js';
+import { createChatbot, HISTORY_WINDOW } from '../lib/engine.js';
 
 let passed = 0, failed = 0;
 const tests = [];
@@ -79,6 +79,22 @@ test('still sends temperature and max_tokens alongside the route', async () => {
   assert.equal(body.model, 'small');
   assert.equal(body.temperature, 0.2);
   assert.equal(body.max_tokens, 256);
+});
+
+test('a long conversation keeps working: each request sends at most the window', async () => {
+  const calls = stubFetch();
+  const bot = createChatbot({ persona });
+  for (let i = 1; i <= 15; i++) await bot.send(`question ${i}`);
+  const bodies = calls.filter(c => c.url.includes('/services/llm')).map(c => c.body);
+  assert.equal(bodies.length, 15);
+  for (const b of bodies) {
+    assert.ok(b.messages.length <= HISTORY_WINDOW, `sent ${b.messages.length} messages`);
+    assert.equal(b.messages[0].role, 'user');
+  }
+  const last = bodies[14].messages;
+  assert.deepEqual(last[last.length - 1], { role: 'user', content: 'question 15' });
+  // The full conversation is still in history.
+  assert.equal(bot.history().length, 30);
 });
 
 for (const [name, fn] of tests) {
