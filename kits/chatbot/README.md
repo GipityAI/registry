@@ -1,176 +1,202 @@
 # @gipity/chatbot
 
-A drop-in chatbot for any Gipity app. Configurable **persona**, **scope guardrails** (with refusal examples), **static knowledge** (20k token budget), suggested-prompt chips, streaming LLM responses. Headless engine + bubble widget — bring your own UI if you want.
+An AI assistant for any Gipity app. Persona, scope guardrails, static knowledge, streaming Markdown replies, and **tools**: the model calls your app's own functions as the signed-in visitor, so it can look things up and take actions (with an Allow / Don't allow step for anything that writes). Saved conversations, photos and text files, voice in and out, image generation, a model picker, stop / regenerate / edit.
 
-Cross-service kit: exercises `app-llm` today; voice (`app-tts` + `app-audio`), vision, image gen, and project-function tool calling land in later PRs.
+A corner bubble, an inline panel, a full-page chat with a conversation sidebar, or the headless engine under your own UI. No API keys and no agent server: the model, its limits and the billing are Gipity's; the tool loop is in this kit.
+
+For a complete app built on it (sign-in, saved chats in your database, a read-only SQL analyst over a demo dataset), see the [`ai-chat`](../../apps/ai-chat/) app.
 
 ```
 chatbot/
-  index.js        mount() + createChatbot() entry
-  lib/            implementation
-    config.js     validation + 20k knowledge budget
-    prompt.js     system-prompt assembly
-    engine.js     headless brain (createChatbot)
-    widget.js     <chatbot-widget> custom element
-  examples/       worked drop-ins
-  tests/          Node-runnable (gipity sandbox run)
+  index.js          mount() and everything below
+  lib/
+    config.js       validation (an unknown setting throws)
+    engine.js       createChatbot(): the headless brain and the tool loop
+    widget.js       <chatbot-widget>
+    prompt.js       system-prompt assembly
+    markdown.js     safe Markdown renderer
+    stores.js       localStore(), functionStore()
+    attachments.js  readAttachment(file)
+    voice.js        startRecording(), speak()
+  examples/
+  tests/            node tests/<name>.test.js
 ```
 
-## Two ways to use
+## Use it
 
-### 1) Default widget — bubble in the corner
-
-Installing the kit scaffolds `src/js/chatbot.config.js` (a commented starting config). Edit it, then paste these into your page:
+`gipity add chatbot` installs the kit, wires the import map, declares `llm: owner_pays` in `gipity.yaml` and scaffolds `src/js/chatbot.config.js`. Then:
 
 ```html
 <chatbot-widget id="bot"></chatbot-widget>
 <script type="module">
   import { mount } from '@gipity/chatbot';
   import config from './js/chatbot.config.js';
-  mount('#bot', config);   // (selector | element, config) → the widget element
+  const el = mount('#bot', config);   // el.bot is the engine
 </script>
 ```
 
-The launcher is a round button in the corner showing 💬 unless you set `ui.launcherIcon` to an image URL. Assistant replies render `**bold**`, `*italic*`, `` `code` `` and ```` ``` ```` fences; all other markdown is HTML-escaped and shown literally.
+The kit talks to Gipity through the client SDK every deployed page loads (`window.Gipity`, v1.0.26 or later).
 
-### 2) Headless engine — bring your own UI
-
-For an in-game NPC dialogue box, a custom layout, or anything that isn't a chat bubble:
+Your own UI instead:
 
 ```js
 import { createChatbot } from '@gipity/chatbot';
-import config from './chatbot.config.js';
-
 const bot = createChatbot(config);
-bot.on('delta', (text) => myCustomUi.append(text));
-bot.on('complete', () => myCustomUi.stopThinking());
-await bot.send('how do I fly the ship?');
+bot.on('delta', (text) => ui.append(text));
+bot.on('tool_start', ({ name }) => ui.step(name));
+bot.on('confirm', ({ name, args, approve, deny }) => ui.ask(name, args) ? approve() : deny());
+await bot.send('How many orders shipped last week?');
 ```
 
-## Config shape
+## Config
 
 ```js
+import { functionStore } from '@gipity/chatbot';
+
 export default {
   persona: {
-    name: 'Captain Gip',                    // required
-    instructions: 'Guide for Gipityship.',  // required
-    tone: 'Gruff WW2 vet, brief, funny',    // optional
-    avatar: '/assets/captain-gip.png',      // optional
-    greeting: '*salutes* Reporting for duty.', // optional — auto-rendered on first open
-    starters: ['How do I fly?', 'Controls?'], // optional — chips before first message
+    name: 'Gip',                                    // required
+    instructions: 'You help customers with orders.', // required
+    tone: 'Warm, brief.',
+    avatar: '/images/gip.png',
+    greeting: 'Hi! Ask me about your orders.',       // Markdown, shown before the first message
+    starters: ['Where is my order?', 'Return policy?'],
   },
 
-  scope: {                                  // optional — bot is unrestricted without it
-    allowed: ['Gipityship gameplay'],
-    refused: ['Writing code'],
-    onRefusal: 'Stay in character. Apologize briefly.',
-    refusalExamples: [
-      { user: 'Write a python script', bot: 'Negative on that, soldier.' },
-    ],
+  scope: {                                          // optional: keeps it on-topic
+    allowed: ['Orders', 'Shipping', 'Returns'],
+    refused: ['Writing code', 'Anything unrelated'],
+    onRefusal: 'Apologize briefly and offer something you can help with.',
+    refusalExamples: [{ user: 'Write me a poem', bot: "That's not my thing, but I can track an order!" }],
   },
 
-  knowledge: {                              // optional
-    maxTokens: 20000,                       // default 20k; over budget = fail loudly
+  knowledge: {                                      // optional: static facts, 20k tokens
+    maxTokens: 20000,
     sources: [
-      { type: 'text', content: 'Hours: 9-5.' },
-      { type: 'url', url: 'https://example.com/docs' },
+      { type: 'text', content: 'Returns are free within 30 days.' },
+      { type: 'url', url: 'https://example.com/faq.txt' },
     ],
   },
 
-  features: {                               // future PRs wire these
-    voice:    { enabled: false, voice: null, autoPlay: false },
-    vision:   { enabled: false },
-    imageGen: { enabled: false },
-    fileUpload: { enabled: false },
-  },
-
-  tools: [                                  // explicit allowlist — no auto-discovery
-    { name: 'lookup-stats', function: 'player-stats', auth: 'user-required' },
+  tools: [                                          // optional: see "Tools"
+    { name: 'lookup_order', description: 'Find an order by number. Returns { status, total }.',
+      function: 'order-status', parameters: { type: 'object', properties: { number: { type: 'string' } }, required: ['number'] } },
+    { name: 'cancel_order', description: 'Cancel an unshipped order.', function: 'cancel-order', confirm: true,
+      parameters: { type: 'object', properties: { number: { type: 'string' } }, required: ['number'] } },
+    { name: 'cart_contents', description: "What is in the visitor's cart right now.", run: async () => cart.items() },
   ],
 
-  ui: {
-    placement: 'bottom-right',              // bottom-right | bottom-left | inline | fullscreen
-    theme: 'match-app',                     // match-app | light | dark | auto
-    primaryColor: null,                     // override CSS --primary
-    launcherIcon: null,                     // null = 💬 emoji; a URL renders <img>
+  features: {
+    vision:   { enabled: false },                   // attach photos (needs a model that reads images)
+    files:    { enabled: false, maxChars: 200000 }, // attach CSV, logs, JSON, code (over maxChars is refused)
+    voice:    { enabled: false, voice: null, autoPlay: false }, // mic + read aloud
+    imageGen: { enabled: false, quality: null },    // a generate_image tool
   },
 
   storage: {
-    persistHistory: false,                  // PR2 wires this; requires app-auth
-    perUser: false,
-    retentionDays: 90,
+    persist: 'none',                                // 'none' | 'local' | functionStore('chats') | your store
+    autoTitle: true,                                // name new chats with a small model
+    localKey: 'gipity-chatbot',                     // localStorage key for 'local'
   },
 
   model: {
-    route: 'default',                       // 'default' = the project's default model.
-                                            // Or a tier alias (small | fast | medium | large | thinking)
-                                            // or a concrete model id (e.g. 'claude-sonnet-5-5').
+    route: 'default',                               // the app's default model, a tier alias
+                                                    // (small | fast | medium | large | thinking) or a model id
     temperature: 0.7,
-    maxTokens: 1024,
+    maxTokens: 2048,                                // per model call
+    maxToolSteps: 8,                                // tool rounds per answer (1-25)
+    choices: [],                                    // [{ route: 'fast', label: 'Fast' }, ...] shows a picker
+  },
+
+  ui: {
+    placement: 'bottom-right',                      // bottom-right | bottom-left | inline | fullscreen
+    theme: 'match-app',                             // match-app | light | dark | auto
+    primaryColor: null,                             // override the page's --primary
+    launcherIcon: null,                             // null = 💬; a URL renders an image
+    sidebar: null,                                  // conversation list; default on for inline/fullscreen with storage
+    showUsage: false,                               // show the credits each answer cost
+    placeholder: 'Message…',
   },
 };
 ```
 
-## Scope guardrails — what your bot will and won't answer
+Only `persona.name` and `persona.instructions` are required. A setting the kit doesn't know throws `ChatbotConfigError`, so a typo never silently does nothing.
 
-A common problem with helper chatbots is that someone walks in and asks them to write a Python script. You don't want that. The `scope` block lets you declare what's in and out of bounds:
+## Tools
 
-```js
-scope: {
-  allowed: ['Gipityship gameplay', 'Controls', 'Game lore'],
-  refused: ['Writing code', 'Off-topic questions', 'Making up info'],
-  onRefusal: 'Stay in character. Apologize briefly. Suggest something you can help with.',
-  refusalExamples: [
-    {
-      user: 'Write me a python script to scrape a website',
-      bot: "*shakes head* Negative on that, soldier. Code-cuttin' ain't in my brief — I'm here to school ya on Gipityship, not pencil-whip scripts. Want to know how to fly the ship?",
-    },
-  ],
-}
-```
+A tool is something the model can ask to run in the middle of an answer. The kit runs it, hands the result back, and the model continues, up to `model.maxToolSteps` rounds.
 
-The kit compiles this into structured system-prompt instructions with the refusal example showing the model exactly how to stay in character while declining. Works well in practice with capable models. (For stricter applications, a pre-classification step is on the roadmap.)
+- **`function: 'name'`** calls `functions/name.js` through `Gipity.fn`, as the signed-in visitor. The function's `auth`, table grants and limits apply, so the assistant can do exactly what that visitor could already do through your app. The tool arguments are the function body; the return value goes to the model. Return `{ error: '...' }` for an expected failure and the model reads it and recovers.
+- **`run: async (args) => result`** runs browser code (the page, the cart, game state).
+- **`description`** is how the model decides when to call the tool: say what it does and what it returns. **`parameters`** is a JSON Schema object.
+- **`confirm: true`** asks the visitor first. The widget shows an Allow / Don't allow card; the headless engine emits `confirm` with `approve()` / `deny()` (with nothing listening, the answer is no). Use it for anything that writes, sends or spends.
+- A tool that needs sign-in, called signed out, tells the model and the widget shows a Sign in button (`auth_required` event).
+- Results over 30,000 characters are cut, and the model is told so it can ask for less.
 
-## Knowledge — 20k token budget
+Chat over your database: one `query_data` tool backed by a function that runs a single `SELECT` inside `db.tx` with `SET TRANSACTION READ ONLY`, granted only the tables it may read, and the schema written into `knowledge`. The `ai-chat` app's `functions/query-data.js` is the pattern.
 
-Two source types in v1:
+## Saved conversations
 
-- `{ type: 'text', content: '...' }` — inline, validated at config-load time.
-- `{ type: 'url', url: 'https://...' }` — fetched once at engine init, validated against the budget then.
+`storage.persist` takes:
 
-If total knowledge exceeds `maxTokens`, the kit **throws** — never silently truncates. Trim sources or raise the budget. Token estimation is `chars / 4`.
+- `'local'`: this browser's localStorage. No backend.
+- `functionStore('chats')`: one app function keeps them in your database, per signed-in user. It receives `{ action, ... }`:
 
-File-based knowledge (`{ type: 'file', path: '...' }`) and RAG embeddings are on the roadmap; for now, inline the contents in a `text` source.
+  | action | body | returns |
+  |---|---|---|
+  | `list` | | `{ conversations: [{ id, title, updatedAt }] }`, newest first |
+  | `load` | `id` | `{ conversation: { id, title, messages } }` or `{ conversation: null }` |
+  | `create` | `title, messages` | `{ id }` |
+  | `write` | `id, from, messages` | `{ ok: true }`: drop messages from position `from` on, then add these |
+  | `rename` | `id, title` | `{ ok: true }` |
+  | `remove` | `id` | `{ ok: true }` |
+
+  Copy `functions/chats.js` and `migrations/001-chat.sql` from the `ai-chat` app.
+- Any object with async `list`, `load`, `create`, `write`, `rename` and `remove` as above.
+
+## Features and the services they use
+
+Each feature calls a Gipity app service, so declare it in the `services` phase of `gipity.yaml` (`owner_pays` for a public bot):
+
+| Feature | Service |
+|---|---|
+| chat (always) | `llm` |
+| `voice` mic | `transcribe` |
+| `voice` read aloud | `tts` |
+| `imageGen` | `image` |
+
+Photos are shrunk to 1280 px JPEG before sending. Text files go into the message inside `<file name="...">` tags; the visitor sees only what they typed plus a file chip.
+
+## Engine API
+
+`createChatbot(config)` returns:
+
+| | |
+|---|---|
+| `send(text, { attachments })` | send a message (attachments from `readAttachment(file)`); resolves with the final reply |
+| `stop()` | stop the reply in progress; what streamed is kept |
+| `regenerate()` | drop the last reply and ask again |
+| `editLast(text)` | replace the last message and ask again |
+| `newChat()` / `reset()` | start an empty conversation |
+| `open(id)`, `conversations()`, `rename(id, title)`, `remove(id)` | saved conversations |
+| `current()` | `{ id, title }` of the open conversation |
+| `setModel(route)`, `getModel()` | the model for the next message |
+| `history()`, `isBusy()`, `config` | |
+
+Events (`bot.on(name, fn)` returns an unsubscribe function): `start`, `delta`, `message`, `tool_start`, `tool_end`, `confirm`, `usage` (`{ credits, inputTokens, outputTokens }` per answer), `complete`, `error` (`err.visitorMessage` is safe to show a visitor; the full detail is in `err.message`), `auth_required`, `history`, `conversation`, `conversations`, `reset`, `knowledge_loaded`.
+
+A failed send leaves no trace in the history and hands the text back as `err.unsentText`.
+
+## Long conversations
+
+Each request carries the newest messages that fit about 75,000 tokens (at most 200 messages), starting at a user message so a tool result never loses the call that asked for it. The whole conversation stays in `history()` and in storage.
 
 ## Theming
 
-All colors come from CSS variables. `theme: 'match-app'` (default) reads `--primary` from the host page. Override per-instance:
-
-```js
-ui: { primaryColor: '#9b51e0' }
-```
-
-Or via the element's `style` attribute. The widget uses Shadow DOM, so host CSS doesn't leak in (good for embedding); the `--primary` variable propagates through.
-
-## Events (headless engine)
-
-```js
-bot.on('start',            () => {});         // message about to be sent
-bot.on('delta',            (text) => {});      // streaming text chunk
-bot.on('message',          (msg)  => {});      // a full message landed in history
-bot.on('complete',         (msg)  => {});      // assistant response finished
-bot.on('usage',            (u)    => {});      // tokens + credits when reported
-bot.on('reset',            ()     => {});      // history cleared
-bot.on('error',            (err)  => {});      // anything threw
-bot.on('knowledge_loaded', ({ tokens }) => {});// URL-source fetch completed
-```
+`theme: 'match-app'` uses the page's Gipity theme tokens (`--primary`, `--surface`, `--text-main`, `--border`...), so the widget follows the template's dark, light or blue theme. `light`, `dark` and `auto` pick a fixed palette. Style the shadow parts from your page: `chatbot-widget::part(panel)`, `::part(header)`, `::part(messages)`, `::part(sidebar)`, `::part(launcher)`.
 
 ## Tests
 
 ```bash
-node tests/config.test.js
-node tests/prompt.test.js
-node tests/scope.test.js
+for t in tests/*.test.js; do node $t; done
 ```
-
-All three are Node-runnable, no harness needed. Run them in the Gipity sandbox via `gipity sandbox run`.

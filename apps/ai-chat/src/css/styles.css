@@ -1,0 +1,34 @@
+/* A full-height page: a thin top bar, then the chat fills the rest.
+   Colors come from gipity-theme.css; the chat widget reads the same tokens. */
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--background-body);
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm) var(--space-md);
+  border-bottom: 1px solid var(--border);
+}
+.brand { font-weight: 700; font-size: var(--text-base); color: var(--text-bright); flex: 1; }
+.who { color: var(--text-muted); font-size: var(--text-sm); }
+.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.link:hover { color: var(--primary); }
+
+#chat { flex: 1; min-height: 0; }
+/* The chat fills the page edge to edge (the widget's inline panel has a
+   rounded border meant for embedding in a page section). */
+#chat::part(panel) { border: none; border-radius: 0; }

@@ -1,0 +1,67 @@
+version: 1
+
+# Project: {{PROJECT_GUID}}
+#
+# AI Chat: a full chat assistant on the @gipity/chatbot kit. People sign in,
+# chat, and the assistant answers from your app's own data by calling your
+# functions as them. Everything it needs is declared here.
+
+# People sign in to this app with its own sign-in page (Google, email code...),
+# no Gipity account needed. Manage them with `gipity project users`.
+auth:
+  mode: app
+
+# Only signed-in people can load the pages, so the app never has to handle a
+# signed-out visitor. Add `emails: [...]` to limit it to known people.
+access:
+  mode: app-users
+
+deploy:
+  phases:
+    - name: files
+      type: static
+      source: src
+
+    # Conversations, the demo shop tables, notes. The shop data is a seed.
+    - name: database
+      type: sql
+      source: migrations
+      seed: seeds
+      database: {{DATABASE}}
+
+    # AI services the chat uses. owner_pays: you pay in credits, so your users
+    # never see a payment step. Cap the spend per answer with model.maxTokens
+    # and model.maxToolSteps in src/js/chatbot.config.js.
+    - name: services
+      type: services
+      services:
+        - service: llm            # the chat itself (with tools)
+          billing_mode: owner_pays
+        - service: transcribe     # the mic button
+          billing_mode: owner_pays
+        - service: tts            # read aloud
+          billing_mode: owner_pays
+        - service: image          # the generate_image tool
+          billing_mode: owner_pays
+
+    # Every function runs as the signed-in user (auth: user).
+    #   chats        the conversation store (functionStore('chats'))
+    #   query-data   the query_data tool: read-only SQL over the shop tables only
+    #   save-note    the save_note tool (the chat asks the user before it runs)
+    #   list-notes   the list_notes tool
+    - name: functions
+      type: functions
+      source: functions
+      functions:
+        - name: chats
+          auth: user
+          tables: [chat_conversations, chat_messages]
+        - name: query-data
+          auth: user
+          tables: [customers, products, orders, order_items]
+        - name: save-note
+          auth: user
+          tables: [notes]
+        - name: list-notes
+          auth: user
+          tables: [notes]

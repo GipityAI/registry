@@ -10,6 +10,7 @@ Complete, working [Gipity](https://gipity.ai) apps: run one as-is, learn from it
 | [`3d-world`](3d-world/) | Playable 3D multiplayer rocket-launcher demo, built on the `3d-engine` template. |
 | [`karaoke-captions`](karaoke-captions/) | Audio + lyrics to word-by-word timing JSON (the `audio-align` kit, a GPU job). |
 | [`paid-app`](paid-app/) | Storefront that charges real money: Stripe checkout, subscriptions, a members area (the `stripe` kit). |
+| [`ai-chat`](ai-chat/) | AI chat assistant: sign-in, saved conversations, tools that query your data, files, voice (the `chatbot` kit). |
 | [`notify-demo`](notify-demo/) | Web push demo: turn on notifications, send a real ping (the `notify` kit). |
 | [`monitor`](monitor/) | The account dashboard every Gipity account gets: traffic, errors, spend, functions, jobs. Auto-installed; add your own copy to customize it. |
 | [`status`](status/) | Gipity's own status page (status.gipity.ai): every-minute checks of each Gipity service, uptime, 90-day history, incidents, a JSON feed. Hidden from listings. |

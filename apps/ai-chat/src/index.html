@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <!-- Apply the saved Gipity theme before styles load (no flash). Set via Gipity.setTheme('dark'|'light'|'blue'). -->
+  <script>(function(){try{var t=localStorage.getItem('gipity-theme');if(t==='light'||t==='blue')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">{{HEAD_BLOCK}}
+  <link rel="stylesheet" href="./css/gipity-theme.css">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "@gipity/chatbot": "./packages/chatbot/index.js",
+      "@gipity/chatbot/": "./packages/chatbot/"
+    }
+  }
+  </script>
+  {{ANALYTICS_SCRIPT}}
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">{{TITLE}}</span>
+    <span class="who" id="who"></span>
+    <button type="button" class="link" id="sign-out">Sign out</button>
+  </header>
+
+  <!-- The whole chat: sidebar, messages, composer. Configured in js/chatbot.config.js. -->
+  <chatbot-widget id="chat"></chatbot-widget>
+
+  <script type="module" src="./js/main.js"></script>
+</body>
+</html>

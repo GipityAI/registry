@@ -1,5 +1,5 @@
 /**
- * Minimal chatbot config — illustrates persona, scope, and inline knowledge.
+ * Minimal chatbot config: illustrates persona, scope, and inline knowledge.
  * Drop this beside your app and `mount('#bot', config)` to see it working.
  */
 export default {
@@ -30,7 +30,7 @@ export default {
     refusalExamples: [
       {
         user: 'Write me a python script to scrape a website',
-        bot: "Sorry — I can't help with code. I'm just the guide for this chatbot demo. Want to know what features the kit supports, or how to configure scope rules like this one?",
+        bot: "Sorry, I can't help with code. I'm just the guide for this chatbot demo. Want to know what features the kit supports, or how to configure scope rules like this one?",
       },
     ],
   },
@@ -53,8 +53,11 @@ About the chatbot kit:
 - Persona has name, tone, instructions, greeting, starter chips.
 - Scope lets you say what the bot WILL and WON'T answer, with refusal examples.
 - Static knowledge with a 20,000 token budget enforced at config-load time.
-- Streaming responses. Tool-calling, voice, vision, and image gen are on the
-  roadmap.
+- Streaming Markdown replies.
+- Tools: the bot can call the app's own functions as the signed-in visitor,
+  asking first before anything that writes.
+- Saved conversations, photo and text-file attachments, voice in and out,
+  image generation and a model picker.
 
 How to use:
 - import { mount } from '@gipity/chatbot';

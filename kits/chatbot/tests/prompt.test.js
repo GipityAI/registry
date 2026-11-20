@@ -115,6 +115,20 @@ test('fetched knowledge text is appended to inline knowledge', () => {
   assert.ok(out.indexOf('INLINE_PART') < out.indexOf('FETCHED_PART'));
 });
 
+test('replies are told Markdown renders', () => {
+  const out = buildSystemPrompt(validateConfig({ persona: minimalPersona }));
+  assert.match(out, /## Formatting\nReplies render as Markdown/);
+});
+
+test('a tools section appears only with tools, naming the ones that ask first', () => {
+  const cfg = validateConfig({ persona: minimalPersona });
+  assert.doesNotMatch(buildSystemPrompt(cfg), /## Tools/);
+  const out = buildSystemPrompt(cfg, '', { tools: [{ name: 'lookup', confirm: false }, { name: 'send_email', confirm: true }] });
+  assert.match(out, /## Tools\n/);
+  assert.match(out, /approve before they run: send_email\./);
+  assert.doesNotMatch(out, /approve before they run: lookup/);
+});
+
 console.log('');
 console.log(`prompt.test.js: ${passed} passed, ${failed} failed`);
 process.exit(failed === 0 ? 0 : 1);

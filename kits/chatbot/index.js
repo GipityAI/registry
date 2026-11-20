@@ -1,54 +1,56 @@
 /**
  * @gipity/chatbot
  *
- * Drop-in chatbot for Gipity apps. Two ways to use:
+ * A chatbot for any Gipity app. Two ways to use it:
  *
- * 1) Default widget — bubble in the corner of your page:
+ * 1) The widget: a corner bubble, an inline panel, or a full-page chat:
  *
  *      <chatbot-widget id="bot"></chatbot-widget>
  *      <script type="module">
  *        import { mount } from '@gipity/chatbot';
- *        mount('#bot', myChatbotConfig);
+ *        import config from './js/chatbot.config.js';
+ *        mount('#bot', config);
  *      </script>
  *
- * 2) Headless engine — bring your own UI (e.g. an in-game NPC dialogue box):
+ * 2) The headless engine: bring your own UI (an in-game NPC box, a sidebar):
  *
  *      import { createChatbot } from '@gipity/chatbot';
- *      const bot = createChatbot(myChatbotConfig);
- *      bot.on('delta', (t) => myCustomUi.append(t));
+ *      const bot = createChatbot(config);
+ *      bot.on('delta', (t) => myUi.append(t));
  *      await bot.send('how do I fly?');
  *
- * Configure persona, scope guardrails, static knowledge (20k token budget),
- * features (voice/vision/imageGen — wired in later PRs), and a project-function
- * tool allowlist. See README.md for the full config shape and examples/ for
- * worked drop-ins.
+ * Config: persona, scope guardrails, static knowledge (20k token budget),
+ * tools (the app's own functions, called as the signed-in visitor), saved
+ * conversations, photos and text files, voice, image generation and a model
+ * picker. See README.md.
  */
 
-import { createChatbot, ChatbotConfigError } from './lib/engine.js';
+import { createChatbot, ChatbotConfigError, requestWindow } from './lib/engine.js';
 import { ChatbotWidget, registerWidget } from './lib/widget.js';
 import { validateConfig, estimateTokens, DEFAULT_KNOWLEDGE_MAX_TOKENS } from './lib/config.js';
 import { buildSystemPrompt } from './lib/prompt.js';
+import { localStore, functionStore } from './lib/stores.js';
+import { renderMarkdown } from './lib/markdown.js';
+import { readAttachment, isSupportedFile } from './lib/attachments.js';
+import { startRecording, speak, speakableText } from './lib/voice.js';
 
 // Register the custom element as soon as the kit is imported. Idempotent.
 registerWidget();
 
 /**
- * Mount the bubble widget onto a host element.
+ * Mount the widget onto a host element.
  *
- * @param {string|HTMLElement} target — CSS selector or element. If a <chatbot-widget>,
- *   the config is applied directly. Otherwise a new <chatbot-widget> is appended into it.
- * @param {object} config — chatbot config (see README).
- * @returns {ChatbotWidget}
+ * @param {string|HTMLElement} target CSS selector or element. A <chatbot-widget>
+ *   gets the config directly; anything else gets a new <chatbot-widget> inside it.
+ * @param {object} config chatbot config (see README)
+ * @returns {ChatbotWidget} the element; its `.bot` is the engine
  */
 export function mount(target, config) {
   registerWidget();
   const host = typeof target === 'string' ? document.querySelector(target) : target;
   if (!host) throw new Error(`@gipity/chatbot: mount target not found (${target})`);
-
-  let el;
-  if (host.tagName?.toLowerCase() === 'chatbot-widget') {
-    el = host;
-  } else {
+  let el = host;
+  if (host.tagName?.toLowerCase() !== 'chatbot-widget') {
     el = document.createElement('chatbot-widget');
     host.appendChild(el);
   }
@@ -63,7 +65,16 @@ export {
   validateConfig,
   estimateTokens,
   buildSystemPrompt,
+  requestWindow,
   DEFAULT_KNOWLEDGE_MAX_TOKENS,
+  localStore,
+  functionStore,
+  renderMarkdown,
+  readAttachment,
+  isSupportedFile,
+  startRecording,
+  speak,
+  speakableText,
 };
 
 export default createChatbot;

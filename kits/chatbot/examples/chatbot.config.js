@@ -60,6 +60,26 @@ fine; the bot quotes from it rather than inventing answers.
     ],
   },
 
+  // Optional: let the bot call your app's functions as the signed-in visitor.
+  // See "Tools" in src/packages/chatbot/README.md.
+  // tools: [
+  //   {
+  //     name: 'lookup_order',
+  //     description: 'Find an order by number. Returns { status, total }.',
+  //     function: 'order-status',            // functions/order-status.js
+  //     parameters: { type: 'object', properties: { number: { type: 'string' } }, required: ['number'] },
+  //   },
+  //   { name: 'cancel_order', description: 'Cancel an unshipped order.', function: 'cancel-order', confirm: true },
+  // ],
+
+  // Optional: photos, text files, voice, image generation. Each needs its app
+  // service in gipity.yaml (transcribe / tts / image).
+  // features: { vision: { enabled: true }, files: { enabled: true } },
+
+  // Optional: keep conversations. 'local' = this browser; functionStore('chats')
+  // = your app database per signed-in user (see README).
+  // storage: { persist: 'local' },
+
   ui: {
     placement: 'bottom-right',   // bottom-right | bottom-left | inline | fullscreen
     theme: 'match-app',          // match-app reads --primary from your page's CSS
@@ -70,11 +90,6 @@ fine; the bot quotes from it rather than inventing answers.
   model: {
     route: 'default',            // 'default' | tier alias (small|fast|medium|large|thinking) | model id
     temperature: 0.7,
-    maxTokens: 1024,
+    maxTokens: 2048,
   },
 };
-
-// Rendering note: assistant replies support **bold**, *italic*, `inline code`
-// and ```fenced blocks```. Everything else (headings, links, list bullets) is
-// HTML-escaped and shown literally - so don't ask the persona for markdown
-// tables or links in `instructions`.

@@ -45,7 +45,9 @@ test('accepts minimal valid config', () => {
   assert.deepEqual(out.knowledge.fetchUrls, []);
   assert.equal(out.features.voice.enabled, false);
   assert.equal(out.ui.placement, 'bottom-right');
-  assert.equal(out.storage.persistHistory, false);
+  assert.equal(out.storage.persist, 'none');
+  assert.deepEqual(out.tools, []);
+  assert.equal(out.model.maxToolSteps, 8);
 });
 
 test('fills knowledge.inlineText from text sources', () => {
@@ -110,24 +112,61 @@ test('rejects unknown feature key', () => {
   }), ChatbotConfigError);
 });
 
-test('validates tools allowlist shape', () => {
+test('normalizes function and browser tools', () => {
+  const run = async () => ({ ok: true });
   const out = validateConfig({
     persona: minimalPersona,
     tools: [
-      { name: 'lookup', function: 'do-lookup' },
-      { name: 'auth-thing', function: 'authed-fn', auth: 'user-required' },
+      { name: 'lookup_order', description: 'Find an order', function: 'orders', parameters: { type: 'object', properties: { id: { type: 'string' } } } },
+      { name: 'page_title', description: 'The title of the page the visitor is on', run, confirm: true },
     ],
   });
   assert.equal(out.tools.length, 2);
-  assert.equal(out.tools[0].auth, 'public');
-  assert.equal(out.tools[1].auth, 'user-required');
+  assert.equal(out.tools[0].function, 'orders');
+  assert.equal(out.tools[0].run, null);
+  assert.equal(out.tools[0].confirm, false);
+  assert.equal(out.tools[1].run, run);
+  assert.equal(out.tools[1].confirm, true);
+  assert.deepEqual(out.tools[1].parameters, { type: 'object', properties: {} });
 });
 
-test('rejects invalid tool auth', () => {
+test('rejects tools without a description, with both or neither of function/run, or a bad name', () => {
+  const bad = [
+    { name: 'x', function: 'y' },
+    { name: 'x', description: 'd' },
+    { name: 'x', description: 'd', function: 'y', run: async () => 1 },
+    { name: 'has space', description: 'd', function: 'y' },
+    { name: 'x', description: 'd', function: 'y', auth: 'public' },
+    { name: 'x', description: 'd', function: 'y', parameters: { properties: {} } },
+  ];
+  for (const tool of bad) {
+    assert.throws(() => validateConfig({ persona: minimalPersona, tools: [tool] }), ChatbotConfigError, JSON.stringify(tool));
+  }
   assert.throws(() => validateConfig({
     persona: minimalPersona,
-    tools: [{ name: 'x', function: 'y', auth: 'admin' }],
-  }), ChatbotConfigError);
+    tools: [{ name: 'x', description: 'd', function: 'a' }, { name: 'x', description: 'd', function: 'b' }],
+  }), /used twice/);
+});
+
+test('rejects settings the kit does not have', () => {
+  assert.throws(() => validateConfig({ persona: minimalPersona, storage: { persistHistory: true } }), /storage.persistHistory/);
+  assert.throws(() => validateConfig({ persona: minimalPersona, features: { voice: { enabled: true, speed: 2 } } }), /features.voice.speed/);
+  assert.throws(() => validateConfig({ persona: minimalPersona, colour: 'red' }), /config.colour/);
+});
+
+test('storage.persist takes none, local or a complete store', () => {
+  assert.equal(validateConfig({ persona: minimalPersona, storage: { persist: 'local' } }).storage.persist, 'local');
+  const store = { list() {}, load() {}, create() {}, write() {}, rename() {}, remove() {} };
+  assert.equal(validateConfig({ persona: minimalPersona, storage: { persist: store } }).storage.persist, store);
+  assert.throws(() => validateConfig({ persona: minimalPersona, storage: { persist: { list() {} } } }), /missing load, create, write, rename, remove/);
+  assert.throws(() => validateConfig({ persona: minimalPersona, storage: { persist: 'cloud' } }), ChatbotConfigError);
+});
+
+test('model choices and maxToolSteps are checked', () => {
+  const out = validateConfig({ persona: minimalPersona, model: { choices: [{ route: 'fast', label: 'Fast' }], maxToolSteps: 3 } });
+  assert.equal(out.model.choices[0].route, 'fast');
+  assert.throws(() => validateConfig({ persona: minimalPersona, model: { maxToolSteps: 0 } }), ChatbotConfigError);
+  assert.throws(() => validateConfig({ persona: minimalPersona, model: { choices: [{ id: 'x' }] } }), ChatbotConfigError);
 });
 
 test('rejects invalid ui.placement and ui.theme', () => {

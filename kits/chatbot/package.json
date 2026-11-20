@@ -1,12 +1,12 @@
 {
   "name": "@gipity/chatbot",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "bash -c 'for t in tests/*.test.js; do node $t || exit 1; done'"
   },
-  "description": "Drop-in chatbot for Gipity apps: configurable persona, scope guardrails (allowed/refused with refusal examples), static knowledge (20k token budget), streaming LLM responses, suggested-prompt chips. On install it scaffolds src/js/chatbot.config.js - edit it, then mount('#bot', config) in your page. Headless engine + bubble widget; bring your own UI if you want.",
+  "description": "Chatbot for any Gipity app: persona, scope guardrails, static knowledge (20k token budget), streaming Markdown replies, and tools: the model calls your app's own functions as the signed-in visitor (with approve/deny for actions). Saved conversations (this browser, or your app database per user), photos and text-file attachments, voice in and out, image generation, a model picker, stop / regenerate / edit. Corner bubble, inline panel or full-page chat with a conversation sidebar; or the headless engine for your own UI. On install it scaffolds src/js/chatbot.config.js - edit it, then mount('#bot', config).",
   "gipity": {
     "kit": true,
     "engineAgnostic": true,
@@ -16,7 +16,10 @@
         "https://a.gipity.ai/api"
       ]
     },
-    "exposes": ["examples", "tests"],
+    "exposes": [
+      "examples",
+      "tests"
+    ],
     "install": {
       "importMap": {
         "@gipity/chatbot": "./packages/chatbot/index.js",
