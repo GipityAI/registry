@@ -5,17 +5,22 @@
  * narrow, and fails loudly on the first bad field. Every field here does
  * something: a setting the engine or widget ignores would be a lie.
  *
- * The knowledge-token budget is enforced at config-load time. Going over
- * budget throws; we never silently truncate, because a clipped knowledge base
- * makes the bot answer confidently about the missing parts.
+ * Knowledge budgets are enforced, never silently truncated: a clipped
+ * knowledge base makes the bot answer confidently about the missing parts.
+ * `load: 'always'` documents share maxTokens (they ride in every request);
+ * each `load: 'lookup'` document is capped at lookupMaxTokens (it is read
+ * into the conversation only when the model asks for it).
  */
 
-/** Hard cap on knowledge content. ~4 chars/token for English. */
+/** Cap on the documents sent with every request. ~4 chars/token for English. */
 export const DEFAULT_KNOWLEDGE_MAX_TOKENS = 20000;
+/** Cap on one on-demand (lookup) document. */
+export const DEFAULT_LOOKUP_MAX_TOKENS = 10000;
 const CHARS_PER_TOKEN = 4;
 
 const VALID_FEATURE_KEYS = ['vision', 'files', 'voice', 'imageGen'];
 const VALID_KNOWLEDGE_TYPES = ['text', 'url'];
+const VALID_KNOWLEDGE_LOADS = ['always', 'lookup'];
 const VALID_PLACEMENTS = ['bottom-right', 'bottom-left', 'inline', 'fullscreen'];
 const VALID_THEMES = ['match-app', 'light', 'dark', 'auto'];
 const TOOL_NAME_RE = /^[a-zA-Z0-9_-]{1,64}$/;
@@ -127,44 +132,71 @@ function validateScope(s) {
 }
 
 function validateKnowledge(k) {
-  if (k === undefined) return { maxTokens: DEFAULT_KNOWLEDGE_MAX_TOKENS, sources: [], inlineText: '', fetchUrls: [] };
+  const empty = { maxTokens: DEFAULT_KNOWLEDGE_MAX_TOKENS, lookupMaxTokens: DEFAULT_LOOKUP_MAX_TOKENS, documents: [] };
+  if (k === undefined) return empty;
   if (!isObject(k)) throw new ChatbotConfigError('config.knowledge must be an object');
+  rejectUnknownKeys(k, ['sources', 'maxTokens', 'lookupMaxTokens'], 'knowledge');
 
   const maxTokens = k.maxTokens ?? DEFAULT_KNOWLEDGE_MAX_TOKENS;
-  if (typeof maxTokens !== 'number' || maxTokens <= 0) {
-    throw new ChatbotConfigError('knowledge.maxTokens must be a positive number');
+  const lookupMaxTokens = k.lookupMaxTokens ?? DEFAULT_LOOKUP_MAX_TOKENS;
+  for (const [name, v] of [['maxTokens', maxTokens], ['lookupMaxTokens', lookupMaxTokens]]) {
+    if (typeof v !== 'number' || v <= 0) throw new ChatbotConfigError(`knowledge.${name} must be a positive number`);
   }
 
   requireField(k, 'sources', 'array', 'knowledge');
-  const inlineParts = [];
-  const fetchUrls = [];
-  k.sources.forEach((src, i) => {
-    if (!isObject(src)) throw new ChatbotConfigError(`knowledge.sources[${i}] must be an object`);
+  const titles = new Set();
+  const documents = k.sources.map((src, i) => {
+    const where = `knowledge.sources[${i}]`;
+    if (!isObject(src)) throw new ChatbotConfigError(`${where} must be an object`);
     if (!VALID_KNOWLEDGE_TYPES.includes(src.type)) {
-      throw new ChatbotConfigError(
-        `knowledge.sources[${i}].type must be one of ${VALID_KNOWLEDGE_TYPES.join('|')} (got ${src.type})`,
-      );
+      throw new ChatbotConfigError(`${where}.type must be one of ${VALID_KNOWLEDGE_TYPES.join('|')} (got ${src.type})`);
     }
+    rejectUnknownKeys(src, ['type', src.type === 'text' ? 'content' : 'url', 'title', 'summary', 'load'], where);
+    const load = src.load ?? 'always';
+    if (!VALID_KNOWLEDGE_LOADS.includes(load)) {
+      throw new ChatbotConfigError(`${where}.load must be one of ${VALID_KNOWLEDGE_LOADS.join('|')} (got ${load})`);
+    }
+    if (src.title !== undefined && (typeof src.title !== 'string' || !src.title.trim())) {
+      throw new ChatbotConfigError(`${where}.title must be a non-empty string`);
+    }
+    if (src.summary !== undefined && typeof src.summary !== 'string') {
+      throw new ChatbotConfigError(`${where}.summary must be a string`);
+    }
+    if (load === 'lookup' && !src.title) {
+      throw new ChatbotConfigError(`${where}: a lookup document needs a title (the model asks for it by title)`);
+    }
+    if (src.title) {
+      if (titles.has(src.title)) throw new ChatbotConfigError(`${where}.title "${src.title}" is used twice`);
+      titles.add(src.title);
+    }
+    const doc = { title: src.title ?? null, summary: src.summary ?? null, load, content: null, url: null };
     if (src.type === 'text') {
-      if (typeof src.content !== 'string') throw new ChatbotConfigError(`knowledge.sources[${i}].content must be string`);
-      inlineParts.push(src.content);
+      if (typeof src.content !== 'string') throw new ChatbotConfigError(`${where}.content must be string`);
+      doc.content = src.content;
+      if (load === 'lookup') assertWithin(src.content, lookupMaxTokens, `${where} ("${src.title}")`, 'lookupMaxTokens');
     } else {
       if (typeof src.url !== 'string' || !/^https?:\/\//.test(src.url)) {
-        throw new ChatbotConfigError(`knowledge.sources[${i}].url must be an http(s) URL`);
+        throw new ChatbotConfigError(`${where}.url must be an http(s) URL`);
       }
-      fetchUrls.push(src.url);
+      doc.url = src.url;
     }
+    return doc;
   });
 
-  const inlineText = inlineParts.join('\n\n');
-  const inlineTokens = estimateTokens(inlineText);
-  if (inlineTokens > maxTokens) {
+  const alwaysText = documents.filter(d => d.load === 'always' && d.content !== null).map(d => d.content).join('\n\n');
+  assertWithin(alwaysText, maxTokens, 'knowledge (load: always)', 'maxTokens');
+  return { maxTokens, lookupMaxTokens, documents };
+}
+
+/** Throw when text is over a token budget. Exported for the engine's URL checks. */
+export function assertWithin(text, budget, what, setting) {
+  const tokens = estimateTokens(text);
+  if (tokens > budget) {
     throw new ChatbotConfigError(
-      `knowledge inline content is ${inlineTokens} tokens (~${inlineText.length} chars), ` +
-      `which exceeds maxTokens=${maxTokens}. Trim sources or raise the budget.`,
+      `${what} is ${tokens} tokens (~${text.length} chars), which exceeds ${setting}=${budget}. ` +
+      (setting === 'maxTokens' ? `Trim it, raise the budget, or move big documents to load: 'lookup'.` : 'Trim it, split it into several documents, or raise the budget.'),
     );
   }
-  return { maxTokens, sources: k.sources, inlineText, fetchUrls };
 }
 
 function validateFeatures(f) {

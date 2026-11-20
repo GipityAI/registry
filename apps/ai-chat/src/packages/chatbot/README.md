@@ -70,11 +70,14 @@ export default {
     refusalExamples: [{ user: 'Write me a poem', bot: "That's not my thing, but I can track an order!" }],
   },
 
-  knowledge: {                                      // optional: static facts, 20k tokens
-    maxTokens: 20000,
+  knowledge: {                                      // optional: reference text, see "Where information goes"
+    maxTokens: 20000,                               // budget for load: 'always' documents together
+    lookupMaxTokens: 10000,                         // budget for each load: 'lookup' document
     sources: [
-      { type: 'text', content: 'Returns are free within 30 days.' },
-      { type: 'url', url: 'https://example.com/faq.txt' },
+      { type: 'text', title: 'Basics', content: 'We ship to the US and Canada.' },  // load: 'always' (default)
+      { type: 'url', title: 'FAQ', url: 'https://example.com/faq.txt' },
+      { type: 'text', title: 'Return policy', summary: 'returns, refunds, exchanges',
+        load: 'lookup', content: '...' },           // read on demand by the read_knowledge tool
     ],
   },
 
@@ -122,13 +125,28 @@ export default {
 
 Only `persona.name` and `persona.instructions` are required. A setting the kit doesn't know throws `ChatbotConfigError`, so a typo never silently does nothing.
 
+## Where information goes
+
+Put each kind of information where the model uses it. The kit builds the system prompt in this order, with the big stable parts first so prompt caching reuses them and the one changing line (today's date) last.
+
+| Information | Where | Why |
+|---|---|---|
+| Who the assistant is, how it works, house style | `persona.instructions` | Read on every turn. Don't list the tools here: each tool describes itself. |
+| Short facts most answers need (definitions, key facts) | `knowledge` source, `load: 'always'` (the default) | Sent with every request inside `<knowledge>` tags; keep it short. 20,000 tokens total by default. |
+| Long reference (manuals, policies, specs, a product catalog) | `knowledge` source, `load: 'lookup'`, with a `title` and a one-line `summary` | Stays out of the prompt. The kit adds a `read_knowledge` tool that lists the titles and summaries; the model reads the one it needs. 10,000 tokens per document by default; split bigger ones. |
+| What a tool does, when to use it, what it returns, what it needs to call it well (a table schema, valid values, business rules for queries) | The tool's `description` and `parameters` | The model reads it at the moment it decides to call. |
+| Live or per-user data (orders, rows, the cart) | A tool | Fetched when needed, never stale, filtered to the signed-in visitor. |
+| That replies render as Markdown, which attachments arrive and how, which tools ask first, today's date in the visitor's time zone, the greeting they saw | Nothing: the kit adds these | |
+
+On Anthropic models the LLM service caches the system prompt, tools and earlier turns of a conversation, so the next tool step and the next question read them at a tenth of the input price. Other providers cache a repeated prefix on their own. Keeping `knowledge` and `instructions` the same between requests is what makes this work.
+
 ## Tools
 
 A tool is something the model can ask to run in the middle of an answer. The kit runs it, hands the result back, and the model continues, up to `model.maxToolSteps` rounds.
 
 - **`function: 'name'`** calls `functions/name.js` through `Gipity.fn`, as the signed-in visitor. The function's `auth`, table grants and limits apply, so the assistant can do exactly what that visitor could already do through your app. The tool arguments are the function body; the return value goes to the model. Return `{ error: '...' }` for an expected failure and the model reads it and recovers.
 - **`run: async (args) => result`** runs browser code (the page, the cart, game state).
-- **`description`** is how the model decides when to call the tool: say what it does and what it returns. **`parameters`** is a JSON Schema object.
+- **`description`** is how the model decides when to call the tool and how to call it: say what it does, when to use it, what it returns, and anything it needs to know to call it well (for a SQL tool, the tables and rules). **`parameters`** is a JSON Schema object.
 - **`confirm: true`** asks the visitor first. The widget shows an Allow / Don't allow card; the headless engine emits `confirm` with `approve()` / `deny()` (with nothing listening, the answer is no). Use it for anything that writes, sends or spends.
 - A tool that needs sign-in, called signed out, tells the model and the widget shows a Sign in button (`auth_required` event).
 - Results over 30,000 characters are cut, and the model is told so it can ask for less.

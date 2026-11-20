@@ -29,10 +29,10 @@ test('scope with only allowed renders just the allowed block', () => {
     scope: { allowed: ['gameplay', 'controls'] },
   });
   const out = buildSystemPrompt(cfg);
-  assert.match(out, /You ONLY answer questions about:/);
+  assert.match(out, /Only answer questions about:/);
   assert.match(out, /- gameplay/);
   assert.match(out, /- controls/);
-  assert.doesNotMatch(out, /You REFUSE to:/);
+  assert.doesNotMatch(out, /Decline to:/);
 });
 
 test('scope with only refused renders just the refusal block', () => {
@@ -41,9 +41,9 @@ test('scope with only refused renders just the refusal block', () => {
     scope: { refused: ['writing code'] },
   });
   const out = buildSystemPrompt(cfg);
-  assert.match(out, /You REFUSE to:/);
+  assert.match(out, /Decline to:/);
   assert.match(out, /- writing code/);
-  assert.doesNotMatch(out, /You ONLY answer questions about:/);
+  assert.doesNotMatch(out, /Only answer questions about:/);
 });
 
 test('scope provides a default onRefusal when not given', () => {
@@ -88,7 +88,7 @@ test('refusal examples preserve user-supplied text verbatim', () => {
   assert.match(out, /Code-cuttin' ain't in my brief/);
 });
 
-test('multiple refusal examples are numbered', () => {
+test('each refusal example gets its own example tags', () => {
   const cfg = validateConfig({
     persona,
     scope: {
@@ -99,8 +99,7 @@ test('multiple refusal examples are numbered', () => {
     },
   });
   const out = buildSystemPrompt(cfg);
-  assert.match(out, /Example 1:/);
-  assert.match(out, /Example 2:/);
+  assert.match(out, /<example>\nUser: q1\nYou: a1\n<\/example>\n\n<example>\nUser: q2\nYou: a2\n<\/example>/);
 });
 
 console.log('');

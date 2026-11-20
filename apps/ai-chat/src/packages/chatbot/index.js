@@ -27,7 +27,7 @@
 
 import { createChatbot, ChatbotConfigError, requestWindow } from './lib/engine.js';
 import { ChatbotWidget, registerWidget } from './lib/widget.js';
-import { validateConfig, estimateTokens, DEFAULT_KNOWLEDGE_MAX_TOKENS } from './lib/config.js';
+import { validateConfig, estimateTokens, DEFAULT_KNOWLEDGE_MAX_TOKENS, DEFAULT_LOOKUP_MAX_TOKENS } from './lib/config.js';
 import { buildSystemPrompt } from './lib/prompt.js';
 import { localStore, functionStore } from './lib/stores.js';
 import { renderMarkdown } from './lib/markdown.js';
@@ -67,6 +67,7 @@ export {
   buildSystemPrompt,
   requestWindow,
   DEFAULT_KNOWLEDGE_MAX_TOKENS,
+  DEFAULT_LOOKUP_MAX_TOKENS,
   localStore,
   functionStore,
   renderMarkdown,

@@ -393,6 +393,43 @@ test('imageGen adds a generate_image tool backed by the image service', async ()
   assert.equal(sdk.requests[1].messages[2].content, '{"url":"https://media.gipity.ai/fox.png"}');
 });
 
+test('knowledge: always documents ride in the system prompt, lookup ones are read on demand', async () => {
+  const manual = 'Step 1. ' + 'x'.repeat(35_000); // past TOOL_RESULT_MAX_CHARS, inside lookupMaxTokens
+  const sdk = stubSdk([
+    answer({ calls: [{ id: 'k1', name: 'read_knowledge', args: { title: 'Manual' } }] }),
+    answer({ text: 'Do step 1.' }),
+  ]);
+  const bot = createChatbot({
+    persona,
+    knowledge: {
+      sources: [
+        { type: 'text', title: 'Hours', content: 'Open 9-5.' },
+        { type: 'text', title: 'Manual', summary: 'How to set it up', load: 'lookup', content: manual },
+      ],
+    },
+  }, { gipity: sdk });
+  await bot.send('how do I set it up?');
+  const req = sdk.requests[0];
+  assert.match(req.system_prompt, /<document title="Hours">\nOpen 9-5\./);
+  assert.doesNotMatch(req.system_prompt, /Step 1\./);
+  const tool = req.tools.find(t => t.function.name === 'read_knowledge');
+  assert.match(tool.function.description, /- Manual: How to set it up/);
+  assert.deepEqual(tool.function.parameters.properties.title.enum, ['Manual']);
+  assert.equal(sdk.requests[1].messages[2].content, manual, 'the whole document, not cut');
+});
+
+test('knowledge: no read_knowledge tool without lookup documents', async () => {
+  const sdk = stubSdk([answer({ text: 'hi' })]);
+  await createChatbot({ persona, knowledge: { sources: [{ type: 'text', content: 'x' }] } }, { gipity: sdk }).send('hi');
+  assert.equal(sdk.requests[0].tools, undefined);
+});
+
+test('the system prompt is byte-identical from one request to the next', async () => {
+  const sdk = stubSdk([answer({ calls: [{ id: 'c1', name: 'lookup_order', args: { number: '1' } }] }), answer({ text: 'done' })]);
+  await createChatbot({ persona, tools: [orderTool] }, { gipity: sdk }).send('order 1?');
+  assert.equal(sdk.requests[0].system_prompt, sdk.requests[1].system_prompt);
+});
+
 test('a clear error when the client SDK is missing', async () => {
   const bot = createChatbot({ persona });
   bot.on('error', () => {});

@@ -39,10 +39,7 @@ test('accepts minimal valid config', () => {
   assert.deepEqual(out.persona.starters, []);
   assert.equal(out.scope, null);
   assert.equal(out.knowledge.maxTokens, DEFAULT_KNOWLEDGE_MAX_TOKENS);
-  assert.equal(out.knowledge.sources.length, 0);
-  assert.equal(out.knowledge.inlineText, '');
-  // Must always be an array — the engine derefs knowledge.fetchUrls.length at construction.
-  assert.deepEqual(out.knowledge.fetchUrls, []);
+  assert.deepEqual(out.knowledge.documents, []);
   assert.equal(out.features.voice.enabled, false);
   assert.equal(out.ui.placement, 'bottom-right');
   assert.equal(out.storage.persist, 'none');
@@ -50,28 +47,43 @@ test('accepts minimal valid config', () => {
   assert.equal(out.model.maxToolSteps, 8);
 });
 
-test('fills knowledge.inlineText from text sources', () => {
+test('normalizes knowledge sources into documents', () => {
   const out = validateConfig({
     persona: minimalPersona,
     knowledge: {
       sources: [
         { type: 'text', content: 'Hours: 9-5.' },
-        { type: 'text', content: 'Returns: 30 days.' },
+        { type: 'text', title: 'Manual', summary: 'How to use it', load: 'lookup', content: 'Long manual.' },
+        { type: 'url', url: 'https://example.com/docs' },
       ],
     },
   });
-  assert.match(out.knowledge.inlineText, /Hours: 9-5/);
-  assert.match(out.knowledge.inlineText, /Returns: 30 days/);
+  assert.deepEqual(out.knowledge.documents, [
+    { title: null, summary: null, load: 'always', content: 'Hours: 9-5.', url: null },
+    { title: 'Manual', summary: 'How to use it', load: 'lookup', content: 'Long manual.', url: null },
+    { title: null, summary: null, load: 'always', content: null, url: 'https://example.com/docs' },
+  ]);
 });
 
-test('extracts knowledge.fetchUrls from url sources', () => {
+test('a lookup document needs a unique title; unknown keys and loads throw', () => {
+  const bad = (sources) => assert.throws(() => validateConfig({ persona: minimalPersona, knowledge: { sources } }), ChatbotConfigError);
+  bad([{ type: 'text', load: 'lookup', content: 'x' }]);
+  bad([{ type: 'text', title: 'A', content: 'x' }, { type: 'text', title: 'A', content: 'y' }]);
+  bad([{ type: 'text', content: 'x', load: 'sometimes' }]);
+  bad([{ type: 'text', content: 'x', path: 'y' }]);
+});
+
+test('lookup documents have their own budget, outside maxTokens', () => {
+  const big = 'word '.repeat(2000); // ~2.5k tokens
   const out = validateConfig({
     persona: minimalPersona,
-    knowledge: {
-      sources: [{ type: 'url', url: 'https://example.com/docs' }],
-    },
+    knowledge: { maxTokens: 100, sources: [{ type: 'text', title: 'Big', load: 'lookup', content: big }] },
   });
-  assert.deepEqual(out.knowledge.fetchUrls, ['https://example.com/docs']);
+  assert.equal(out.knowledge.documents.length, 1);
+  assert.throws(() => validateConfig({
+    persona: minimalPersona,
+    knowledge: { lookupMaxTokens: 100, sources: [{ type: 'text', title: 'Big', load: 'lookup', content: big }] },
+  }), (err) => err instanceof ChatbotConfigError && /exceeds lookupMaxTokens/.test(err.message));
 });
 
 test('rejects unknown knowledge.type', () => {

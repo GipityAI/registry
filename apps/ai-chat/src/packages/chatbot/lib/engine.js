@@ -20,7 +20,7 @@
  * the visitor's session, so a signed-in visitor's tool calls run as them.
  */
 
-import { validateConfig, ChatbotConfigError, estimateTokens } from './config.js';
+import { validateConfig, ChatbotConfigError, estimateTokens, assertWithin } from './config.js';
 import { buildSystemPrompt } from './prompt.js';
 import { localStore } from './stores.js';
 
@@ -107,17 +107,17 @@ function serviceError(err) {
   return out;
 }
 
-/** Model-facing text for a tool result, cut to TOOL_RESULT_MAX_CHARS. */
-function toolResultText(value) {
+/** Model-facing text for a tool result, cut to maxChars (TOOL_RESULT_MAX_CHARS by default). */
+function toolResultText(value, maxChars = TOOL_RESULT_MAX_CHARS) {
   let text;
   if (value === undefined || value === null) text = 'null';
   else if (typeof value === 'string') text = value;
   else {
     try { text = JSON.stringify(value); } catch { text = String(value); }
   }
-  if (text.length > TOOL_RESULT_MAX_CHARS) {
-    text = text.slice(0, TOOL_RESULT_MAX_CHARS)
-      + `\n[result cut at ${TOOL_RESULT_MAX_CHARS} of ${text.length} characters: ask for less, e.g. a narrower query]`;
+  if (text.length > maxChars) {
+    text = text.slice(0, maxChars)
+      + `\n[result cut at ${maxChars} of ${text.length} characters: ask for less, e.g. a narrower query]`;
   }
   return text;
 }
@@ -138,9 +138,14 @@ export function createChatbot(rawConfig, options = {}) {
 
   const listeners = new Map(); // event -> Set<fn>
   let messages = [];
-  let fetchedKnowledge = '';
-  let knowledgeReady = config.knowledge.fetchUrls.length === 0;
+  // Knowledge documents. 'always' ones go in the system prompt (URL ones are
+  // fetched before the first reply); 'lookup' ones are read on demand by the
+  // read_knowledge tool, which lists them by title.
+  const alwaysDocs = config.knowledge.documents.filter(d => d.load === 'always');
+  const lookupDocs = config.knowledge.documents.filter(d => d.load === 'lookup');
+  let knowledgeReady = alwaysDocs.every(d => d.url === null);
   let knowledgePromise = null;
+  const lookupCache = new Map(); // title -> text
   let busy = false;
   let abort = null;
   let route = config.model.route;
@@ -172,6 +177,25 @@ export function createChatbot(rawConfig, options = {}) {
         const out = await sdk().service('image', body);
         return { url: out.url };
       },
+    });
+  }
+  if (lookupDocs.length) {
+    tools.push({
+      name: 'read_knowledge',
+      description: [
+        'Read one of your reference documents. Read the relevant one before answering a question it covers; do not answer those from memory. Documents:',
+        ...lookupDocs.map(d => `- ${d.title}${d.summary ? `: ${d.summary}` : ''}`),
+      ].join('\n'),
+      parameters: {
+        type: 'object',
+        properties: { title: { type: 'string', enum: lookupDocs.map(d => d.title) } },
+        required: ['title'],
+      },
+      function: null,
+      confirm: false,
+      // A document is already capped at lookupMaxTokens; never cut it again.
+      maxResultChars: config.knowledge.lookupMaxTokens * 4,
+      run: async ({ title }) => readLookup(title),
     });
   }
   const toolsByName = new Map(tools.map(t => [t.name, t]));
@@ -207,35 +231,44 @@ export function createChatbot(rawConfig, options = {}) {
     }
   }
 
-  /** Fetch URL knowledge once; failures are fatal (a missing source makes the bot guess). */
+  async function fetchText(url) {
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`chatbot: knowledge URL fetch failed for ${url} (${res.status})`);
+    return (await res.text()).trim();
+  }
+
+  /** Fetch 'always' URL documents once; failures are fatal (a missing source makes the bot guess). */
   async function ensureKnowledge() {
     if (knowledgeReady) return;
     if (knowledgePromise) return knowledgePromise;
     knowledgePromise = (async () => {
-      const parts = [];
-      for (const url of config.knowledge.fetchUrls) {
-        const res = await fetch(url, { method: 'GET' });
-        if (!res.ok) throw new Error(`chatbot: knowledge URL fetch failed for ${url} (${res.status})`);
-        parts.push(await res.text());
+      for (const doc of alwaysDocs) {
+        if (doc.url !== null && doc.content === null) doc.content = await fetchText(doc.url);
       }
-      const combined = parts.join('\n\n').trim();
-      const total = estimateTokens(config.knowledge.inlineText) + estimateTokens(combined);
-      if (total > config.knowledge.maxTokens) {
-        throw new ChatbotConfigError(
-          `knowledge total is ${total} tokens, exceeds maxTokens=${config.knowledge.maxTokens}. Trim sources or raise budget.`,
-        );
-      }
-      fetchedKnowledge = combined;
+      const text = alwaysDocs.map(d => d.content).join('\n\n');
+      assertWithin(text, config.knowledge.maxTokens, 'knowledge (load: always)', 'maxTokens');
       knowledgeReady = true;
-      emit('knowledge_loaded', { tokens: total });
+      emit('knowledge_loaded', { tokens: estimateTokens(text) });
     })().finally(() => { knowledgePromise = null; });
     return knowledgePromise;
+  }
+
+  /** The read_knowledge tool: one lookup document's text, fetched once. */
+  async function readLookup(title) {
+    const doc = lookupDocs.find(d => d.title === title);
+    if (!doc) return { error: `There is no document titled ${JSON.stringify(title)}.` };
+    if (!lookupCache.has(title)) {
+      const text = doc.content ?? await fetchText(doc.url);
+      assertWithin(text, config.knowledge.lookupMaxTokens, `knowledge document "${title}"`, 'lookupMaxTokens');
+      lookupCache.set(title, text);
+    }
+    return lookupCache.get(title);
   }
 
   function requestBody() {
     const body = {
       messages: requestWindow(messages).map(toWire),
-      system_prompt: buildSystemPrompt(config, fetchedKnowledge, { tools }),
+      system_prompt: buildSystemPrompt(config, { documents: alwaysDocs, tools }),
       stream: true,
       temperature: config.model.temperature,
       max_tokens: config.model.maxTokens,
@@ -304,7 +337,7 @@ export function createChatbot(rawConfig, options = {}) {
     try {
       const result = def.function ? await sdk().fn(def.function, args) : await def.run(args);
       emit('tool_end', { id: call.id, name, args, result });
-      return toolResultText(result);
+      return toolResultText(result, def.maxResultChars);
     } catch (err) {
       const signIn = err?.status === 401 || err?.code === 'LOGIN_REQUIRED' || err?.code === 'CONSENT_REQUIRED';
       if (signIn) emit('auth_required', { tool: name });

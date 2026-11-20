@@ -28,7 +28,7 @@ All AI calls are `owner_pays`: you pay in credits, your users never see a paymen
 
 | File | What it does |
 |---|---|
-| `src/js/chatbot.config.js` | **The one to edit.** Persona, starters, the schema notes the model reads, the tools, features, model choices. |
+| `src/js/chatbot.config.js` | **The one to edit.** Persona, starters, reference knowledge (metric definitions always, store policies on demand), the tools (the schema lives in `query_data`'s description), features, model choices. |
 | `src/index.html`, `src/js/main.js` | The page: a top bar and the chat widget. |
 | `functions/chats.js` | The conversation store (`functionStore('chats')`). |
 | `functions/query-data.js` | The `query_data` tool. |
@@ -39,7 +39,7 @@ All AI calls are `owner_pays`: you pay in credits, your users never see a paymen
 
 ## Make it yours
 
-1. **Your data.** Replace `migrations/002-shop.sql` and `seeds/shop.sql` with your tables, grant them to `query-data` in `gipity.yaml`, and rewrite the schema notes in `knowledge` in `chatbot.config.js`. The model only knows what those notes say.
+1. **Your data.** Replace `migrations/002-shop.sql` and `seeds/shop.sql` with your tables, grant them to `query-data` in `gipity.yaml`, and rewrite the table list in the `query_data` tool's `description` in `chatbot.config.js`. The model only knows what that description says.
 2. **Your actions.** Add a function, declare it in `gipity.yaml` with `auth: user`, and add it to `tools` with a clear `description` and `parameters`. Set `confirm: true` for anything that writes, sends or spends.
 3. **Your assistant.** Change `persona` (name, instructions, tone, greeting, starters).
 4. **Who gets in.** Add `emails: [...]` under `access` to limit it to known people, or set `mode: public` and handle sign-in yourself.
