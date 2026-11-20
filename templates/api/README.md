@@ -24,8 +24,9 @@ rm functions/example.js tests/api/example.test.js
 ## Build your API
 
 1. Write a function in `functions/<name>.js`.
-2. It auto-registers as a public endpoint on deploy; edit `gipity.yaml` to set
-   `auth`, `tables`, `fetch_domains`, or `services`.
+2. Declare it in `gipity.yaml` with an explicit `auth:` (`public`, `user` or
+   `member`) plus any `tables`, `fetch_domains` or `services`. A function
+   without an entry fails the deploy, which prints an entry to paste.
 3. Add a test in `tests/api/<name>.test.js`.
 4. To run something on a schedule, drop a `workflows/<name>.yaml` with
    `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so
@@ -62,10 +63,10 @@ URL only works from the dev environment; don't hand it out externally.
 ## Project Structure
 
 ```
-functions/      Serverless functions (auto-deploy as public endpoints)
+functions/      Serverless functions (each declared in gipity.yaml with auth:)
 migrations/     SQL migrations (create it when you need a database)
 src/            Web pages (create it when you need a frontend)
 workflows/      Scheduled/triggered YAML workflows (create it when you add one)
 tests/          Test files (run with gipity test)
-gipity.yaml     Deploy manifest (auto-populated for new functions)
+gipity.yaml     Deploy manifest (declare every function here)
 ```

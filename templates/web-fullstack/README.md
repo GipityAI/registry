@@ -46,9 +46,10 @@ not import them. Three things to know before writing DB tests:
 1. Define your schema as `migrations/001-<name>.sql`. Give each table a
    `short_guid VARCHAR(20) PRIMARY KEY` (make one with `guid('item')` in a
    function); arrays and nested objects go in a `JSONB` column.
-2. Write functions in `functions/<name>.js`. Deploy auto-declares each new file
-   in `gipity.yaml` as `auth: public` - you only edit that entry to change auth,
-   tables, fetch_domains, or services.
+2. Write functions in `functions/<name>.js` and declare each one in
+   `gipity.yaml` with an explicit `auth:` (`public`, `user` or `member`), plus
+   any tables, fetch_domains or services it uses. A function without an entry
+   fails the deploy, which prints an entry to paste.
 3. Call them from `src/js/main.js` with `Gipity.fn('<name>', body)`.
 4. To run something on a schedule, drop a `workflows/<name>.yaml` with
    `trigger: schedule` + `cron:` - the `workflows` phase is already declared, so

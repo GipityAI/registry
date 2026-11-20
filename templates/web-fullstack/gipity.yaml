@@ -46,9 +46,9 @@ deploy:
       source: migrations
       database: {{DATABASE}}
 
-    # Serverless functions. Deploy auto-declares any new functions/<name>.js
-    # here as `auth: public` - you edit an entry ONLY to change something.
-    # Entries go in a `functions:` list inside this phase, e.g.:
+    # Serverless functions. Every functions/<name>.js needs an entry with an
+    # explicit auth: (a missing one fails the deploy, which prints an entry to
+    # paste). Entries go in a `functions:` list inside this phase, e.g.:
     #   functions:
     #     - name: save-note
     #       auth: user               # public | user | member

@@ -35,9 +35,10 @@ version: 1
 deploy:
   phases:
     # Functions - serverless JavaScript endpoints
-    # Each .js file in functions/ auto-deploys as a public endpoint on deploy.
-    # New functions are auto-added here. Edit entries to customize permissions.
-    # Fields: name, auth (public|user|member), tables, fetch_domains, services
+    # Each .js file in functions/ deploys as an endpoint and needs an entry
+    # here with an explicit auth (a missing one fails the deploy, which prints
+    # an entry to paste).
+    # Fields: name, auth (public|user|member, required), tables, fetch_domains, services
     - name: functions
       type: functions
       source: functions
