@@ -178,3 +178,26 @@ export function renderMarkdown(text) {
   flushPara();
   return out.join('');
 }
+
+/**
+ * Plain-text view of a tool call's arguments or result, for the widget's
+ * tool steps. JSON objects become `key: value` lines; string values print
+ * as written, so a multi-line SQL query keeps its line breaks instead of
+ * showing `\n`. Anything else is pretty JSON. Returns text, not HTML.
+ */
+export function formatToolValue(value) {
+  if (typeof value === 'string') {
+    try { value = JSON.parse(value); } catch { return value; }
+  }
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    return Object.entries(value).map(([key, v]) => {
+      const text = typeof v === 'string' ? v : JSON.stringify(v, null, 2) ?? String(v);
+      return text.includes('\n') ? `${key}:\n${indent(text)}` : `${key}: ${text}`;
+    }).join('\n');
+  }
+  try { return JSON.stringify(value, null, 2) ?? String(value); } catch { return String(value); }
+}
+
+function indent(text) {
+  return text.split('\n').map(line => '  ' + line).join('\n');
+}

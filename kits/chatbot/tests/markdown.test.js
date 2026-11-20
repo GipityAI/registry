@@ -4,13 +4,26 @@
  * Run: node tests/markdown.test.js
  */
 import assert from 'node:assert/strict';
-import { renderMarkdown, renderInline } from '../lib/markdown.js';
+import { renderMarkdown, renderInline, formatToolValue } from '../lib/markdown.js';
 
 let passed = 0, failed = 0;
 function test(name, fn) {
   try { fn(); passed++; console.log('  ok   -', name); }
   catch (e) { failed++; console.error('  FAIL -', name, '\n        ', e.message); }
 }
+
+test('tool values: string fields keep real line breaks', () => {
+  const args = JSON.stringify({ sql: 'SELECT name\nFROM customers\nLIMIT 3', limit: 3 });
+  assert.equal(formatToolValue(args), 'sql:\n  SELECT name\n  FROM customers\n  LIMIT 3\nlimit: 3');
+});
+
+test('tool values: one-line fields, nested JSON, non-JSON text', () => {
+  assert.equal(formatToolValue('{"title":"Hi"}'), 'title: Hi');
+  assert.equal(formatToolValue({ rows: [1] }), 'rows:\n  [\n    1\n  ]');
+  assert.equal(formatToolValue('plain text'), 'plain text');
+  assert.equal(formatToolValue('[1,2]'), '[\n  1,\n  2\n]');
+  assert.equal(formatToolValue('{}'), '');
+});
 
 test('inline formatting', () => {
   assert.equal(renderInline('**bold** and *it* and `x < y` and ~~old~~'),

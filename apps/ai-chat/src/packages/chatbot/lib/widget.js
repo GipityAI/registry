@@ -13,7 +13,7 @@
  */
 
 import { createChatbot } from './engine.js';
-import { renderMarkdown } from './markdown.js';
+import { renderMarkdown, formatToolValue } from './markdown.js';
 import { readAttachment } from './attachments.js';
 import { startRecording, speak } from './voice.js';
 
@@ -231,13 +231,6 @@ function escapeHtml(s) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-function pretty(value) {
-  if (typeof value === 'string') {
-    try { return JSON.stringify(JSON.parse(value), null, 2); } catch { return value; }
-  }
-  try { return JSON.stringify(value, null, 2); } catch { return String(value); }
 }
 
 function userText(m) {
@@ -614,7 +607,7 @@ export class ChatbotWidget extends HTMLElement {
     for (const c of this._confirms) {
       html += `<div class="row assistant"><div class="confirm" data-confirm="${escapeHtml(c.id)}">
         Allow <strong>${escapeHtml(c.name)}</strong>?
-        <pre>${escapeHtml(pretty(c.args))}</pre>
+        <pre>${escapeHtml(formatToolValue(c.args))}</pre>
         <div class="btns"><button class="starter" data-approve="${escapeHtml(c.id)}">Allow</button><button class="starter" data-deny="${escapeHtml(c.id)}">Don't allow</button></div>
       </div></div>`;
     }
@@ -654,7 +647,7 @@ export class ChatbotWidget extends HTMLElement {
         if (res) { try { failed = !!JSON.parse(res.content)?.error; } catch { /* plain text */ } }
         const status = running ? '<span class="spin"></span>' : res ? (failed ? '<span class="st">failed</span>' : '<span class="st">✓</span>') : '<span class="st">…</span>';
         html += `<details class="step${failed ? ' error' : ''}"><summary>${status}<span class="nm">${escapeHtml(call.function.name)}</span></summary>
-          <pre>${escapeHtml(pretty(call.function.arguments))}${res ? `\n\n→ ${escapeHtml(pretty(res.content))}` : ''}</pre></details>`;
+          <pre>${escapeHtml(formatToolValue(call.function.arguments))}${res ? `\n\n→ ${escapeHtml(formatToolValue(res.content))}` : ''}</pre></details>`;
       }
       html += '</div>';
     }
