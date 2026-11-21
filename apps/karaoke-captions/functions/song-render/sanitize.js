@@ -1,6 +1,6 @@
 /**
  * Style-tab payload sanitiser. Strips anything that isn't a recognised key,
- * coerces types defensively, and returns null if no usable keys remain — so
+ * coerces types defensively, and returns null if no usable keys remain - so
  * render_options stays NULL in the DB and the renderer takes its fallback
  * path.
  *
@@ -19,12 +19,12 @@ export function sanitizeRenderOptions(raw) {
   }
   // Font mode: 'max' (auto-fit) is non-default, so only persist that one.
   if (raw.font_mode === 'max') out.font_mode = 'max';
-  // Font size as % of the frame's SHORT SIDE (2–50) — resolution- AND
+  // Font size as % of the frame's SHORT SIDE (2-50) - resolution- AND
   // aspect-independent. Only meaningful in 'pct' mode but harmless to keep.
   if (typeof raw.font_pct === 'number' && raw.font_pct >= 2 && raw.font_pct <= 50) {
     out.font_pct = Math.round(raw.font_pct * 2) / 2; // 0.5 steps
   }
-  // Edge padding in px (0–200, against a 720 short-side reference). Default 25,
+  // Edge padding in px (0-200, against a 720 short-side reference). Default 25,
   // so only persist when it differs.
   if (typeof raw.pad_px === 'number' && raw.pad_px >= 0 && raw.pad_px <= 200 && Math.round(raw.pad_px) !== 25) {
     out.pad_px = Math.round(raw.pad_px);

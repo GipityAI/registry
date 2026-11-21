@@ -1,4 +1,4 @@
-/** Small string/format helpers shared across tabs. Pure — no DOM. */
+/** Small string/format helpers shared across tabs. Pure - no DOM. */
 
 export function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({

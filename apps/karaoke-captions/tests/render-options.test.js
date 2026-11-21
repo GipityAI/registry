@@ -1,5 +1,5 @@
 // Pure-unit tests for the renderer's style-merge helper. No DB, no API,
-// no Remotion — just the function. Imported via require() since the
+// no Remotion - just the function. Imported via require() since the
 // renderer is CommonJS; main.js guards its entrypoint on require.main, so
 // importing it here does NOT start a render.
 //
@@ -18,7 +18,7 @@ test('RENDER_DEFAULTS exposes exactly the controls the Style tab edits', () => {
   ]);
 });
 
-test('RENDER_DEFAULTS pins the pre-Style-tab look — colors, size, shape, phrasing', () => {
+test('RENDER_DEFAULTS pins the pre-Style-tab look - colors, size, shape, phrasing', () => {
   // These color constants ALSO appear in the JSX as DEFAULT_BG / DEFAULT_WORD_*.
   // Drift between the two spots is the regression this asserts against.
   assert.equal(RENDER_DEFAULTS.bg_color,    '#0e0e10');
@@ -36,7 +36,7 @@ test('RENDER_DEFAULTS pins the pre-Style-tab look — colors, size, shape, phras
   assert.equal(RENDER_DEFAULTS.show_watermark, true);
 });
 
-test('resolveRenderStyle(null) returns the defaults — back-compat path', () => {
+test('resolveRenderStyle(null) returns the defaults - back-compat path', () => {
   assert.deepEqual(resolveRenderStyle(null), { ...RENDER_DEFAULTS });
   assert.deepEqual(resolveRenderStyle(undefined), { ...RENDER_DEFAULTS });
   assert.deepEqual(resolveRenderStyle('not an object'), { ...RENDER_DEFAULTS });
@@ -53,11 +53,11 @@ test('resolveRenderStyle merges valid keys; each missing key holds its default',
 
 test('resolveRenderStyle rejects malformed colors and out-of-range font_pct', () => {
   const result = resolveRenderStyle({
-    bg_color:    '#fff',         // 3-digit hex — rejected (must be 6)
-    word_active: 'red',          // named — rejected
-    word_past:   '#zzzzzz',      // non-hex chars — rejected
-    word_future: '#888896',      // valid — kept
-    font_pct:    99,             // out of [2, 50] — rejected
+    bg_color:    '#fff',         // 3-digit hex - rejected (must be 6)
+    word_active: 'red',          // named - rejected
+    word_past:   '#zzzzzz',      // non-hex chars - rejected
+    word_future: '#888896',      // valid - kept
+    font_pct:    99,             // out of [2, 50] - rejected
   });
   // Only word_future overrides; rest are defaults.
   assert.equal(result.bg_color,    RENDER_DEFAULTS.bg_color);

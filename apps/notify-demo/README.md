@@ -1,6 +1,6 @@
 # Notify demo
 
-A tiny working demo of **Gipity Notify** — real web push notifications, including on an iPhone added to the Home Screen. Built on `web-fullstack` with the `notify` kit pre-installed.
+A tiny working demo of **Gipity Notify** - real web push notifications, including on an iPhone added to the Home Screen. Built on `web-fullstack` with the `notify` kit pre-installed.
 
 What it does:
 
@@ -24,8 +24,8 @@ gipity notify subs               # how many devices are subscribed
 
 ## Make it yours
 
-- `functions/send-ping/index.js` — what gets sent (declare `services: ['notify']` to use `notify()`).
-- `src/js/main.js` / `src/index.html` — the UI.
-- `src/manifest.webmanifest` — app name + Home Screen icon (generated at install; refresh with `gipity brand set`).
+- `functions/send-ping/index.js` - what gets sent (declare `services: ['notify']` to use `notify()`).
+- `src/js/main.js` / `src/index.html` - the UI.
+- `src/manifest.webmanifest` - app name + Home Screen icon (generated at install; refresh with `gipity brand set`).
 
 Send to a specific user from any function: `await notify({ to: userGuid, notification: { title, body, url } })`.

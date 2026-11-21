@@ -91,7 +91,7 @@ const result = await audioAlign.waitForResult({ appGuid, userToken }, run_guid, 
   "audio_url":       "https://...",                   // required, audio file (mp3/wav/m4a/...)
   "lyrics":          "line one\nline two\n...",       // required, DISPLAY words; what shows in your output
   "phonetic_lyrics": "line one\nline two\n...",       // optional, same word/line shape as `lyrics` but
-                                                       // respelled phonetically — used when MMS_FA can't
+                                                       // respelled phonetically - used when MMS_FA can't
                                                        // align the display form (brand names, acronyms, slang).
                                                        // Output words come from `lyrics`; the model just
                                                        // uses this to find timing. Word count must match.
@@ -106,12 +106,12 @@ const result = await audioAlign.waitForResult({ appGuid, userToken }, run_guid, 
 
 ### Why phonetic respellings matter
 
-MMS_FA ships an English character dictionary. It nails common words but fails on unusual proper nouns and acronyms — they come back with `aligned: false` and confidence 0. Two ways to fix:
+MMS_FA ships an English character dictionary. It nails common words but fails on unusual proper nouns and acronyms - they come back with `aligned: false` and confidence 0. Two ways to fix:
 
 - **`phonetic_lyrics`** when you have time to respell the whole transcript (high-control). The respelled words guide MMS_FA; output keeps your display words intact.
 - **`corrections`** when only a handful of words trip the model (low-effort). The kit applies the swaps before alignment and emits the original words in the output.
 
-The two are mutually exclusive — pass `phonetic_lyrics` *or* `corrections`, not both. If you pass both, `phonetic_lyrics` wins.
+The two are mutually exclusive - pass `phonetic_lyrics` *or* `corrections`, not both. If you pass both, `phonetic_lyrics` wins.
 
 **Output** (the run's `output` field):
 ```json
@@ -170,7 +170,7 @@ gipity job status <runGuid>        # see final JSON in `output`
 
 Expected output: `words[]` with ~10 entries (one per input word), `phrases[]` matching the lyric lines, `metadata.unaligned_count: 0`. Confidence values should all be > 0.7 since the fixture is clean TTS.
 
-If you see `unaligned_count > 0` or `status: failed`, the kit's `main.py` regressed — file an issue at the kit's repo. The fixture is intentionally clean (TTS speech, no instrumentals, simple lyrics) so the alignment should be unambiguous; if it isn't, that's a bug to surface.
+If you see `unaligned_count > 0` or `status: failed`, the kit's `main.py` regressed - file an issue at the kit's repo. The fixture is intentionally clean (TTS speech, no instrumentals, simple lyrics) so the alignment should be unambiguous; if it isn't, that's a bug to surface.
 
 ## What's in the fat image (zero deps required)
 
@@ -182,12 +182,12 @@ L4 at $0.80/hr underlying + 100% margin = ~$0.013 per minute of compute. A 3-min
 
 ## Limitations / known gaps
 
-- **Lyric phrasing must match the audio.** MMS_FA assumes the lyrics ARE what's sung. If a singer ad-libs words not in the lyrics, alignment drifts after that point. The output's `confidence` field flags low-confidence words (< 0.5) — useful for surfacing edits in a UI. When most of the track comes back weak (over 40% of words under 0.5) the run's `warnings` array says so explicitly: treat that as "wrong lyrics", not "rough timings".
+- **Lyric phrasing must match the audio.** MMS_FA assumes the lyrics ARE what's sung. If a singer ad-libs words not in the lyrics, alignment drifts after that point. The output's `confidence` field flags low-confidence words (< 0.5) - useful for surfacing edits in a UI. When most of the track comes back weak (over 40% of words under 0.5) the run's `warnings` array says so explicitly: treat that as "wrong lyrics", not "rough timings".
 - **Demucs is opinionated.** If your input is already vocal-isolated (a cappella, dry vocal stem), set `skip_demucs: true` to avoid the unnecessary GPU work.
-- **on_complete chaining** is supported — set `on_complete: <function-name>` in the job definition and the platform fires that function with `{ run_guid, status, output, error, duration_ms, job_name }` when the run terminates. Useful for chaining alignment → render pipelines without browser polling.
+- **on_complete chaining** is supported - set `on_complete: <function-name>` in the job definition and the platform fires that function with `{ run_guid, status, output, error, duration_ms, job_name }` when the run terminates. Useful for chaining alignment → render pipelines without browser polling.
 
 ## See also
 
-- `jobs.md` skill — the underlying job tier (CPU + GPU compute, billing, fat image)
-- `app-files.md` skill — uploading audio files to get a URL for `audio_url`
-- `app-llm.md` skill — if you want to add a display-map / lyric normalization step
+- `jobs.md` skill - the underlying job tier (CPU + GPU compute, billing, fat image)
+- `app-files.md` skill - uploading audio files to get a URL for `audio_url`
+- `app-llm.md` skill - if you want to add a display-map / lyric normalization step

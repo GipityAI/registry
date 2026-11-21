@@ -1,7 +1,7 @@
 /**
  * Gipity Notify service worker. Receives encrypted web-push messages and shows
  * them; opens the notification's URL on click. Scaffolded into your app on
- * `gipity add notify` — edit freely (e.g. change the default icon or click behavior).
+ * `gipity add notify` - edit freely (e.g. change the default icon or click behavior).
  *
  * Note: this worker is registered with a sub-scope (…/packages/notify/) and does
  * NOT control the app page. Receiving push and opening windows works regardless;
@@ -35,7 +35,7 @@ self.addEventListener('notificationclick', (event) => {
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
         if ('focus' in client) {
-          // We don't control this page, so we can't navigate() it — focus it and
+          // We don't control this page, so we can't navigate() it - focus it and
           // post the URL; the page routes itself (see listenForNotificationClicks).
           client.postMessage({ type: 'gipity-notify-click', url });
           return client.focus();

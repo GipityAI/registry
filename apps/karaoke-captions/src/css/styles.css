@@ -1,6 +1,6 @@
-/* karaoke-captions — sidebar + stepper SPA shell on top of Water.css.
+/* karaoke-captions - sidebar + stepper SPA shell on top of Water.css.
  *
- * Layout: full-viewport grid — fixed-width sidebar left, scrolling main right.
+ * Layout: full-viewport grid - fixed-width sidebar left, scrolling main right.
  * Tabs inside main swap via [hidden] (one tab visible at a time, no big-page
  * scroll). Stepper bar at the top is the primary nav inside main.
  *
@@ -31,7 +31,7 @@
 
 /* Global border-box reset. Water.css leaves the default content-box, under
    which `width: 100%` + padding (e.g. #main) computes WIDER than its container
-   and overflows — that was the horizontal scrollbar / workspace-wider-than-
+   and overflows - that was the horizontal scrollbar / workspace-wider-than-
    header bug. With border-box, padding is included in the declared width. */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -55,7 +55,7 @@ html, body {
 }
 #app-body {
   display: grid;
-  /* minmax(0, 1fr) — NOT plain 1fr — so the main column can shrink below its
+  /* minmax(0, 1fr) - NOT plain 1fr - so the main column can shrink below its
      content's min-content width instead of blowing the grid past the viewport
      (that overflow pushed #main wider than the full-width header + added a
      horizontal scrollbar). Inner content scrolls/wraps/ellipsizes within it. */
@@ -312,7 +312,7 @@ kbd {
 
 /* The header row labels the columns of every word row below. Same grid
    template AND same horizontal padding offset as the word rows inside a
-   .clause card — the header's `padding: 0.4rem 1rem` matches the clause's
+   .clause card - the header's `padding: 0.4rem 1rem` matches the clause's
    `padding: ... 1rem`, so column x-positions line up to the pixel. */
 .word-row-header {
   padding: 0.4rem 1rem;
@@ -366,7 +366,7 @@ kbd {
 }
 
 /* One word per row. Grid columns: play / src / display / punct / start / end /
-   type / icon / time-buttons. Display is the ONLY column that flexes — every
+   type / icon / time-buttons. Display is the ONLY column that flexes - every
    other column stays at its natural width so they don't drift around the page.
    Column widths are shared with .word-row-header so labels line up exactly. */
 .word-row {
@@ -374,9 +374,9 @@ kbd {
   grid-template-columns:
     32px              /* ▶ play */
     minmax(80px, 11ch) /* src */
-    minmax(180px, 480px) /* display — flexes within a bounded range, not to infinity */
+    minmax(180px, 480px) /* display - flexes within a bounded range, not to infinity */
     50px              /* punct */
-    90px              /* start (wider so number-input arrows don't clip 4–5 digit values) */
+    90px              /* start (wider so number-input arrows don't clip 4-5 digit values) */
     90px              /* end */
     100px             /* type */
     minmax(56px, 100px) /* icon */
@@ -434,7 +434,7 @@ kbd {
 }
 .word-row button.tiny:hover:not(:disabled) { background: var(--bg); border-color: var(--primary); }
 
-/* Narrower viewports — fold the icon + type into a second row to keep
+/* Narrower viewports - fold the icon + type into a second row to keep
    each word card readable on a laptop screen. */
 @media (max-width: 1100px) {
   .word-row {
@@ -449,7 +449,7 @@ kbd {
   }
   .word-row select,
   .word-row input.icon { grid-column: 1 / -1; }
-  /* The header's 9 spans don't fit the 7-column folded layout cleanly —
+  /* The header's 9 spans don't fit the 7-column folded layout cleanly -
      hide it; the per-row `title` attrs cover the same affordance on hover. */
   .word-row-header { display: none; }
 }
@@ -517,7 +517,7 @@ kbd {
 .style-preview-active { color: var(--primary); font-weight: 800; }
 .style-preview-future { color: #888896; }
 
-/* Checkbox-style control (e.g. "show upcoming line") — horizontal, not stacked */
+/* Checkbox-style control (e.g. "show upcoming line") - horizontal, not stacked */
 .style-control-checkbox {
   flex-direction: row;
   align-items: center;
@@ -586,7 +586,7 @@ kbd {
 
 /* ── Mobile ───────────────────────────────────────────────── */
 @media (max-width: 700px) {
-  /* The grid is on #app-body (#app is a flex column) — collapse the sidebar +
+  /* The grid is on #app-body (#app is a flex column) - collapse the sidebar +
      main into a single column here. */
   #app-body { grid-template-columns: 1fr; }
   #sidebar {

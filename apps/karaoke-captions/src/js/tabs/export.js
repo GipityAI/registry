@@ -1,16 +1,16 @@
 /**
- * Tab 4 · Render — one list of every render, newest first. Each finished render
+ * Tab 4 · Render - one list of every render, newest first. Each finished render
  * has an inline ▶ Play that expands a <video> in place, plus its metrics
  * (resolution · aspect · render time · frames · fps). Rendering/queued/failed
  * rows show status.
  *
- * Pure presentation — data comes from poll cycles in main.js. To survive the
+ * Pure presentation - data comes from poll cycles in main.js. To survive the
  * 2 s poll without resetting a video the user is watching, we DON'T blow away
  * innerHTML when the render set is unchanged: we diff by a signature and only
  * re-render the list when it changes.
  *
  * Playback rule: a video plays ONLY when the user clicks ▶ Play (we call
- * .play() on that exact click). It NEVER autoplays — opening the tab, switching
+ * .play() on that exact click). It NEVER autoplays - opening the tab, switching
  * away and back, or starting a new render must not start a video. resetPlayers()
  * (called by main.js on tab entry) clears the open set so a previously-open
  * player doesn't reappear playing.
@@ -20,7 +20,7 @@ import { escapeHtml } from '../util.js';
 const $ = (id) => document.getElementById(id);
 
 // guids the user has expanded a player for. Cleared on tab entry (resetPlayers)
-// so re-entering the tab never restores — let alone autoplays — an old player.
+// so re-entering the tab never restores - let alone autoplays - an old player.
 const openPlayers = new Set();
 // signature of the last-rendered list, so an unchanged poll is a no-op.
 let lastSignature = '';
@@ -52,7 +52,7 @@ function fmtTime(iso) {
   try { return new Date(iso).toLocaleString(); } catch { return ''; }
 }
 
-// "1280×720 · 16:9 · 4.2s · 690f · 30fps" — only the parts we have.
+// "1280×720 · 16:9 · 4.2s · 690f · 30fps" - only the parts we have.
 function metricsLine(r) {
   const parts = [];
   if (r.resolution) parts.push(escapeHtml(r.resolution));
@@ -84,7 +84,7 @@ export function renderHistory(renders, { onUseStyle }) {
   );
 
   const sig = signature(sorted);
-  if (sig === lastSignature) return; // nothing changed — leave the DOM (and any playing video) alone
+  if (sig === lastSignature) return; // nothing changed - leave the DOM (and any playing video) alone
   lastSignature = sig;
 
   list.innerHTML = sorted.map((r, i) => {
@@ -116,10 +116,10 @@ export function renderHistory(renders, { onUseStyle }) {
       if (opening) openPlayers.add(guid); else openPlayers.delete(guid);
       lastSignature = ''; // force the next render to rebuild this row
       renderHistory(renders, { onUseStyle });
-      // Play ONLY on the click that opens it — never on tab load / poll redraw.
+      // Play ONLY on the click that opens it - never on tab load / poll redraw.
       if (opening) {
         const row = list.querySelector(`.render-row[data-render-guid="${guid}"] video`);
-        if (row) row.play().catch(() => { /* autoplay-policy / user gesture — ignore */ });
+        if (row) row.play().catch(() => { /* autoplay-policy / user gesture - ignore */ });
       }
     });
   });

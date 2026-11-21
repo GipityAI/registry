@@ -24,7 +24,7 @@ export async function callFn(name, body, method = 'POST') {
   return json.data ?? json;
 }
 
-/** Two-step presigned upload — kicks off init, PUTs to S3, calls complete.
+/** Two-step presigned upload - kicks off init, PUTs to S3, calls complete.
  *  Returns the public CDN URL of the uploaded file. */
 export async function uploadAudio(file, onProgressMsg) {
   if (onProgressMsg) onProgressMsg('Uploading audio…');

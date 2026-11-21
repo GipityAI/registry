@@ -1,4 +1,4 @@
-// Stepper state machine — pure logic, no DOM. Validates the data-driven
+// Stepper state machine - pure logic, no DOM. Validates the data-driven
 // forward gates: you can't enter Edit/Style/Export until alignment exists.
 // Backwards is always free. Auto-advance hook is documented here too.
 
@@ -82,7 +82,7 @@ test('a queued/rendering row without a video_url doesn\'t count as a completed r
 test('nextStepAfter(): upload → edit, style → export, anything else → null', () => {
   assert.equal(nextStepAfter('upload'), 'edit');
   assert.equal(nextStepAfter('style'),  'export');
-  // Edit and Export don't auto-advance — user drives those.
+  // Edit and Export don't auto-advance - user drives those.
   assert.equal(nextStepAfter('edit'),   null);
   assert.equal(nextStepAfter('export'), null);
 });

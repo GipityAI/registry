@@ -1,5 +1,5 @@
 /**
- * Tests for lib/host-election.js — instantiation + the solo-host path.
+ * Tests for lib/host-election.js - instantiation + the solo-host path.
  * Timers are shortened via applySettings so the election resolves fast.
  * Run: node src/packages/realtime/tests/host-election.test.js
  */

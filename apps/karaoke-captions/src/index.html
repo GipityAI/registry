@@ -25,7 +25,7 @@
           <button type="button" id="btn-new-song" title="Start a new project">+ New</button>
         </div>
         <ul id="song-list" class="song-list" aria-live="polite">
-          <li class="song-list-empty muted small">No projects yet — start one →</li>
+          <li class="song-list-empty muted small">No projects yet - start one →</li>
         </ul>
         <div class="sidebar-foot">
           <a href="./packages/audio-align/README.md" class="muted small">Built on @gipity/audio-align</a>
@@ -72,7 +72,7 @@
         </div>
 
         <div class="card">
-          <h3>Script <span class="muted small">— optional</span></h3>
+          <h3>Script <span class="muted small"> - optional</span></h3>
           <p class="muted small">If you have a script for your audio, paste it here so we get the spelling right. The app is mostly doing the <em>timing</em>: making sure the right phrase shows up and the right word is highlighted at the right moment. If you don't have a script, leave this blank and we'll do our best to transcribe.</p>
           <textarea id="lyrics" rows="9">AI works better here &mdash; the name's Gipity.
 Full-stack for the agents, ain't nobody slick as me.
@@ -105,7 +105,7 @@ twenty bucks a month, get your whole damn stack back.</textarea>
         <audio id="audio" hidden></audio>
         <span id="audio-time" class="visually-hidden" aria-hidden="true">0.000 / 0.000</span>
 
-        <!-- Column header — one row that aligns to the .word-row grid below,
+        <!-- Column header - one row that aligns to the .word-row grid below,
              so users can see what each column does at a glance. -->
         <div class="word-row word-row-header" role="row" aria-label="Word columns">
           <span aria-hidden="true"></span>
@@ -196,7 +196,7 @@ twenty bucks a month, get your whole damn stack back.</textarea>
             </div>
 
             <div class="card">
-              <h3>Split <span class="muted small">— how words are grouped on screen</span></h3>
+              <h3>Split <span class="muted small"> - how words are grouped on screen</span></h3>
               <div class="style-grid">
                 <label class="style-control">
                   <span>Mode</span>
@@ -231,7 +231,7 @@ twenty bucks a month, get your whole damn stack back.</textarea>
                 <span class="style-preview-active">word</span>
                 <span class="style-preview-future">future</span>
               </div>
-              <p class="muted small">Colors, size &amp; shape update live — the render matches this.</p>
+              <p class="muted small">Colors, size &amp; shape update live - the render matches this.</p>
               <div class="tab-cta">
                 <button type="button" id="btn-render" class="primary">Render video →</button>
               </div>
@@ -243,7 +243,7 @@ twenty bucks a month, get your whole damn stack back.</textarea>
       <!-- ═══ TAB 4 · RENDER ════════════════════════════════════════════════ -->
       <section class="tab-panel" data-tab="export" hidden>
         <div class="card">
-          <h3>Renders <span class="muted small">— newest first · every version kept</span></h3>
+          <h3>Renders <span class="muted small"> - newest first · every version kept</span></h3>
           <ul id="renders-list" class="renders-list">
             <li class="muted small">Nothing rendered yet.</li>
           </ul>
@@ -261,7 +261,7 @@ twenty bucks a month, get your whole damn stack back.</textarea>
           <h3>Generating timed captions…</h3>
           <p id="align-status-msg" class="muted">Starting…</p>
           <progress id="align-progress" value="0" max="100" style="width:100%"></progress>
-          <p class="muted small">First run takes ~10–30 s to warm up, then ~30–60 s per 3 minutes of audio.</p>
+          <p class="muted small">First run takes ~10-30 s to warm up, then ~30-60 s per 3 minutes of audio.</p>
           <p class="muted small">Song GUID: <code id="aligning-song-guid"></code></p>
         </div>
       </section>

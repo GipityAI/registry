@@ -1,9 +1,9 @@
 -- Render metrics captured when a render finishes, surfaced in the Render tab.
 -- duration_ms already existed (render wall-clock); these add the encode shape.
---   render_frames — total frames generated
---   fps           — frames per second of the output
---   resolution    — "WIDTHxHEIGHT" of the output frame (e.g. "1280x720")
---   aspect        — "16:9" | "9:16" | "1:1"
+--   render_frames - total frames generated
+--   fps           - frames per second of the output
+--   resolution    - "WIDTHxHEIGHT" of the output frame (e.g. "1280x720")
+--   aspect        - "16:9" | "9:16" | "1:1"
 -- All nullable: older rows and in-flight renders simply have NULL.
 
 ALTER TABLE renders

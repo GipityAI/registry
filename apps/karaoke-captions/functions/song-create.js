@@ -5,7 +5,7 @@
  * Returns: { song_guid, status: 'created' }
  *
  * Creates the song row + persists the user's inputs. The alignment is NOT
- * fired here — call song-align next (or POST to song-align directly with the
+ * fired here - call song-align next (or POST to song-align directly with the
  * returned guid; the UI auto-chains).
  */
 export default async function songCreate(ctx, { db, guid }) {
@@ -18,7 +18,7 @@ export default async function songCreate(ctx, { db, guid }) {
 
   // Word-count sanity check up front so the user gets a clean error instead of
   // a GPU job that runs for 30 s and then exits 2. The kit's main.py also
-  // validates this — we mirror it client-side for UX.
+  // validates this - we mirror it client-side for UX.
   if (phonetic_lyrics) {
     const lyW = lyrics.split(/\s+/).filter(Boolean).length;
     const phW = phonetic_lyrics.split(/\s+/).filter(Boolean).length;

@@ -4,7 +4,7 @@
  * Body: { song_guid, mode?, render_options? }
  *   - mode (resolution tier): 'preview' (720p) | 'hd' (1080p) | '4k' (2160p).
  *     Aspect ratio (16:9 / 9:16 / 1:1) lives in render_options.aspect.
- *   - render_options: optional style snapshot — { bg_color, word_active,
+ *   - render_options: optional style snapshot - { bg_color, word_active,
  *     word_past, word_future, font_px, phrase_mode, phrase_target,
  *     show_next_line }. Persisted on the render row so the Export tab can show
  *     what styles each past render used. Any field omitted falls back to the
@@ -29,7 +29,7 @@ export default async function songRender(ctx, { db, jobs, guid }) {
   );
   if (songRes.rows.length === 0) return { error: 'song not found' };
   const song = songRes.rows[0];
-  if (!song.alignment_json) return { error: 'song has no alignment yet — align first' };
+  if (!song.alignment_json) return { error: 'song has no alignment yet - align first' };
 
   const renderGuid = guid('rnd');
   await db.query(
@@ -40,7 +40,7 @@ export default async function songRender(ctx, { db, jobs, guid }) {
 
   // The render job is language-agnostic compute (Node + Remotion + ffmpeg) that
   // runs on cpu-large. It needs the alignment + audio URL + chosen style to do
-  // its work — we pass them in directly so the job doesn't need DB access.
+  // its work - we pass them in directly so the job doesn't need DB access.
   // sandbox jobs.submit() returns snake_case { run_guid, status, replayed }.
   const r = await jobs.submit('render', {
     render_guid: renderGuid,

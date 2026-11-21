@@ -16,7 +16,7 @@ import { RealtimeJoinError } from './errors.js';
 const COLYSEUS_ESM = 'https://esm.sh/colyseus.js@0.16.22?bundle-deps';
 
 // The API base for THIS app's server. The deploy pipeline stamps it onto the injected
-// SDK tag (data-api-base) — a page deployed by a local dev server must call THAT
+// SDK tag (data-api-base) - a page deployed by a local dev server must call THAT
 // server, not prod, or every token/API call 404s against an app that doesn't exist
 // there. Fall back to prod for pages older than the stamp.
 function resolveApiBase() {

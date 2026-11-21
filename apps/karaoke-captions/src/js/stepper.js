@@ -8,7 +8,7 @@
  * and you can't enter Style or Export without one either). Backwards is
  * always allowed.
  *
- * Pure functions only — DOM wiring lives in main.js so the stepper logic
+ * Pure functions only - DOM wiring lives in main.js so the stepper logic
  * can be unit-tested without a browser. The renderer in main.js takes the
  * computeStepperStates() output and toggles classes / disabled flags.
  */
@@ -49,7 +49,7 @@ export function computeStepperStates(song, activeStep) {
       out[k] = 'complete';
     } else if (k === 'edit' && hasAlignment) {
       // Edit is "complete" only if user has moved past it (has saved or rendered)
-      // — but for v1 we use hasAlignment as the proxy. Refine later if needed.
+      // - but for v1 we use hasAlignment as the proxy. Refine later if needed.
       out[k] = hasRender ? 'complete' : 'available';
     } else if (k === 'style' && hasRender) {
       out[k] = 'complete';

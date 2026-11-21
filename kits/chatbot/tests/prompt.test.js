@@ -1,5 +1,5 @@
 /**
- * Tests for lib/prompt.js — system-prompt assembly.
+ * Tests for lib/prompt.js - system-prompt assembly.
  * Run: node src/packages/chatbot/tests/prompt.test.js
  */
 import assert from 'node:assert/strict';

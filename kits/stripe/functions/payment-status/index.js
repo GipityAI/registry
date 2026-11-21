@@ -1,4 +1,4 @@
-// Stripe payments kit — subscription status for the signed-in caller (auth: user).
+// Stripe payments kit - subscription status for the signed-in caller (auth: user).
 // Used by the frontend to gate "Pro"/members-only UI. Kit-owned (sealed).
 export default async function paymentStatus(ctx, { db }) {
   const userGuid = ctx.auth && ctx.auth.userGuid;

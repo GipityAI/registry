@@ -1,10 +1,10 @@
 /**
- * Example: a lobby — the directory pattern.
+ * Example: a lobby - the directory pattern.
  *
  * One shared room whose `store` channel lists what is open. Each host
  * publishes an entry and heartbeats it; every client sees the live list and
  * sweeps entries that went quiet. This is the "browse games / rooms /
- * sessions" half of any lobby app — see connect-four.js for the matching
+ * sessions" half of any lobby app - see connect-four.js for the matching
  * per-match rooms.
  */
 

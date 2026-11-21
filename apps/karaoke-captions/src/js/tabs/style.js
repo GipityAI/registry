@@ -1,8 +1,8 @@
 /**
- * Tab 3 · Style — colors + size/shape + split. The right-column preview mirrors
+ * Tab 3 · Style - colors + size/shape + split. The right-column preview mirrors
  * the renderer: it's a true aspect-ratio frame, and the caption is sized off the
  * frame's SHORT SIDE (min of width/height) so a % is identical across resolution
- * AND aspect — exactly what the render job does. The render button fires
+ * AND aspect - exactly what the render job does. The render button fires
  * song-render with the assembled render_options + mode.
  *
  * Font sizing: 'pct' = font_pct% of the short side (manual); 'max' = auto-fit

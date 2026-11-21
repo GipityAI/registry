@@ -1,5 +1,5 @@
 /**
- * Example: enterprise chat — the simplest shape.
+ * Example: enterprise chat - the simplest shape.
  *
  * Two channels, no entities, no 3D. Proves the kit carries zero
  * game/spatial assumptions: a `messages` channel for chat lines and a

@@ -31,7 +31,7 @@ export class RealtimeJoinError extends Error {
  *   4212 "room X not found"      -> the instance is gone            -> 'gone'
  *   4211 "no rooms found ..."    -> join-only found nothing         -> 'not-found'
  * A room NAME the server has no config for ("Room 'x' not found for this
- * project") is a provisioning mistake, not a live-room condition — it gets its
+ * project") is a provisioning mistake, not a live-room condition - it gets its
  * own 'unprovisioned' code so apps don't render it as "game over"/"try again".
  * Token/auth problems and everything else fall through to 'auth' / 'failed'.
  *

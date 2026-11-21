@@ -1,5 +1,5 @@
 /**
- * @gipity/audio-align — browser-side helpers
+ * @gipity/audio-align - browser-side helpers
  *
  * The kit's compute (demucs + MMS_FA) runs as a Gipity Jobs GPU job. Browser code
  * can't directly submit jobs (no app-token job route yet), so the kit pattern
@@ -15,7 +15,7 @@ const DEFAULT_SUBMIT_FN = 'audio-align-submit';
 const DEFAULT_STATUS_FN = 'audio-align-status';
 
 /** Resolve the API base: explicit opts.apiBase wins, then the deploy-stamped
- *  SDK tag (data-api-base) — a page deployed by a local dev server must call
+ *  SDK tag (data-api-base) - a page deployed by a local dev server must call
  *  THAT server, not prod, where the app doesn't exist. Falls back to prod for
  *  pages older than the stamp. Matches the realtime kit's resolution. */
 function apiBase(opts) {
@@ -51,7 +51,7 @@ async function callFn(opts, fnName, body) {
  *     // Optional. Same word/line shape as `lyrics`, but each word respelled
  *     // phonetically so MMS_FA can align brand names / acronyms / slang
  *     // (e.g. lyrics: "Gipity" / phoneticLyrics: "Jip-ih-tee"). Output words
- *     // come from `lyrics`, not phoneticLyrics — the model just uses the
+ *     // come from `lyrics`, not phoneticLyrics - the model just uses the
  *     // phonetic form to find timing. Mutually exclusive with `corrections`.
  *     phoneticLyrics: 'line one\nline two',
  *

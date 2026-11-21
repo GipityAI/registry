@@ -1,7 +1,7 @@
 /* tokens.css - Design tokens for GipITSM */
 
 :root {
-    /* Brand — ONE knob: hover + muted derive from --primary. */
+    /* Brand - ONE knob: hover + muted derive from --primary. */
     --primary: #fea60b;
     --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
     --primary-muted: color-mix(in srgb, var(--primary) 15%, transparent);

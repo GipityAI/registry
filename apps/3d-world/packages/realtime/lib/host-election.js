@@ -35,7 +35,7 @@ export function createHostElection({ name, transport }) {
   // watchdog below trustworthy: host-confirmed carries `sid`, so it refreshes
   // the transport's lastSeen for the host. Without it, a host that runs no
   // presence channel is silent between keyframes (which carry no sid) and a
-  // watchdog would re-elect against a perfectly live host — which is why the
+  // watchdog would re-elect against a perfectly live host - which is why the
   // watchdog used to be armed only for claim-losers, leaving every fast-path
   // joiner unguarded against a crashed host (observed: dead host, survivors
   // waited the server's full 30s seat-hold before recovering).
@@ -83,7 +83,7 @@ export function createHostElection({ name, transport }) {
       return;
     } else if (!isHost) {
       // Rank only against peers that are provably alive. A crashed peer stays
-      // in the server's player map for its whole reconnection hold (30s) —
+      // in the server's player map for its whole reconnection hold (30s) -
       // ranking against it meant a dead low-sid host kept "winning" and no
       // survivor ever claimed. The cutoff must be AT MOST the watchdog's
       // trigger age (hostLossMs): the watchdog only re-elects once the host

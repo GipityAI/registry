@@ -1,10 +1,10 @@
 # @gipity/web-vision-mediapipe
 
-A **browser vision kit** for Gipity apps. Wraps Google [MediaPipe Tasks](https://ai.google.dev/edge/mediapipe) — gesture recognition, body pose, object detection — behind one camera + render-loop API.
+A **browser vision kit** for Gipity apps. Wraps Google [MediaPipe Tasks](https://ai.google.dev/edge/mediapipe) - gesture recognition, body pose, object detection - behind one camera + render-loop API.
 
 Runs **fully client-side**: no server, no upload, the camera stream never leaves the device. Inference is WASM + WebGL-accelerated. MediaPipe's npm build also reports usage metrics to Google; the kit answers those requests locally so they never leave the device either (`lib/no-telemetry.js`).
 
-**Web only.** Needs `getUserMedia`, WASM, and a canvas — so HTTPS or `localhost`. For native iOS/Android, a separate kit would wrap the MediaPipe mobile SDKs.
+**Web only.** Needs `getUserMedia`, WASM, and a canvas - so HTTPS or `localhost`. For native iOS/Android, a separate kit would wrap the MediaPipe mobile SDKs.
 
 ```
 web-vision-mediapipe/
@@ -44,7 +44,7 @@ vision.stop();                     // release camera + free GPU memory
 
 ## Gestures
 
-Don't read `result.gestures` yourself — the model re-classifies ~30×/second and a moving hand passes through several labels, so acting on the raw frame label fires on noise. The kit settles that for you, and hands it back two ways. Pick by **who decides when something happens**:
+Don't read `result.gestures` yourself - the model re-classifies ~30×/second and a moving hand passes through several labels, so acting on the raw frame label fires on noise. The kit settles that for you, and hands it back two ways. Pick by **who decides when something happens**:
 
 ```js
 const vision = await mountVision({
@@ -63,11 +63,11 @@ await countdown('3... 2... 1... shoot!');
 const thrown = vision.gesture();
 ```
 
-**A round-based game wants `gesture()`, not a cached `onGesture`.** Stashing the last pushed event in a variable looks equivalent and isn't — `onGesture` deliberately won't fire again while the hand is unchanged, so a player who throws rock two rounds running would have round two scored off round one's stale event.
+**A round-based game wants `gesture()`, not a cached `onGesture`.** Stashing the last pushed event in a variable looks equivalent and isn't - `onGesture` deliberately won't fire again while the hand is unchanged, so a player who throws rock two rounds running would have round two scored off round one's stale event.
 
-`GESTURES` exports the label list. For rock paper scissors: rock = `Closed_Fist`, paper = `Open_Palm`, scissors = `Victory` — see `examples/gesture.js` for a full round. `vision.resetGesture()` drops an in-progress hold. If you need the raw stream anyway, `onResult(result, kind)` hands you the native MediaPipe result each frame, and `gestureName(result)` pulls the current label out of it.
+`GESTURES` exports the label list. For rock paper scissors: rock = `Closed_Fist`, paper = `Open_Palm`, scissors = `Victory` - see `examples/gesture.js` for a full round. `vision.resetGesture()` drops an in-progress hold. If you need the raw stream anyway, `onResult(result, kind)` hands you the native MediaPipe result each frame, and `gestureName(result)` pulls the current label out of it.
 
-Gesture is the kit's strongest task. Detection uses EfficientDet-Lite — fast, but lower accuracy than a dedicated detector; treat it as "good enough for a demo", not production-grade. When detection itself is the product (counting, labeling, custom classes), use the `@gipity/web-vision-detect` kit instead.
+Gesture is the kit's strongest task. Detection uses EfficientDet-Lite - fast, but lower accuracy than a dedicated detector; treat it as "good enough for a demo", not production-grade. When detection itself is the product (counting, labeling, custom classes), use the `@gipity/web-vision-detect` kit instead.
 
 ## API
 
@@ -75,7 +75,7 @@ Gesture is the kit's strongest task. Detection uses EfficientDet-Lite — fast, 
 
 The high-level path. `camera` is `{ facingMode, width, height }`; `taskOptions` is forwarded to `createTask`.
 
-**Startup and readiness.** Importing the kit starts the WASM download immediately, and `mountVision` downloads the model *while* the camera permission prompt is up — so call it on page load rather than behind a click. It publishes its state on `<html>` as `data-vision="loading|ready|error|stopped"` (mirrored on `window.__visionReady`), and the mounted instance on `window.__vision`. `ready` means the first inference frame has been drawn.
+**Startup and readiness.** Importing the kit starts the WASM download immediately, and `mountVision` downloads the model *while* the camera permission prompt is up - so call it on page load rather than behind a click. It publishes its state on `<html>` as `data-vision="loading|ready|error|stopped"` (mirrored on `window.__visionReady`), and the mounted instance on `window.__vision`. `ready` means the first inference frame has been drawn.
 
 ## Verifying it headlessly
 
@@ -100,18 +100,18 @@ gipity generate image "candid smartphone photo of a person standing in a living 
 
 "making a peace sign, palm facing the camera" reads `Victory` and "giving a thumbs up" reads `Thumb_Up` the same way. `Closed_Fist` is the exception: generated fists usually come back as a hand with no gesture, so use a real photo for a fist.
 
-To check a model against a picture with no camera and no app in the way, `vision.detectFrom(source)` (or the standalone `detectImage(kind, source)`) runs the same model on a still image — a URL, an app path, or an `<img>`/`<canvas>` — and returns the same result shape:
+To check a model against a picture with no camera and no app in the way, `vision.detectFrom(source)` (or the standalone `detectImage(kind, source)`) runs the same model on a still image - a URL, an app path, or an `<img>`/`<canvas>` - and returns the same result shape:
 
 ```js
 gestureName(await vision.detectFrom('/fixtures/rock.png'));   // 'Closed_Fist'
 ```
 
-**Low-level building blocks** — compose your own loop:
+**Low-level building blocks** - compose your own loop:
 
 - `gestureName(result, { hand?, minScore? })` / `createGestureGate({ holdMs?, minScore?, hand? })` / `GESTURES`
 - `createTask(kind, options?)` → `{ kind, detect(video, ts?), raw, close() }`
-- `detectImage(kind, source, options?)` — run a task on a still image instead of a camera
-- `prewarm(kind, options?)` — start a model's download early; the later `createTask` is instant
+- `detectImage(kind, source, options?)` - run a task on a still image instead of a camera
+- `prewarm(kind, options?)` - start a model's download early; the later `createTask` is instant
 - `startCamera(video, { facingMode?, width?, height? })` → `{ stream, stop() }`
 - `createLoop({ video, detect, onFrame })` → `{ start, stop, fps }`
 - `createFps(window?)` → `{ tick, value, reset }`
@@ -119,14 +119,14 @@ gestureName(await vision.detectFrom('/fixtures/rock.png'));   // 'Closed_Fist'
 - `fitCanvas(canvas, video)`, `clearCanvas(ctx)`
 - `MODELS`, `WASM_BASE`, `MEDIAPIPE_VERSION`, `TASK_KINDS`
 
-See `examples/` — `gesture.js` (high-level), `detect.js` (low-level loop), `pose.js` (task switching).
+See `examples/` - `gesture.js` (high-level), `detect.js` (low-level loop), `pose.js` (task switching).
 
 ## Notes
 
 - The `<canvas>` must overlay the `<video>` at the same on-screen size; the kit sizes the canvas backing store to the camera frame.
-- Each task's model (~3–8 MB) is fetched from Google's CDN on first use, then browser-cached. `prewarm(kind)` pulls that cost forward off the critical path. Swap any URL in `lib/models.js` for your own hosted model.
+- Each task's model (~3-8 MB) is fetched from Google's CDN on first use, then browser-cached. `prewarm(kind)` pulls that cost forward off the critical path. Swap any URL in `lib/models.js` for your own hosted model.
 - `delegate: 'CPU'` in `taskOptions` forces CPU inference if a device's WebGL is flaky.
-- **License:** MediaPipe and the default models are Apache-2.0 — free for commercial use, no copyleft obligation on your app.
+- **License:** MediaPipe and the default models are Apache-2.0 - free for commercial use, no copyleft obligation on your app.
 
 ## Versioning
 

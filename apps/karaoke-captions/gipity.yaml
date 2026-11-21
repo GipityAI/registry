@@ -1,6 +1,6 @@
 version: 1
 
-# karaoke-captions — turn audio + lyrics into word-aligned karaoke captions
+# karaoke-captions - turn audio + lyrics into word-aligned karaoke captions
 # rendered to MP4. Ships with the @gipity/audio-align kit pre-bundled at
 # src/packages/audio-align/.
 #
@@ -52,19 +52,19 @@ deploy:
         # job executor (bypassing HTTP auth), so they never need a public
         # endpoint. Leaving them public let anyone POST a forged
         # {run_guid, status:'success', output:{video_url}} to overwrite a
-        # render's video_url with an attacker URL — `member` closes that.
+        # render's video_url with an attacker URL - `member` closes that.
         - name: song-align-complete
           auth: member
           tables: [songs]
-          description: "Fired by the platform when an audio-align job finishes — writes alignment_json back to the song row"
+          description: "Fired by the platform when an audio-align job finishes - writes alignment_json back to the song row"
         - name: render-complete
           auth: member
           tables: [renders]
-          description: "Fired by the platform when a render job finishes — writes video_url back to the render row"
+          description: "Fired by the platform when a render job finishes - writes video_url back to the render row"
 
-    # Both jobs in one phase — the audio-align kit's GPU pipeline + the
+    # Both jobs in one phase - the audio-align kit's GPU pipeline + the
     # template's CPU render job. on_complete chains the alignment result back
-    # into the song row, and the render result back into the render row —
+    # into the song row, and the render result back into the render row -
     # the browser only polls song-get, never the job system directly.
     - name: jobs
       type: jobs
@@ -84,7 +84,7 @@ deploy:
           handler: jobs/render/main.js
           runtime: node-20
           compute: cpu-large
-          timeout_ms: 1800000   # 30 min — 4K renders take a while
+          timeout_ms: 1800000   # 30 min - 4K renders take a while
           deps: package.json    # triggers `npm install` for @remotion/* on first invocation
           on_complete: render-complete
           description: "Render a song's alignment + audio into a karaoke MP4"

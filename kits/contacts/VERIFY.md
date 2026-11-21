@@ -6,7 +6,7 @@ contact functions are `auth: user`:
 1. **Unit tests** (`tests/api/contacts.test.js`, run by `gipity test`) cover the
    pure `_lib` helpers (normalize, mappers, score) and assert every door rejects
    anonymous callers.
-2. **End-to-end engine** — drive the live functions as a signed-in user with
+2. **End-to-end engine** - drive the live functions as a signed-in user with
    `gipity fn call` (it carries your CLI auth) and read back with `gipity db query`.
    This is the real proof of the resolution engine. All scenarios below were run
    green against a dev app (2026-06-21).

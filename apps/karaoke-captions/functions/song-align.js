@@ -5,7 +5,7 @@
  *
  * Submits an audio-align job for the song's current audio + lyrics. The job
  * has `on_complete: song-align-complete` declared in gipity.yaml so the result
- * lands back in the songs row automatically — the browser only needs to poll
+ * lands back in the songs row automatically - the browser only needs to poll
  * song-get to watch status flip created/aligning → aligned.
  *
  * Re-aligning is safe: this just kicks off a fresh run. The old align_run_guid
@@ -33,7 +33,7 @@ export default async function songAlign(ctx, { db, jobs }) {
   if (song.corrections) input.corrections = song.corrections;
 
   // The sandbox jobs.submit() returns snake_case { run_guid, status, replayed }
-  // (see function-runtime/sandbox-api.ts) — match it here.
+  // (see function-runtime/sandbox-api.ts) - match it here.
   const r = await jobs.submit('audio-align', input);
 
   await db.query(

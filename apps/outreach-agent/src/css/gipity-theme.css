@@ -1,6 +1,6 @@
-/* gipity-theme.css — the canonical Gipity brand + polish layer for Water.css apps.
+/* gipity-theme.css - the canonical Gipity brand + polish layer for Water.css apps.
    SINGLE SOURCE OF TRUTH: registry/_shared/css/gipity-theme.css.
-   The per-template copies are synced by scripts/sync-registry.ts — DON'T edit a
+   The per-template copies are synced by scripts/sync-registry.ts - DON'T edit a
    copy; edit the source and re-run `npx tsx scripts/sync-registry.ts`.
 
    How it works: the page forces dark (Water's dark.css build) and this file maps
@@ -14,7 +14,7 @@
   color-scheme: dark;
   accent-color: var(--primary); /* native checkboxes, radios, range, progress */
 
-  /* Gipity brand palette — ONE knob: every amber below derives from --primary. */
+  /* Gipity brand palette - ONE knob: every amber below derives from --primary. */
   --primary: #fea60b;
   --primary-hover: color-mix(in srgb, var(--primary) 82%, white);
   /* Label color on --primary surfaces (buttons). Dark, NOT --text-bright: white
@@ -69,7 +69,7 @@
 
 /* ── Themes ────────────────────────────────────────────────────────────────
    :root above is the default (dark). Set data-theme="light" | "blue" on <html>
-   to switch — the palettes below override only the color tokens (Water's own
+   to switch - the palettes below override only the color tokens (Water's own
    vars + the brand). An app can hardcode <html data-theme="light">, or use the
    SDK: Gipity.setTheme('light') flips + persists it (with a pre-paint snippet in
    the template head there's no flash), and Gipity.theme({primary:'#…'}) sets a
@@ -121,7 +121,7 @@
 
 /* Make the HTML `hidden` attribute always win. Author CSS beats the UA's
    `[hidden] { display: none }`, so a rule like `#overlay { display: flex }` on a
-   hidden-toggled element silently breaks `el.hidden = true` — stuck fullscreen
+   hidden-toggled element silently breaks `el.hidden = true` - stuck fullscreen
    overlays, "loading…" placeholders that never clear. This guard makes any
    `display:` rule safe to write on elements toggled via the hidden attribute. */
 [hidden] { display: none !important; }
@@ -154,7 +154,7 @@ button, input, select, textarea {
 /* Form fields fill their container. Water sizes a textarea to its box
    (`textarea:not([cols]) { width: 100% }`) but gives `input`/`select` no width at
    all, so they fall back to the UA's ~20-character intrinsic width while still
-   being `display: block` — a plain form renders a stubby subject field stacked
+   being `display: block` - a plain form renders a stubby subject field stacked
    above a full-width body box. Match them so plain semantic markup lays out right
    with no per-element CSS. `size=` (like Water's `cols=`) is the opt-out for a
    deliberately short field, and :where() keeps specificity at 0,0,1 so any app
@@ -167,7 +167,7 @@ select:where(:not([size])) {
   box-sizing: border-box;
   margin-right: 0;
 }
-/* Pill buttons — the standard Gipity button shape (matches the gipity.ai
+/* Pill buttons - the standard Gipity button shape (matches the gipity.ai
    login page and the Sign-in-with-Gipity pages). Extra horizontal padding so
    labels don't crowd the rounded ends. */
 button, input[type="submit"], input[type="button"], input[type="reset"] {
@@ -176,7 +176,7 @@ button, input[type="submit"], input[type="button"], input[type="reset"] {
   padding-left: 18px;
   padding-right: 18px;
   /* Water's dark build puts near-white text on the button, which is ~1.9:1
-     against the amber --button-base — an out-of-the-box WCAG AA failure on
+     against the amber --button-base - an out-of-the-box WCAG AA failure on
      every template. Pair the accent with the dark label color instead. */
   color: var(--button-text);
 }
@@ -215,7 +215,7 @@ meter::-webkit-meter-bar, meter::-webkit-meter-optimum-value {
   border-radius: 999px;
 }
 /* Range sliders. Water's dark.css paints the track with --background (#202020)
-   and the thumb with --border (#333) — both near-black on the #0d0d0d page, so
+   and the thumb with --border (#333) - both near-black on the #0d0d0d page, so
    the control reads as invisible and (being explicitly styled) never picks up the
    amber accent-color either. Re-assert a visible track + a Gipity-amber thumb,
    same reason progress/meter above must re-declare their fill. */

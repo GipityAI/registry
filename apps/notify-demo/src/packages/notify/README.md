@@ -1,6 +1,6 @@
-# @gipity/notify — Gipity Notify (web push)
+# @gipity/notify - Gipity Notify (web push)
 
-Web push notifications for your app, including **iOS home-screen web apps** (iOS 16.4+). The platform owns the VAPID keys, RFC 8291 encryption, and delivery — you never touch crypto or paste a key.
+Web push notifications for your app, including **iOS home-screen web apps** (iOS 16.4+). The platform owns the VAPID keys, RFC 8291 encryption, and delivery - you never touch crypto or paste a key.
 
 ## Install
 
@@ -26,7 +26,7 @@ The button handles everything: it signs the user in if needed, asks permission, 
 
 ## Send a notification (from a function)
 
-Declare the service and call the injected `notify()` — one flat credit per send, billed to you (the app owner):
+Declare the service and call the injected `notify()` - one flat credit per send, billed to you (the app owner):
 
 ```js
 // functions/notify-event/index.js   →   gipity.yaml: services: ['notify']

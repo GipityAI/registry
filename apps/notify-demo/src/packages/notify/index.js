@@ -1,5 +1,5 @@
 /**
- * @gipity/notify — web push notifications for your app, including iOS home-screen
+ * @gipity/notify - web push notifications for your app, including iOS home-screen
  * web apps. The platform owns the VAPID keys, encryption, and delivery (Gipity
  * Notify); this is the thin browser layer that subscribes the device and renders
  * a button. No keys, no service-worker boilerplate, no crypto.
@@ -23,7 +23,7 @@
 // regardless of which page imports it. Apps are served under a sub-path
 // (…/<account>/<app>/), so this SW registers with a *sub-scope*
 // (…/packages/notify/) that does NOT control the app page. Receiving push and
-// showing notifications works fine from a sub-scoped worker — but every API that
+// showing notifications works fine from a sub-scoped worker - but every API that
 // assumes the worker controls the page does NOT. So in here we never use
 // navigator.serviceWorker.ready, the no-arg getRegistration(), or
 // client.navigate(): we look our registration up by scope, await the worker's
@@ -34,7 +34,7 @@ const SW_SCOPE = new URL('./', SW_URL).href;
 
 function G() {
   if (typeof window === 'undefined' || !window.Gipity) {
-    throw new Error('@gipity/notify needs the Gipity client SDK — ensure the gipity.js <script data-app="..."> tag is present.');
+    throw new Error('@gipity/notify needs the Gipity client SDK - ensure the gipity.js <script data-app="..."> tag is present.');
   }
   return window.Gipity;
 }
@@ -54,11 +54,11 @@ const pushSupported = () =>
 
 /**
  * Where the user is in the notification flow:
- *   'unsupported'      — this browser can't do web push
- *   'ios-needs-install'— iOS, but the app isn't added to the Home Screen yet (required by Apple)
- *   'denied'           — the user blocked notifications
- *   'enabled'          — subscribed and on
- *   'ready'            — supported and permitted, just not subscribed yet
+ *   'unsupported'      - this browser can't do web push
+ *   'ios-needs-install' - iOS, but the app isn't added to the Home Screen yet (required by Apple)
+ *   'denied'           - the user blocked notifications
+ *   'enabled'          - subscribed and on
+ *   'ready'            - supported and permitted, just not subscribed yet
  */
 export async function getNotifyState() {
   if (isIOS() && !isStandalone()) return 'ios-needs-install';
@@ -93,7 +93,7 @@ async function registerSw() {
 }
 
 /**
- * Look *our* registration up by scope. Never the no-arg getRegistration() — that
+ * Look *our* registration up by scope. Never the no-arg getRegistration() - that
  * returns the registration controlling the current page, which a sub-scoped
  * notify worker never is, so it would hand back null (or some other app's worker)
  * and the subscription would be read off the wrong place.
@@ -106,7 +106,7 @@ async function getReg() {
 
 /**
  * Resolve once our registration's own worker reaches 'activated'. We can't use
- * navigator.serviceWorker.ready — that only resolves for a worker that *controls
+ * navigator.serviceWorker.ready - that only resolves for a worker that *controls
  * the page*, which a sub-scoped worker never does, so `ready` would hang forever.
  */
 function swActivated(reg) {
@@ -136,7 +136,7 @@ function toJSON(sub) {
  * Returns the new state ('enabled', 'denied', or an unsupported state).
  */
 export async function enableNotify() {
-  // Synchronous gates only — do NOT await anything before requestPermission()
+  // Synchronous gates only - do NOT await anything before requestPermission()
   // below. The click that called us carries transient user activation; any await
   // first spends it, and the browser then silently suppresses the permission
   // prompt (the same gesture rule app-auth documents for signIn()).
@@ -227,7 +227,7 @@ function listenForNotificationClicks() {
 }
 
 /**
- * <gipity-notify-button> — a self-contained enable/disable button that reflects
+ * <gipity-notify-button> - a self-contained enable/disable button that reflects
  * the current state and handles the iOS install hint. Auto-defined on import.
  */
 export function defineNotifyButton() {
@@ -268,7 +268,7 @@ export function defineNotifyButton() {
       try {
         const next = wasEnabled ? await disableNotify() : await enableNotify();
         this._render(next);
-        // We tried to turn notifications ON but didn't end up enabled — say so;
+        // We tried to turn notifications ON but didn't end up enabled - say so;
         // never silently no-op back to the plain label with no explanation.
         if (!wasEnabled && next !== 'enabled' && next !== 'ios-needs-install') {
           this._hint.textContent = explainState(next) || 'Couldn’t turn on notifications. Please try again.';

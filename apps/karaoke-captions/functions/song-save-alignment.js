@@ -4,7 +4,7 @@
  * Body: { song_guid, alignment_json }
  *
  * Called by the editor whenever the user hand-tunes word timings (drag, ⇤now,
- * now⇥) and hits Save. We don't re-validate the JSON shape here — the editor
+ * now⇥) and hits Save. We don't re-validate the JSON shape here - the editor
  * loaded it from us, so trust the round-trip. Worst case: render fails fast.
  */
 export default async function songSaveAlignment(ctx, { db }) {

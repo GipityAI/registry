@@ -1,4 +1,4 @@
-// Sidebar localStorage round-trip — no DOM, no server. Uses a tiny in-memory
+// Sidebar localStorage round-trip - no DOM, no server. Uses a tiny in-memory
 // stub for localStorage so this runs in the sandbox harness without needing
 // a browser. The reconcile() test exercises the prune-against-server path.
 

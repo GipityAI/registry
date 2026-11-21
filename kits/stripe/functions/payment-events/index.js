@@ -1,4 +1,4 @@
-// Stripe payments kit — fulfillment hook.
+// Stripe payments kit - fulfillment hook.
 //
 // The PLATFORM invokes this function with a SIGNATURE-VERIFIED Stripe Connect
 // event in ctx.body (shape: { id, type, account, data: { object } }) and sets

@@ -1,5 +1,5 @@
 """
-@gipity/audio-align — forced alignment GPU job
+@gipity/audio-align - forced alignment GPU job
 
 Pipeline:
   1. Download audio from input.audio_url
@@ -21,7 +21,7 @@ Input shape (read via `ctx.input`):
     "audio_url": "https://...",          # required, audio file URL (mp3/wav/m4a/...). Max 100 MB.
     "lyrics": "line one\\nline two ...",  # required, DISPLAY text. May include acronyms (AI, AWS),
                                           # letter-dash sequences (N-P-M), and hyphenated phonetic
-                                          # respellings (Jip-ih-tee) — the kit handles them inline.
+                                          # respellings (Jip-ih-tee) - the kit handles them inline.
     "phonetic_lyrics": "...",            # optional, full manual respelling. Same word/line shape
                                           # as `lyrics`. If set, overrides the per-word phonetic
                                           # auto-normalisation. Word count MUST match `lyrics`.
@@ -37,7 +37,7 @@ Output shape (set via `ctx.set_output`, stored as the run's `output` field):
   {
     "words": [
       {
-        "word": "AI",            # legacy alias — same as `display`
+        "word": "AI",            # legacy alias - same as `display`
         "source": "AI",          # raw token from `lyrics`
         "display": "AI",         # what the renderer should show
         "phonetic": "ay eye",    # what MMS_FA actually aligned against (multi-word allowed)
@@ -117,7 +117,7 @@ def _strip_outer_punct(s: str) -> str:
 
 
 def _is_letter_dash_sequence(token: str) -> bool:
-    """True for 'A-W-S', 'M-V-P', 'A-I', 'N-P-M' — 2+ single letters joined by hyphens."""
+    """True for 'A-W-S', 'M-V-P', 'A-I', 'N-P-M' - 2+ single letters joined by hyphens."""
     parts = token.split("-")
     if len(parts) < 2:
         return False
@@ -141,7 +141,7 @@ def _flatten_letters(token: str) -> str:
 
 
 def _clean_for_aligner(text: str) -> str:
-    """Final cleanup before MMS_FA — lowercase, strip anything outside the char dict."""
+    """Final cleanup before MMS_FA - lowercase, strip anything outside the char dict."""
     text = text.lower()
     text = _VALID_ALIGN_CHAR_RE.sub(" ", text)
     text = re.sub(r"\s+", " ", text).strip()
@@ -157,7 +157,7 @@ def phonetic_normalize(raw_word: str) -> tuple[str, str]:
     # Unicode normalisation: smart quotes / em-dashes → ASCII equivalents.
     raw = unicodedata.normalize("NFKC", raw_word)
     raw = raw.replace("’", "'").replace("‘", "'")  # curly → straight
-    raw = raw.replace("—", "-").replace("–", "-")  # em/en dash → hyphen
+    raw = raw.replace("\u2014", "-").replace("\u2013", "-")  # em/en dash to hyphen
     raw = _strip_outer_punct(raw)
     if not raw:
         return "", ""
@@ -190,7 +190,7 @@ def phonetic_normalize(raw_word: str) -> tuple[str, str]:
             phonetic = _clean_for_aligner(phonetic)
             return phonetic.replace(" ", ""), phonetic
 
-    # 5. Plain word — case-fold for alignment, same string for phonetic.
+    # 5. Plain word - case-fold for alignment, same string for phonetic.
     cleaned = _clean_for_aligner(raw)
     return cleaned, cleaned
 
@@ -284,7 +284,7 @@ def main() -> None:
             replace_map[c["from"]] = c["to"]
         per_word_phonetics = [phonetic_normalize(replace_map.get(w, w))[1] for w in display_words]
     else:
-        # Pure inline path — the kit's own phonetics layer handles acronyms,
+        # Pure inline path - the kit's own phonetics layer handles acronyms,
         # letter-dash, hyphenated multi-syllable, etc.
         per_word_phonetics = [phonetic_normalize(w)[1] for w in display_words]
 
@@ -293,7 +293,7 @@ def main() -> None:
     # aligner words; we record `3` in word_to_subcount[idx]. Display words
     # with no audio-alignable content (em-dashes, pure punctuation, chars
     # outside the MMS dict) get word_to_subcount[idx] = 0 and are flagged as
-    # placeholders — they're never sent to the tokenizer (MMS rejects any
+    # placeholders - they're never sent to the tokenizer (MMS rejects any
     # out-of-dict char including underscores), and downstream re-grouping
     # synthesises their timing from neighbours.
     align_words: list[str] = []
@@ -321,7 +321,7 @@ def main() -> None:
     import numpy as np
 
     # librosa.load handles WAV/FLAC/OGG natively and falls back to audioread+
-    # ffmpeg for MP3/M4A — same path the original SupCap io_utils.load_audio
+    # ffmpeg for MP3/M4A - same path the original SupCap io_utils.load_audio
     # uses. Sidesteps torchaudio 2.4+ routing through `torchcodec` (which
     # isn't in the platform's fat Modal image).
     def _load_audio_np(path: str, target_sr: int | None = None) -> tuple["np.ndarray", int]:
@@ -401,7 +401,7 @@ def main() -> None:
     emission_cpu = emission.cpu()
 
     # If MMS chokes on an aligner-word, fall back to the original transcript
-    # with placeholders replaced by "_". Defensive — phonetic_normalize already
+    # with placeholders replaced by "_". Defensive - phonetic_normalize already
     # routes through _clean_for_aligner.
     try:
         tokenized = tokenizer(align_words)

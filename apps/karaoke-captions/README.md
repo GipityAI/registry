@@ -5,10 +5,10 @@ Upload audio + paste lyrics → tune word timings by ear → render a karaoke MP
 Three layers:
 
 1. **Forced alignment** on Gipity Jobs (L4 GPU) (Demucs vocal isolation + MMS_FA), via the [@gipity/audio-align](src/packages/audio-align/README.md) kit pre-bundled at `src/packages/audio-align/`.
-2. **Per-word editor** in the browser — audio player + editable timing per word + `⇤now` / `now⇥` shortcuts.
-3. **MP4 render** on a cpu-large job — Remotion + ffmpeg. Three modes: preview (1280×720), HD (1920×1080), 4K (3840×2160).
+2. **Per-word editor** in the browser - audio player + editable timing per word + `⇤now` / `now⇥` shortcuts.
+3. **MP4 render** on a cpu-large job - Remotion + ffmpeg. Three modes: preview (1280×720), HD (1920×1080), 4K (3840×2160).
 
-All state — uploaded audio, lyrics, phonetic respellings, alignment JSON, render outputs — persists in a per-project Postgres database (`songs` + `renders` tables, see `migrations/`). Audio + MP4 binaries live on the project's S3-backed `media.gipity.ai` CDN. The browser only needs a `song_guid` to resume any flow on reload.
+All state - uploaded audio, lyrics, phonetic respellings, alignment JSON, render outputs - persists in a per-project Postgres database (`songs` + `renders` tables, see `migrations/`). Audio + MP4 binaries live on the project's S3-backed `media.gipity.ai` CDN. The browser only needs a `song_guid` to resume any flow on reload.
 
 ## What you get out of the box
 
@@ -68,8 +68,8 @@ Open the deployed URL → click **Use demo MP3** to align the included Gipity ra
 
 The **Advanced** section under the lyric box exposes two optional inputs the underlying audio-align kit understands:
 
-- **Phonetic lyrics** — full phonetic respelling (e.g. `Gipity` → `Jip-ih-tee`). Same word count as Lyrics. MMS_FA aligns against the phonetic form; output keeps your display words.
-- **Corrections** — lighter alternative: one `display = phonetic` per line. Applied before alignment; ignored if Phonetic lyrics is also filled.
+- **Phonetic lyrics** - full phonetic respelling (e.g. `Gipity` → `Jip-ih-tee`). Same word count as Lyrics. MMS_FA aligns against the phonetic form; output keeps your display words.
+- **Corrections** - lighter alternative: one `display = phonetic` per line. Applied before alignment; ignored if Phonetic lyrics is also filled.
 
 ## End-to-end flow
 
@@ -99,7 +99,7 @@ The **Advanced** section under the lyric box exposes two optional inputs the und
   poll        ──► song-get ──► song + renders[]
 ```
 
-No client polling against the job system — the editor + render UI just poll `song-get` every 2 s and watch the row state flip. The `on_complete` hooks land each result back in the DB exactly once.
+No client polling against the job system - the editor + render UI just poll `song-get` every 2 s and watch the row state flip. The `on_complete` hooks land each result back in the DB exactly once.
 
 ## Cost
 
@@ -115,27 +115,27 @@ All at 100% platform margin over provider rates.
 ## Customization
 
 - **Style without code.** The **Style** tab covers most of what you'd want: caption colors, font size (fixed % or auto-fit "max"), edge padding, aspect ratio (16:9 / 9:16 / 1:1), phrase splitting (natural / fixed-length), and toggles for the upcoming-line preview and the "Powered by Gipity" footer. Each render keeps its own style snapshot, so the Render tab can re-apply any past look.
-- **Resolution & aspect.** Choose the resolution tier (Preview 720p / HD 1080p / 4K) and aspect ratio in the Style tab — the frame size is the tier's short side × the aspect, so the same font size looks identical across both.
+- **Resolution & aspect.** Choose the resolution tier (Preview 720p / HD 1080p / 4K) and aspect ratio in the Style tab - the frame size is the tier's short side × the aspect, so the same font size looks identical across both.
 - **Composition design.** The Remotion composition is inlined in `jobs/render/main.js` as `COMP_SONGVIDEO_JSX` (a React component string). Edit it to change layout, animation, or per-word styling beyond what the Style tab exposes.
 - **Skip demucs for clean audio.** Edit `functions/song-align.js` to pass `skip_demucs: true` (or extend the song row to expose it from the UI). Saves ~20 s of GPU per run on a cappella / dry stem inputs.
-- **Different GPU class.** Edit the `compute:` field in `gipity.yaml` to `gpu-medium` / `gpu-large` / `gpu-huge`. Larger isn't faster for MMS_FA — L4 is the cheapest fit.
+- **Different GPU class.** Edit the `compute:` field in `gipity.yaml` to `gpu-medium` / `gpu-large` / `gpu-huge`. Larger isn't faster for MMS_FA - L4 is the cheapest fit.
 - **Auth.** Browser-facing functions are `auth: public` so the demo works without sign-in. Tighten to `auth: user` to gate behind Gipity sign-in (be mindful of GPU/render spend if you leave it open).
 
 ## Limitations
 
-- **English only** — MMS_FA's default bundle ships an English character dictionary. Phonetic respellings buy you a lot, but non-Latin scripts need a different bundle.
-- **Lyrics must approximate what's sung.** If the vocalist ad-libs words not in the lyrics, alignment drifts after that point. The kit returns `aligned: false` / `confidence: 0` on words it couldn't anchor — the editor flags these so you can fix them by hand.
+- **English only** - MMS_FA's default bundle ships an English character dictionary. Phonetic respellings buy you a lot, but non-Latin scripts need a different bundle.
+- **Lyrics must approximate what's sung.** If the vocalist ad-libs words not in the lyrics, alignment drifts after that point. The kit returns `aligned: false` / `confidence: 0` on words it couldn't anchor - the editor flags these so you can fix them by hand.
 - **10 in-flight render/align jobs per project.** Submit more and they queue at 10 concurrent (auto-scales above that on the compute side).
 - **MP4 output only.** Three resolution tiers (preview 720p / HD 1080p / 4K) across 16:9, 9:16, or 1:1. Transparent-background (alpha) export isn't supported.
 
 ## Where things live
 
-- **Alignment handler**: `src/packages/audio-align/jobs/align/main.py` (the kit). Demucs → MMS_FA → librosa. Don't edit in-place — fork the kit if you need different behavior.
-- **Render handler**: `jobs/render/main.js`. Bundles Remotion, runs renderMedia, uploads the MP4. The composition lives here too, inlined as a React component string (`COMP_SONGVIDEO_JSX`) — the job tier ships a single handler file, so there are no separate `.jsx` files. Edit freely.
+- **Alignment handler**: `src/packages/audio-align/jobs/align/main.py` (the kit). Demucs → MMS_FA → librosa. Don't edit in-place - fork the kit if you need different behavior.
+- **Render handler**: `jobs/render/main.js`. Bundles Remotion, runs renderMedia, uploads the MP4. The composition lives here too, inlined as a React component string (`COMP_SONGVIDEO_JSX`) - the job tier ships a single handler file, so there are no separate `.jsx` files. Edit freely.
 - **Database schema**: `migrations/001-supcap-schema.sql` (+ `002`, `003`). Add a new numbered migration (`004-*.sql`) for further schema changes; runs are idempotent so re-deploys are safe.
 
 ## See also
 
-- [@gipity/audio-align](src/packages/audio-align/README.md) — the underlying alignment kit (reusable in any Gipity app)
-- `gipity skill read jobs` — job tier reference (compute classes, billing, fat image contents)
-- `gipity skill read app-files` — the presigned-upload flow used by both the browser audio upload + the render job's MP4 upload
+- [@gipity/audio-align](src/packages/audio-align/README.md) - the underlying alignment kit (reusable in any Gipity app)
+- `gipity skill read jobs` - job tier reference (compute classes, billing, fat image contents)
+- `gipity skill read app-files` - the presigned-upload flow used by both the browser audio upload + the render job's MP4 upload

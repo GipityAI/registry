@@ -1,5 +1,5 @@
 /**
- * @gipity/stripe — charge your app's end-users via Stripe.
+ * @gipity/stripe - charge your app's end-users via Stripe.
  *
  * The platform brokers the security-critical parts (it calls Stripe with the
  * owner's connected account and verifies webhooks); this module is the thin

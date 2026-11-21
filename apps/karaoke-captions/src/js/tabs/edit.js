@@ -1,12 +1,12 @@
 /**
- * Tab 2 · Edit — clause-card timing + display editor.
+ * Tab 2 · Edit - clause-card timing + display editor.
  *
  * Renders one card per phrase, each card has a row per word with controls
  * for display text, trailing punctuation, start/end timing, type (standard
  * or code), and an emoji/icon override. Audio playhead drives live word
  * highlighting + clause auto-scroll. Save button persists alignment_json.
  *
- * Lifted as-is from the original monolithic main.js — same DOM IDs, same
+ * Lifted as-is from the original monolithic main.js - same DOM IDs, same
  * delegated handlers, same recompute helpers.
  */
 import { callFn } from '../api.js';

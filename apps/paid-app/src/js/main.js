@@ -27,13 +27,13 @@ function showCheckoutFlash() {
   if (!flash) return;
   const state = new URLSearchParams(location.search).get('checkout');
   if (state === 'success') {
-    flash.textContent = '✓ Payment complete — thank you! Your purchase is being confirmed.';
+    flash.textContent = '✓ Payment complete - thank you! Your purchase is being confirmed.';
     flash.className = 'flash ok';
     flash.hidden = false;
     // Give the webhook a moment to land, then re-check gating.
     setTimeout(refreshGating, 2500);
   } else if (state === 'cancel') {
-    flash.textContent = 'Checkout cancelled — no charge was made.';
+    flash.textContent = 'Checkout cancelled - no charge was made.';
     flash.className = 'flash';
     flash.hidden = false;
   }

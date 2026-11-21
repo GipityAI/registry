@@ -1,5 +1,5 @@
 /**
- * Tests for lib/channels.js — channel registry, namespacing, mode dispatch.
+ * Tests for lib/channels.js - channel registry, namespacing, mode dispatch.
  * Uses a mock transport so no network is needed.
  * Run: node src/packages/realtime/tests/channels.test.js
  */

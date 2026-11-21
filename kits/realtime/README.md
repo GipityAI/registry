@@ -1,7 +1,7 @@
 # @gipity/realtime
 
 An **engine-agnostic realtime kit** for Gipity apps. One package gives any
-app — game, collaborative editor, enterprise dashboard, multiplayer OS — a
+app - game, collaborative editor, enterprise dashboard, multiplayer OS - a
 known-working realtime layer: transport, channels, presence, party/lobby flows,
 host election, server-persisted entity sync, and observability. No 3D /
 physics / rendering code.
@@ -45,7 +45,7 @@ message saying how to provision it.
 
 ## Pick your room model
 
-Four models cover essentially every realtime app. All are built in — pick one,
+Four models cover essentially every realtime app. All are built in - pick one,
 don't hand-roll:
 
 | Model | Use for | API |
@@ -72,12 +72,12 @@ const team = new URLSearchParams(location.search).get('team') || 'general';
 const rt = createRealtime({ room: 'standup', scope: team });
 ```
 
-Never derive the room *name* from a URL — unprovisioned names are rejected by
+Never derive the room *name* from a URL - unprovisioned names are rejected by
 the server. Derive the **scope**.
 
 ### Party: invite links, codes, browse, quick-match
 
-`createParty(rt)` owns the whole "play with a friend / play anyone" flow —
+`createParty(rt)` owns the whole "play with a friend / play anyone" flow -
 hosting, 4-char share codes, invite URLs, the live table list, and every
 failure path (see `examples/party-game.js` for a complete worked shape):
 
@@ -103,9 +103,9 @@ const t3 = await party.join(entry);                // from the rendered list
 const t4 = await party.quickMatch({ host: name }); // join oldest open, else host
 ```
 
-Every failed join **throws a `RealtimeJoinError`** — `err.code` is
+Every failed join **throws a `RealtimeJoinError`** - `err.code` is
 `'not-found'` (bad/expired code), `'full'` (not enough free seats / already playing),
-`'gone'` (host left), `'unprovisioned'` (the room NAME has no config — a
+`'gone'` (host left), `'unprovisioned'` (the room NAME has no config - a
 deploy/provisioning mistake, not a game state), `'auth'`, `'offline'`, or
 `'failed'`. Switch on it and show the right message; never leave a spinner on
 "Joining…".
@@ -118,14 +118,14 @@ fires immediately when already full), `onPeerJoin/onPeerLeave`, `onPeerVisibilit
 `hostEpoch()`, `onHostChange(cb)`, `setCheckpoint(obj)`, `setSuccessors(ids)`,
 `transferHost(sid)` (see "Host handoff" below). `isHost()` is a function
 since 3.7.0 because the role can move; `if (table.isHost)` is always true. When every seat is taken, its lobby listing flips to
-`status: 'playing'` automatically — browsers stop steering joiners into it and
+`status: 'playing'` automatically - browsers stop steering joiners into it and
 a late `joinByCode` rejects as `'full'`.
 When a seat frees again (a player left, or a dropped player's seat hold ran
 out) the listing flips back to `'open'`, so a player who reloads can rejoin
 from the invite link or code. That automatic flip stops the moment the app sets
 `status` itself with `setListing()` (e.g. `{ status: 'playing' }` at kickoff to
 keep a running match closed); setting it back to `'open'` hands it back.
-Hosting again while a table is still waiting **replaces** it — the old table
+Hosting again while a table is still waiting **replaces** it - the old table
 is canceled, never orphaned.
 
 **Seats, not connections (3.8.0+).** One computer can carry several players
@@ -230,7 +230,7 @@ waits for the hold to run out (the listing then reopens by itself).
 ## Rooms (the primitives under all of that)
 
 `createRealtime()` returns a client bound to a **default room** plus the
-ability to open more — all sharing one connection and one token:
+ability to open more - all sharing one connection and one token:
 
 ```js
 const rt = createRealtime();
@@ -319,7 +319,7 @@ room.
 Colyseus room backs everything; channels namespace by prefixing `name:` onto
 every wire key / message type. A channel exposes only its `sync` mode's methods:
 
-### `sync: 'messages'` — pub/sub
+### `sync: 'messages'` - pub/sub
 `ch.send(type, data, { to })` · `ch.sendToHost(type, data)` · `ch.on(type, cb) → off()` · `ch.metrics()`
 
 `to` is a session id, an array of them, or `'host'`; without it the message
@@ -350,39 +350,39 @@ jobs.on('changed', (m) => {
 await rt.connect();
 ```
 
-### `sync: 'presence'` — ephemeral per-peer state
+### `sync: 'presence'` - ephemeral per-peer state
 `ch.setLocal(obj)` · `ch.local()` · `ch.peers() → Map(sid → peer)` ·
 `ch.onChange(cb)` · `ch.onJoin(cb)` · `ch.onLeave(cb)` · `ch.metrics()`
 
 Callback signatures: `onChange` / `onJoin` fire **per peer** as `cb(sid, peer)`;
-`onLeave` gets just `cb(sid)`. No callback ever receives the whole roster —
+`onLeave` gets just `cb(sid)`. No callback ever receives the whole roster -
 rebuild it from `peers()` (remote peers only) plus `local()` (your own state).
 There is **no `set()`** on a presence channel.
 
-Presence rides custom messages at ~20 Hz and is continuously rebroadcast — late
+Presence rides custom messages at ~20 Hz and is continuously rebroadcast - late
 joiners converge with no replay; a crashed peer just goes stale. Presence never
 touches the data map.
 
-### `sync: 'entities'` — shared persistent records (CRUD)
+### `sync: 'entities'` - shared persistent records (CRUD)
 `ch.upsert(id, payload)` · `ch.delete(id)` · `ch.get(id)` · `ch.all() → Map` ·
 `ch.onUpsert(cb)` · `ch.onDelete(cb)` · `ch.onReady(cb)` · `ch.metrics()`
 
 With `authority: 'host'` the channel adds `isHost()` · `onSynced(cb)` ·
 `command(type, data)` · `onCommand(cb)` · `hasReceivedSync()` · `sendFullSync()`.
 
-### `sync: 'store'` — synchronous whole-object key-value
+### `sync: 'store'` - synchronous whole-object key-value
 `ch.get(key, fallback)` · `ch.set(key, value)` · `ch.update(key, patch)` ·
 `ch.delete(key)` · `ch.has(key)` · `ch.all() → Map` · `ch.entries()` · `ch.keys()` ·
 `ch.onChange(cb)` · `ch.onReady(cb)` · `ch.metrics()`
 
 The plain shape a turn-based game, a match, or a lobby directory wants: write a
 whole object under a key, read it back synchronously, react to changes. Backed
-by the data map (server-persisted, late-join-safe). Last-write-wins by default —
+by the data map (server-persisted, late-join-safe). Last-write-wins by default -
 correct for turn-based play; `authority: 'host'` makes one elected peer the
 writer and adds `command(type, data)` / `onCommand(cb)` / `isHost()` / `onHost(cb)`.
-No adapter needed — values are plain JSON; `set()` **throws** past 10 KB per key.
+No adapter needed - values are plain JSON; `set()` **throws** past 10 KB per key.
 
-**Right after `rt.joinById(...)` / `rt.join(...)` the room's state has not arrived yet** — `ch.get(key)` will return `undefined` until the first sync lands. If you need to read state immediately on join (a lobby joiner inspecting the host's match state, say), `await new Promise((r) => ch.onReady(r))` first. `onReady` fires once the first data patch is in the mirror.
+**Right after `rt.joinById(...)` / `rt.join(...)` the room's state has not arrived yet** - `ch.get(key)` will return `undefined` until the first sync lands. If you need to read state immediately on join (a lobby joiner inspecting the host's match state, say), `await new Promise((r) => ch.onReady(r))` first. `onReady` fires once the first data patch is in the mirror.
 
 ## Authority (per `entities` channel) → substrate
 
@@ -394,14 +394,14 @@ No adapter needed — values are plain JSON; `set()` **throws** past 10 KB per k
 | `none`   | reserved (no-op) | solo / disabled |
 
 Entity sync is **CRUD-first** (create/update/delete). The `host` mode's
-transform delta sync is a delivery optimization for high-frequency movement —
+transform delta sync is a delivery optimization for high-frequency movement -
 it engages only when the adapter supplies `getDriftAnchor`; without it, `host`
 entities simply sync every record each keyframe (for non-spatial host state).
 The `store` channel takes the same `authority: 'shared' | 'host'`.
 
 ## Adapters
 
-The adapter is **capability-sectioned** and passed per channel — a channel uses
+The adapter is **capability-sectioned** and passed per channel - a channel uses
 only the section matching its `sync` mode. Payloads stay opaque: the kit
 never inspects them.
 
@@ -422,17 +422,17 @@ Plain `setLocal(obj)` needs no adapter at all: the object is broadcast as-is
 and merged into each remote peer record with an `Object.assign`. Supply
 `adapter.presence` only to control the wire format (e.g. quantized positions):
 
-- `encode() → object|null` — local state → wire payload, called every ~50 ms
+- `encode() → object|null` - local state → wire payload, called every ~50 ms
   (20 Hz). Return `null` to skip a beat; when it returns null the channel falls
   back to whatever `setLocal(obj)` provided.
-- `apply(peer, payload)` — merge a received payload into that peer's record
+- `apply(peer, payload)` - merge a received payload into that peer's record
   (default: `Object.assign(peer, payload)`).
-- `newPeer() → object` — a blank peer record; the kit stamps `peer.lastSeen`.
+- `newPeer() → object` - a blank peer record; the kit stamps `peer.lastSeen`.
 
 The kit adds `sid` to every outgoing payload and drops echoes of your own.
 Full machine-readable spec: `contracts/adapter.contract.md` +
 `contracts/adapter.schema.json`. Reusable reference adapters live in `adapters/`
-(`record-adapter.js` handles any plain-JSON entity channel — whiteboard, Kanban,
+(`record-adapter.js` handles any plain-JSON entity channel - whiteboard, Kanban,
 agent-ops and desktop all reuse it directly).
 
 ## Observability
@@ -505,14 +505,14 @@ dropped seat: the server tells each joiner the room's `seat_hold_seconds`
 (default 30 s) and `host_hold_seconds` (default 60 s, used while the page is the
 host), and the kit retries for that hold minus a margin (30 s -> 25 s, 300 s ->
 295 s; servers that don't announce it fall back to the `reconnectWindowMs` /
-`hostReconnectWindowMs` settings), **preserving the session id** — channels and seats survive a blip untouched.
+`hostReconnectWindowMs` settings), **preserving the session id** - channels and seats survive a blip untouched.
 Messages sent while reconnecting are dropped, not queued. A realtime server
 restart (a platform deploy) ends every room: clients get `'lost'` and should
 re-join. Channel `onDisconnect` handlers fire only on a
 permanent loss. Observe it with `rt.on('reconnecting')` · `rt.on('reconnected')`
 · `rt.on('lost')`. The initial join is retried too (seat-reservation races), and
-the app token is refreshed before it expires (~15 min TTL — long sessions are
-covered). All timings tunable via `createRealtime({ settings })` — the full
+the app token is refreshed before it expires (~15 min TTL - long sessions are
+covered). All timings tunable via `createRealtime({ settings })` - the full
 list with defaults is `DEFAULT_SETTINGS` in `lib/settings.js` (join attempts,
 reconnect window/backoff, presence rate, heartbeat, token TTL, quantization).
 
@@ -548,7 +548,7 @@ Nothing is queued for a peer that is away, and nothing is replayed:
 
 The flip side of the reconnection hold: when the **page itself dies**
 (navigation, tab close), waiting out the seat hold for a reconnect that can never come
-would leave a ghost seat — so the kit listens for `pagehide` and leaves
+would leave a ghost seat - so the kit listens for `pagehide` and leaves
 **consented**, freeing the seat (and disposing an empty match room)
 immediately. Next joiners never hit "full" because of a closed tab. When the
 page dies without `pagehide` firing (a crash, a killed tab), the same browser
@@ -564,7 +564,7 @@ play overseas.
 
 ## Verifying multiplayer actually works
 
-Two clients must be live **at the same time** — sequential checks each see only
+Two clients must be live **at the same time** - sequential checks each see only
 themselves and look exactly like a broken app. Use the CLI's concurrent
 multi-client mode, which overlaps N real browsers and verifies they coexisted:
 
@@ -575,7 +575,7 @@ gipity page test "https://dev.gipity.ai/<acct>/<app>/" --clients 2 --labels Alic
 ```
 
 Do **not** verify with two sequential `page eval` calls, and don't simulate the
-second peer inside one page — neither exercises cross-client sync over the real
+second peer inside one page - neither exercises cross-client sync over the real
 transport. The kit's own unit tests run under plain Node:
 `for t in tests/*.test.js; do node $t; done` (or via `gipity sandbox run`).
 

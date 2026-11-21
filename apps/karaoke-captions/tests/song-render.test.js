@@ -1,11 +1,11 @@
-// song-render tests — pure unit tests of the sanitiser helper + e2e through
+// song-render tests - pure unit tests of the sanitiser helper + e2e through
 // the deployed function.
 //
 // The helper lives in functions/song-render/sanitize.js (multi-file function
-// shape, v2 runtime). We import it directly here — the test harness runs in
+// shape, v2 runtime). We import it directly here - the test harness runs in
 // Node, not isolated-vm, so a normal ESM import works.
 //
-// Tests run in the sandboxed harness — `test()` and `assert` are globals.
+// Tests run in the sandboxed harness - `test()` and `assert` are globals.
 // Use `ctx.fn.call()` to invoke deployed functions.
 
 import { sanitizeRenderOptions } from '../functions/song-render/sanitize.js';
@@ -52,21 +52,21 @@ test('sanitizeRenderOptions: font_mode "max" persisted; "pct" dropped (default)'
   assert.equal(sanitizeRenderOptions({ font_mode: 'huge' }), null);
 });
 
-test('sanitizeRenderOptions: pad_px — non-default kept, default 25 dropped', () => {
+test('sanitizeRenderOptions: pad_px - non-default kept, default 25 dropped', () => {
   assert.deepEqual(sanitizeRenderOptions({ pad_px: 50 }), { pad_px: 50 });
   assert.deepEqual(sanitizeRenderOptions({ pad_px: 0 }), { pad_px: 0 });
   assert.equal(sanitizeRenderOptions({ pad_px: 25 }), null);   // default → not persisted
   assert.equal(sanitizeRenderOptions({ pad_px: 999 }), null);  // out of range → dropped
 });
 
-test('sanitizeRenderOptions: aspect — non-default kept, 16:9 dropped (it is the default)', () => {
+test('sanitizeRenderOptions: aspect - non-default kept, 16:9 dropped (it is the default)', () => {
   assert.deepEqual(sanitizeRenderOptions({ aspect: '9:16' }), { aspect: '9:16' });
   assert.deepEqual(sanitizeRenderOptions({ aspect: '1:1' }), { aspect: '1:1' });
   assert.equal(sanitizeRenderOptions({ aspect: '16:9' }), null);  // default → not persisted
   assert.equal(sanitizeRenderOptions({ aspect: '4:3' }), null);   // unsupported → dropped
 });
 
-test('sanitizeRenderOptions: show_next_line / show_watermark — false persisted, true dropped', () => {
+test('sanitizeRenderOptions: show_next_line / show_watermark - false persisted, true dropped', () => {
   assert.deepEqual(sanitizeRenderOptions({ show_next_line: false }), { show_next_line: false });
   assert.deepEqual(sanitizeRenderOptions({ show_watermark: false }), { show_watermark: false });
   assert.deepEqual(
@@ -99,7 +99,7 @@ test('sanitizeRenderOptions: out-of-range phrase_target dropped, mode still kept
 // ─── End-to-end via the deployed function ───────────────────────────────────
 //
 // These need a song with an existing alignment. They run only if a known
-// demo song is present — otherwise they self-skip with a clear log line.
+// demo song is present - otherwise they self-skip with a clear log line.
 
 const DEMO_SONG_QUERY = 'select short_guid from songs where alignment_json is not null order by id asc limit 1';
 
@@ -111,7 +111,7 @@ async function findAlignedSong(ctx) {
 test('song-render persists render_options on the renders row', async (ctx) => {
   const songGuid = await findAlignedSong(ctx);
   if (!songGuid) {
-    console.log('[song-render] no aligned song available — skipping persistence test');
+    console.log('[song-render] no aligned song available - skipping persistence test');
     return;
   }
   const styled = {
@@ -136,7 +136,7 @@ test('song-render persists render_options on the renders row', async (ctx) => {
 test('song-render with no render_options leaves the column NULL (back-compat path)', async (ctx) => {
   const songGuid = await findAlignedSong(ctx);
   if (!songGuid) {
-    console.log('[song-render] no aligned song available — skipping back-compat test');
+    console.log('[song-render] no aligned song available - skipping back-compat test');
     return;
   }
   const res = await ctx.fn.call('song-render', { song_guid: songGuid, mode: 'preview' });
@@ -151,7 +151,7 @@ test('song-render with no render_options leaves the column NULL (back-compat pat
 test('song-render rejects garbage render_options without failing the whole call', async (ctx) => {
   const songGuid = await findAlignedSong(ctx);
   if (!songGuid) {
-    console.log('[song-render] no aligned song available — skipping sanitize test');
+    console.log('[song-render] no aligned song available - skipping sanitize test');
     return;
   }
   const res = await ctx.fn.call('song-render', {

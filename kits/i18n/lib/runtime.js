@@ -13,7 +13,7 @@ const RTL_LANGS = new Set(['ar', 'he', 'fa', 'ur', 'yi']);
  * A stored choice wins; then a detected browser language, but only if it's
  * actually translated; otherwise the predictable default ('en'). This keeps a
  * guest on, e.g., an Arabic-locale browser from being dropped into 'ar' (and an
- * RTL flip) on an English-only app — the picker still lets them switch.
+ * RTL flip) on an English-only app - the picker still lets them switch.
  *
  * @param {object}   opts
  * @param {string[]} opts.supported  languages the app ships (e.g. availableLangs())

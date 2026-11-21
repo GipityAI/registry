@@ -13,7 +13,7 @@ export default async function renderComplete(ctx, { db }) {
     [run_guid],
   );
   if (renderRes.rows.length === 0) {
-    // Not ours — exit clean.
+    // Not ours - exit clean.
     return { ok: true, ignored: true };
   }
   const renderGuid = renderRes.rows[0].short_guid;

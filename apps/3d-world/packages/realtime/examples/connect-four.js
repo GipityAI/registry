@@ -1,7 +1,7 @@
 /**
  * Example: a lobby game (Connect 4 shape).
  *
- * Proves the kit covers a lobby plus many short-lived match rooms — the shape
+ * Proves the kit covers a lobby plus many short-lived match rooms - the shape
  * a turn-based or casual multiplayer game needs, and the one the Connect 4
  * reference app had to hand-roll before this kit supported it. The realtime
  * layer is the ~40 lines below; the game's rules and UI sit on top untouched.

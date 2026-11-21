@@ -1,5 +1,5 @@
 /**
- * karaoke-captions orchestrator — sidebar + stepper + 4 tabs.
+ * karaoke-captions orchestrator - sidebar + stepper + 4 tabs.
  *
  * Flow:
  *   URL ?song=<guid>  → loadSong → render whatever step the song is on
@@ -32,7 +32,7 @@ let pollTimer = null;
 // The sidebar guid currently highlighted. Either a real song_guid or a local
 // `draft:<seq>` placeholder for a "+ New" project that hasn't generated yet.
 let activeGuid = null;
-// If the user is sitting on a draft, its guid — so onCreated promotes that
+// If the user is sitting on a draft, its guid - so onCreated promotes that
 // exact row in place (keeping its seq + position) instead of appending a new one.
 let activeDraftGuid = null;
 // Bumped every time we switch songs / hit "New". An in-flight poll tick checks
@@ -60,7 +60,7 @@ function showStep(name) {
   window.history.replaceState({}, '', url.toString());
 }
 
-// Why each step might be locked — surfaced as a `title` tooltip so a hover
+// Why each step might be locked - surfaced as a `title` tooltip so a hover
 // explains the gate instead of just rendering a dead button.
 const LOCK_REASON = {
   edit:   'Generate captions first (Step 1)',
@@ -95,7 +95,7 @@ function setAligningStatus(msg, pct) {
 function renderSidebar(list) {
   const ul = $('song-list');
   if (!list || list.length === 0) {
-    ul.innerHTML = '<li class="song-list-empty muted small">No projects yet — start one →</li>';
+    ul.innerHTML = '<li class="song-list-empty muted small">No projects yet - start one →</li>';
     return;
   }
   ul.innerHTML = list.map(e => `
@@ -107,7 +107,7 @@ function renderSidebar(list) {
   ul.querySelectorAll('.song-item').forEach(li => {
     const guid = li.dataset.songGuid;
     li.addEventListener('click', () => {
-      // A draft has no server song yet — selecting it just shows the upload tab.
+      // A draft has no server song yet - selecting it just shows the upload tab.
       if (Sidebar.isDraftGuid(guid)) selectDraft(guid);
       else loadSong(guid);
     });
@@ -136,7 +136,7 @@ async function loadSong(songGuid) {
     return;
   }
   activeGuid = songGuid;
-  activeDraftGuid = null;   // switching to a real song — no draft pending
+  activeDraftGuid = null;   // switching to a real song - no draft pending
   const myGeneration = pollGeneration;
   const url = new URL(window.location.href);
   url.searchParams.set('song', songGuid);
@@ -197,7 +197,7 @@ function pollSong(songGuid, opts = {}) {
   const tick = async () => {
     try {
       const { song, renders } = await callFn('song-get', { song_guid: songGuid });
-      // The user switched songs / hit New while this request was in flight —
+      // The user switched songs / hit New while this request was in flight -
       // drop the result so it can't overwrite the new view.
       if (myGeneration !== pollGeneration) return;
       if (!song) return;
@@ -212,7 +212,7 @@ function pollSong(songGuid, opts = {}) {
       if (song.status === 'aligned') {
         // Re-render the editor ONLY on the transition into aligned (or the
         // very first tick when there's no prev). Re-rendering on every poll
-        // blows away in-progress input edits — that was the bug where the
+        // blows away in-progress input edits - that was the bug where the
         // user's "Display" field changes wouldn't make it to Save.
         const justFinished = !prev || prev.status !== 'aligned';
         if (justFinished) {
@@ -221,7 +221,7 @@ function pollSong(songGuid, opts = {}) {
         }
         // Pass the resolved title (lyrics-derived) so the sidebar shows the real
         // name; upsert never downgrades, so a later null-title poll can't revert
-        // it to "Untitled" — that fight was the flicker.
+        // it to "Untitled" - that fight was the flicker.
         Sidebar.upsert({ song_guid: songGuid, title: resolveTitle(song) });
         refreshSidebarFromStorage();
         renderHistory(currentSong.renders, { onUseStyle: useRenderStyle });
@@ -249,7 +249,7 @@ function pollSong(songGuid, opts = {}) {
       }
 
       // Only keep polling while something is actually in flight. Once alignment
-      // is settled AND no render is queued/rendering, stop — otherwise the 2 s
+      // is settled AND no render is queued/rendering, stop - otherwise the 2 s
       // loop keeps re-rendering the Export tab and restarts video playback
       // (that was the "page refreshes every couple seconds" bug). A new render
       // restarts polling via onRenderRequested / onRenderAgain.
@@ -261,7 +261,7 @@ function pollSong(songGuid, opts = {}) {
         stopPolling();
       }
     } catch (err) {
-      // Network blip — stop polling rather than spamming the user with errors.
+      // Network blip - stop polling rather than spamming the user with errors.
       console.warn('[poll]', err.message);
     }
   };
@@ -315,7 +315,7 @@ function wireNewSongButton() {
 }
 
 /** Show the upload tab for a draft (or for the no-song initial state). Sets the
- *  draft as the active sidebar row but does NOT hit the server — there's no song
+ *  draft as the active sidebar row but does NOT hit the server - there's no song
  *  yet. The draft guid is stashed so onCreated can promote it. */
 function selectDraft(draftGuid) {
   stopPolling();

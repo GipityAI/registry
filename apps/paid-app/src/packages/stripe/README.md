@@ -1,6 +1,6 @@
 # @gipity/stripe
 
-Charge your app's end-users for **one-time purchases** and **subscriptions** via Stripe — with Gipity-hosted onboarding, signature-verified webhooks, and a small platform fee handled for you.
+Charge your app's end-users for **one-time purchases** and **subscriptions** via Stripe - with Gipity-hosted onboarding, signature-verified webhooks, and a small platform fee handled for you.
 
 How the money flows: the app owner connects **their own** Stripe account (Stripe Connect Express). Customers pay on Stripe's hosted Checkout; money lands in the owner's account. Gipity takes a configurable platform fee (default 1%) on top of Stripe's processing fees. The owner is the merchant of record.
 
@@ -55,4 +55,4 @@ The `payment-events` function is kit-owned (sealed): re-`add` the kit at a newer
 - Inline `{ name, amount }` items need no pre-created Stripe products. You can also pass a Stripe `{ priceId }`.
 - `interval` is required on each item for subscription mode (`day`/`week`/`month`/`year`).
 - There is no Stripe test mode yet: test with a real low-value purchase on the prod URL and refund it from your Stripe dashboard.
-- Needs a database — install into a `web-fullstack` or `api` app.
+- Needs a database - install into a `web-fullstack` or `api` app.

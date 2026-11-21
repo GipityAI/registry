@@ -3,7 +3,7 @@
 A source-agnostic **contact data layer** for B2B / lead-gen apps. Ingest people
 from LinkedIn, Gmail, or pasted lists; resolve duplicates into one person while
 **keeping every value from every source** with provenance; tag and segment; and
-get a clean query/update surface. Outreach and scoring *policy* are out of scope —
+get a clean query/update surface. Outreach and scoring *policy* are out of scope -
 they belong to your app. This is the "who do I know and what do I know about
 them" substrate.
 
@@ -14,23 +14,23 @@ gipity deploy
 
 Backend-bearing: installs four functions (`contact-import`, `contact-read`,
 `contact-write`, `contact-harvest`), one migration, and a client module at
-`@gipity/contacts`. All data functions are `auth: user` — contacts are PII.
+`@gipity/contacts`. All data functions are `auth: user` - contacts are PII.
 
 ## The model (why it's not just a table)
 
 - **Keep-all attributes.** Every distinct value from every source survives as its
   own row in `contact_attributes` (multiple companies, emails, titles coexist).
   Nothing is ever overwritten. An `is_primary` flag per `(contact, kind)` marks the
-  current value — flip it by hand with `set_primary`.
+  current value - flip it by hand with `set_primary`.
 - **Identity resolution.** Imports are matched into existing people, in priority:
-  (1) exact email, (2) exact LinkedIn URL — both auto-apply; (3) fuzzy name+company —
+  (1) exact email, (2) exact LinkedIn URL - both auto-apply; (3) fuzzy name+company -
   **never auto-merges.** Tier 3 creates an independent new contact *and* files a
   suggestion in the **merge-review queue** for a human to confirm or reject. Bias:
   when uncertain, create new rather than risk a wrong merge. Confirmed merges are
   reversible (`merge_undo`).
 - **Job-change signals.** Re-importing an updated LinkedIn export is *not* a no-op.
   When a contact gains a new company/employment value, the old one is kept and an
-  `employment.changed` event fires — the highest-value lead-gen trigger there is.
+  `employment.changed` event fires - the highest-value lead-gen trigger there is.
   Read the feed with `jobChanges()` / `contact-read { action:'events',
   action_filter:'employment.changed' }`.
 - **Provenance + event spine.** Every raw imported row is stored untouched in
@@ -77,7 +77,7 @@ them with the call above.
 
 ## Optional scoring helper
 
-`functions/_lib/contacts/score.js` exports `fitFromTitle(title)` — a free regex
+`functions/_lib/contacts/score.js` exports `fitFromTitle(title)` - a free regex
 heuristic (founders/builders rank above recruiters/students). The kit never
 auto-applies it; opt in from your app, then persist via
 `contact-write { action:'score' }`. Real scoring policy is yours to define.
@@ -86,8 +86,8 @@ auto-applies it; opt in from your app, then persist via
 
 - Tier-3 candidate bucketing is by *exact normalized name* then company (the
   managed DB forbids `pg_trgm`, so similarity is computed in JS). Name typos won't
-  bucket together — a conservative miss, not a wrong merge.
+  bucket together - a conservative miss, not a wrong merge.
 - Identical values from two sources collapse to one attribute row (loses
   second-source provenance on that exact value).
-- A brand-new email imported by two concurrent calls could create two contacts —
+- A brand-new email imported by two concurrent calls could create two contacts -
   resolve with a follow-up pass if you import in parallel.

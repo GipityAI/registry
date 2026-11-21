@@ -1,10 +1,10 @@
 -- SupCap schema: songs + renders.
 --
--- One row in `songs` per "thing the user wants captioned" — owns the audio URL,
+-- One row in `songs` per "thing the user wants captioned" - owns the audio URL,
 -- the lyrics + phonetic respellings, the alignment JSON once it's been computed,
 -- and a pointer to the GPU run that produced it.
 --
--- Each song has 0..N rows in `renders` — one per render mode (preview/4k/alpha)
+-- Each song has 0..N rows in `renders` - one per render mode (preview/4k/alpha)
 -- the user has materialised. Each carries its own MP4/MOV URL + render run guid.
 --
 -- Both tables are project-scoped (this template ships with a per-project DB

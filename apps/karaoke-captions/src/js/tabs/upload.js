@@ -1,5 +1,5 @@
 /**
- * Tab 1 · Upload — pick audio + paste optional lyrics → kick off alignment.
+ * Tab 1 · Upload - pick audio + paste optional lyrics → kick off alignment.
  * Returns the new song_guid via the onCreated callback so the orchestrator
  * can poll, update the sidebar, and auto-advance once aligned.
  */
@@ -11,7 +11,7 @@ export function mountUploadTab({ onCreated, onError, onAligningStatus }) {
   async function createAndStart({ audioUrl, file }) {
     const lyrics = $('lyrics').value.trim();
     if (!lyrics) {
-      onError('Add a script first — the captions are aligned word-by-word against what you paste in step 2.');
+      onError('Add a script first - the captions are aligned word-by-word against what you paste in step 2.');
       return;
     }
     onAligningStatus('Starting…', 5);

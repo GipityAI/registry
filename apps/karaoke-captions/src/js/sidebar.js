@@ -6,15 +6,15 @@
  * under one key and render it into #song-list.
  *
  * Two wrinkles this module owns:
- *   1. seq — a monotonic per-browser counter so untitled projects are still
+ *   1. seq - a monotonic per-browser counter so untitled projects are still
  *      distinguishable ("Untitled-1", "Untitled-2", …). Stored separately so
  *      numbers are never reused even after deletes.
- *   2. drafts — a project can exist in the sidebar BEFORE it has a server-side
+ *   2. drafts - a project can exist in the sidebar BEFORE it has a server-side
  *      song (the moment the user clicks "+ New"). A draft's `song_guid` is a
  *      local placeholder `draft:<seq>`; once the user generates captions we
  *      promote it in place to the real `song_guid`, keeping its seq + position.
  *
- * Future auth swap: replace `read()` / `write()` with a server fetch — every
+ * Future auth swap: replace `read()` / `write()` with a server fetch - every
  * other piece of this module stays the same.
  */
 
@@ -47,7 +47,7 @@ export function read() {
 export function write(entries) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  } catch { /* quota / private-mode — silent best-effort */ }
+  } catch { /* quota / private-mode - silent best-effort */ }
 }
 
 /** Next sequence number. Monotonic: seeded from the max of (stored counter,
@@ -65,7 +65,7 @@ function nextSeq() {
  * Add or update an entry. If a record for `song_guid` exists, merges + bumps it
  * to the top. Title is never DOWNGRADED: passing a falsy title keeps whatever
  * meaningful title is already stored (this is what kills the "Untitled ↔ real
- * title" flicker — the poll loop can call upsert with no title and not clobber
+ * title" flicker - the poll loop can call upsert with no title and not clobber
  * the title loadSong resolved). Returns the new full list.
  */
 export function upsert(entry) {
@@ -103,7 +103,7 @@ export function createDraft() {
   return entry;
 }
 
-/** Promote a draft to a real song in place — swap its guid, keep seq/position/
+/** Promote a draft to a real song in place - swap its guid, keep seq/position/
  *  title. No-op (falls back to a plain upsert) if the draft is already gone. */
 export function promoteDraft(draftGuid, realGuid) {
   const list = read();
@@ -124,7 +124,7 @@ export function remove(songGuid) {
 /**
  * Reconcile against the server: drop entries the server no longer knows about.
  * `fetcher` is `(guid) => Promise<song | null>` so the caller controls the API
- * surface. Draft entries (no server song yet) are kept as-is — they're not on
+ * surface. Draft entries (no server song yet) are kept as-is - they're not on
  * the server by definition. Returns the surviving list.
  */
 export async function reconcile(fetcher) {
@@ -142,7 +142,7 @@ export async function reconcile(fetcher) {
         });
       }
     } catch {
-      // Network failure — keep the entry so a transient outage doesn't wipe
+      // Network failure - keep the entry so a transient outage doesn't wipe
       // the user's sidebar. They can still click and try again later.
       survivors.push(entry);
     }

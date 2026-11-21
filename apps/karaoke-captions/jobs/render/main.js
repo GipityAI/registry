@@ -1,9 +1,9 @@
 /**
- * karaoke-captions render job — Remotion-based MP4 renderer.
+ * karaoke-captions render job - Remotion-based MP4 renderer.
  *
  * The platform's job tier ships ONE handler file per job (plus a deps file
  * and an SDK helper). Remotion needs a registerRoot entry + composition
- * components — so we inline the JSX source here as template strings, write
+ * components - so we inline the JSX source here as template strings, write
  * them to /tmp at run time, and point @remotion/bundler at that path.
  *
  * Input  (via GIPITY_RUN_INPUT, set by song-render at submit time):
@@ -23,7 +23,7 @@ const APP_GUID = process.env.GIPITY_APP_GUID;
 const APP_TOKEN = process.env.GIPITY_APP_TOKEN;
 
 // ─── Render-style merge (inlined; pure, exported for unit tests) ─────────────
-// The job tier ships ONE handler file per job (see header) — so this helper
+// The job tier ships ONE handler file per job (see header) - so this helper
 // lives here rather than in a sibling module, and is re-exported at the bottom
 // for tests/render-options.test.js. These constants MUST stay in sync with the
 // DEFAULT_* values baked into COMP_SONGVIDEO_JSX below; the test pins that.
@@ -31,10 +31,10 @@ const APP_TOKEN = process.env.GIPITY_APP_TOKEN;
 // font_pct is the caption height as a PERCENT OF THE FRAME'S SHORT SIDE
 // (min(width, height)). The short side equals the resolution tier baseline
 // (preview 720, hd 1080, 4k 2160) for EVERY aspect, so a given % is identical
-// across both resolution AND aspect ratio — switching 16:9→9:16→1:1 or
+// across both resolution AND aspect ratio - switching 16:9→9:16→1:1 or
 // 720p→4K never needs a font tweak. (8% of 720 ≈ 58px, the old default.)
 const FONT_PCT_MIN = 2;     // small but legible
-const FONT_PCT_MAX = 50;    // half the short side — very large
+const FONT_PCT_MAX = 50;    // half the short side - very large
 const FONT_PCT_DEFAULT = 8;
 
 // Edge padding for the caption, in px AT A 720-SHORT-SIDE REFERENCE (scaled by
@@ -54,16 +54,16 @@ const RENDER_DEFAULTS = Object.freeze({
   word_past:   '#ffffff',
   word_future: '#888896',
   // Font sizing:
-  //   font_mode 'pct' — size = font_pct% of the short side (manual slider)
-  //   font_mode 'max' — auto-fit: the largest size where the whole phrase fits
+  //   font_mode 'pct' - size = font_pct% of the short side (manual slider)
+  //   font_mode 'max' - auto-fit: the largest size where the whole phrase fits
   //                      inside the frame minus pad_px (both axes)
   font_mode:   'pct',
   font_pct:    FONT_PCT_DEFAULT,
   pad_px:      PAD_PX_DEFAULT,
   aspect:      '16:9',
   // Phrasing: how words are grouped into on-screen lines.
-  //   'natural' — split on sentence punctuation (, . ! ? ; :) AND line breaks
-  //   'length'  — re-chunk into fixed groups of `phrase_target` words
+  //   'natural' - split on sentence punctuation (, . ! ? ; :) AND line breaks
+  //   'length'  - re-chunk into fixed groups of `phrase_target` words
   phrase_mode:    'natural',
   phrase_target:  8,
   show_next_line: true,     // the small upcoming-phrase preview at the bottom
@@ -91,7 +91,7 @@ function isValidPhraseTarget(v) {
 
 /** Return the style object that the renderer should use. Unknown keys in
  *  `opts` are ignored; invalid values fall back to defaults. NULL / non-
- *  object input returns the defaults verbatim — i.e. a render that came in
+ *  object input returns the defaults verbatim - i.e. a render that came in
  *  without `render_options` renders identical pixels to today's output
  *  (16:9, font 'pct', phrase 'natural', next-line + watermark on). */
 function resolveRenderStyle(opts) {
@@ -167,12 +167,12 @@ const COMP_SONGVIDEO_JSX = `
 //  - anim.icon: emoji rendered above the word (brand callouts)
 //
 // Per-word fields consumed: display (or word for backwards compat), anim.type,
-// anim.icon, trailing_punct. Source words remain unrendered — display drives
+// anim.icon, trailing_punct. Source words remain unrendered - display drives
 // the screen.
 import React from 'react';
 import { AbsoluteFill, Audio, useCurrentFrame, useVideoConfig } from 'remotion';
 
-// Defaults — mirror RENDER_DEFAULTS above (same file). If a render comes in
+// Defaults - mirror RENDER_DEFAULTS above (same file). If a render comes in
 // with no \`style\` prop, the
 // composition falls back to these exact constants and renders identical
 // pixels to pre-Style-tab output.
@@ -187,7 +187,7 @@ const CODE_TEXT = '#39ff66';
 
 // Index of the phrase whose [start_ms, end_ms] window contains tMs, or -1 when
 // we're in a gap (before the first phrase, or between two phrases). Returning
-// -1 — rather than clamping to phrase 0 — is what makes the screen BLANK during
+// -1 - rather than clamping to phrase 0 - is what makes the screen BLANK during
 // lead-in silence and inter-phrase gaps instead of showing the next line early.
 function currentPhraseIdx(phrases, tMs) {
   if (!phrases || phrases.length === 0) return -1;
@@ -207,12 +207,12 @@ function upcomingPhraseIdx(phrases, tMs) {
   return -1;
 }
 
-const SENTENCE_PUNCT = /[,.!?;:—–]$/;
+const SENTENCE_PUNCT = /[,.!?;:\u2014\u2013]$/;
 
 // Build the effective phrase list the video displays.
-//   'length' — ignore source boundaries, re-chunk the word stream into fixed
+//   'length' - ignore source boundaries, re-chunk the word stream into fixed
 //              groups of \`target\` words (1 = one word at a time, up to 20).
-//   'natural' — split on sentence punctuation (, . ! ? ; :) glued to a word's
+//   'natural' - split on sentence punctuation (, . ! ? ; :) glued to a word's
 //              trailing_punct AND on the aligner's own phrase boundaries (line
 //              breaks). So "Full-stack for the agents, ain't nobody slick as
 //              me." splits at the comma and the period into two lines.
@@ -291,7 +291,7 @@ function wordWidth(ctx, text, fontPx) {
 
 // Greedy line-wrap the words into rows that each fit maxW, then return the
 // number of rows + the widest row. A single word wider than maxW occupies its
-// own (overflowing) row — caller's binary search will shrink the font.
+// own (overflowing) row - caller's binary search will shrink the font.
 function layoutRows(ctx, texts, fontPx, maxW) {
   let rows = 1, cur = 0, widest = 0;
   for (const t of texts) {
@@ -390,7 +390,7 @@ export function SongVideo({ audioUrl, alignmentJson, title, style }) {
   const curr = idx >= 0 ? phrases[idx] : null;
   const nextIdx = upcomingPhraseIdx(phrases, tMs);
   const next = nextIdx >= 0 ? phrases[nextIdx] : null;
-  // Merge user-chosen style over hard-coded defaults — receiving an empty/
+  // Merge user-chosen style over hard-coded defaults - receiving an empty/
   // missing style prop renders the exact defaults from pre-Style-tab output.
   const palette = {
     bg_color:    (style && style.bg_color)    || DEFAULT_BG,
@@ -409,8 +409,8 @@ export function SongVideo({ audioUrl, alignmentJson, title, style }) {
   const maxH = height - pad * 2;
 
   // Font size:
-  //   'max' — largest size where the whole phrase fits inside (maxW × maxH).
-  //   'pct' — font_pct% of the SHORT SIDE (resolution- AND aspect-independent),
+  //   'max' - largest size where the whole phrase fits inside (maxW × maxH).
+  //   'pct' - font_pct% of the SHORT SIDE (resolution- AND aspect-independent),
   //           then clamp so a too-big % still fits the frame minus padding.
   const fontMode = (style && style.font_mode === 'max') ? 'max' : 'pct';
   const fontPct = (style && typeof style.font_pct === 'number') ? style.font_pct : 8;
@@ -498,7 +498,7 @@ async function uploadVideo(localPath, suggestedName) {
   const init = (await initRes.json()).data;
 
   // The /uploads/init response carries the presigned PUT URL as `url`
-  // (see platform api-files.ts:163). Earlier draft used `upload_url` — wrong.
+  // (see platform api-files.ts:163). Earlier draft used `upload_url` - wrong.
   const body = fs.readFileSync(localPath);
   const putRes = await fetch(init.url, {
     method: 'PUT',
@@ -514,7 +514,7 @@ async function uploadVideo(localPath, suggestedName) {
   });
   if (!completeRes.ok) fail(`uploads/complete: HTTP ${completeRes.status} ${(await completeRes.text()).slice(0, 200)}`);
   // /uploads/complete returns `data.url` (the CDN URL when is_public=true).
-  // Earlier draft used `data.public_url` — wrong field name. See api-files.ts:300-313.
+  // Earlier draft used `data.public_url` - wrong field name. See api-files.ts:300-313.
   return (await completeRes.json()).data.url;
 }
 
@@ -606,7 +606,7 @@ async function main() {
 if (require.main === module) {
   main().catch((err) => {
     // Surface the full stack so render failures inside Remotion / Chromium are
-    // actually debuggable from app_job_runs.error_message — `.message` alone
+    // actually debuggable from app_job_runs.error_message - `.message` alone
     // loses the line numbers we need.
     process.stderr.write('[render] FATAL stack:\n');
     if (err && err.stack) process.stderr.write(err.stack + '\n');

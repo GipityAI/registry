@@ -16,16 +16,16 @@ Money goes to **your** Stripe account. Gipity takes a small platform fee (defaul
 
 ## What's wired
 
-- **`src/index.html`** — pricing cards using `<stripe-buy-button>` (one-time + subscription) and a hidden members area.
-- **`src/js/main.js`** — sign-in/out, the post-checkout banner, subscription gating via `getSubscriptionStatus()`, and the billing portal.
-- **`functions/payment-events`** — fulfillment: the platform calls it with signature-verified Stripe events; it records to `payments` / `subscriptions`. (Kit-owned — don't edit.)
-- **`functions/payment-status`** — the gating read (is this signed-in user subscribed?).
-- **`migrations/000-kit-stripe-core.sql`** — the `payments` and `subscriptions` tables.
+- **`src/index.html`** - pricing cards using `<stripe-buy-button>` (one-time + subscription) and a hidden members area.
+- **`src/js/main.js`** - sign-in/out, the post-checkout banner, subscription gating via `getSubscriptionStatus()`, and the billing portal.
+- **`functions/payment-events`** - fulfillment: the platform calls it with signature-verified Stripe events; it records to `payments` / `subscriptions`. (Kit-owned - don't edit.)
+- **`functions/payment-status`** - the gating read (is this signed-in user subscribed?).
+- **`migrations/000-kit-stripe-core.sql`** - the `payments` and `subscriptions` tables.
 
 ## Make it yours
 
 - Change prices/labels in the `<stripe-buy-button>` elements in `index.html` (amounts are in cents).
 - Put your real premium features inside the `#members` section.
-- Grant access / send a receipt by reacting to new rows in `payments` / `subscriptions` from your own function or workflow — keep the kit's `payment-events` sealed.
+- Grant access / send a receipt by reacting to new rows in `payments` / `subscriptions` from your own function or workflow - keep the kit's `payment-events` sealed.
 
 Subscriptions are attributed to the **signed-in** Gipity user, so encourage users to sign in before subscribing (the page's "Sign in" control does this).

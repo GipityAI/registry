@@ -19,7 +19,7 @@ export default async function songAlignComplete(ctx, { db }) {
   );
   if (songRes.rows.length === 0) {
     // Run wasn't ours (e.g. someone invoked audio-align directly without
-    // going through song-align). Nothing to update — exit clean.
+    // going through song-align). Nothing to update - exit clean.
     return { ok: true, ignored: true };
   }
   const songGuid = songRes.rows[0].short_guid;
