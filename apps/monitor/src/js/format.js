@@ -113,6 +113,16 @@ export function fmtTime(iso) {
   return `${Math.round(ageMin / (60 * 24))}d ago`;
 }
 
+/** A future time as "in 3d" / "in 5h"; a past one as "expired". */
+export function fmtUntil(iso) {
+  if (!iso) return 'never';
+  const min = Math.round((new Date(iso) - new Date()) / 60000);
+  if (min <= 0) return 'expired';
+  if (min < 60) return `in ${min}m`;
+  if (min < 60 * 24) return `in ${Math.round(min / 60)}h`;
+  return `in ${Math.round(min / (60 * 24))}d`;
+}
+
 export function fmtFullTime(iso) {
   if (!iso) return '';
   return new Date(iso).toLocaleString();

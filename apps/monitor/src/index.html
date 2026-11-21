@@ -90,6 +90,7 @@
         <button data-tab="data"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span class="nav-text">Data</span></button>
         <button data-tab="services"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span class="nav-text">Services</span></button>
         <button data-tab="hosting"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="3" y1="12" x2="21" y2="12"/><path d="M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18z"/></svg><span class="nav-text">Hosting</span></button>
+        <button data-tab="connections"><svg class="nav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4"/><path d="M15 3v4"/><path d="M6 7h12v4a6 6 0 0 1-12 0z"/><path d="M12 17v4"/></svg><span class="nav-text">AI connections</span></button>
       </div>
       <div class="sidebar-group">
         <h4 class="sidebar-label">Account</h4>
@@ -687,6 +688,35 @@
             <thead><tr><th>Project</th><th class="num">Prod size</th><th class="num">Prod objects</th><th class="num">Environments size</th><th class="num">Environments objects</th></tr></thead>
             <tbody></tbody>
           </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── AI connections tab (user keys + chat app connections) ─── -->
+    <section class="tab-panel" data-tab="connections" hidden>
+      <div class="tab-desc-wrap"><p class="tab-lede">The AI your app's users connected: keys they made for a laptop agent and chat apps they signed in through your MCP server. <button type="button" class="info-toggle" aria-expanded="false" aria-label="More about this view">&#9432;</button></p><div class="tab-info" hidden><p class="tab-desc">The AI your app's users connected: keys they made for a laptop agent and chat apps (Claude, ChatGPT) they signed in through your MCP server. Each one acts as the person who made it, capped by a key profile. Revoking one cuts it off on its next call. <span class="try-it">Try it: <code>$ gipity key list --user-keys</code></span></p></div></div>
+      <div class="sub-tabs" id="conn-envs" hidden></div>
+      <p class="muted small" id="conn-pick" hidden>Pick a project from the selector above to see its AI connections.</p>
+      <div class="tab-stack" id="conn-body">
+        <div class="cards">
+          <div class="card" title="Active keys and chat app connections people made in this environment."><span class="card-label">Connections</span><span class="card-value" id="conn-count">-</span></div>
+          <div class="card" title="Chat apps (Claude, ChatGPT) connected through this environment's MCP server."><span class="card-label">Chat apps</span><span class="card-value" id="conn-chat">-</span></div>
+          <div class="card" title="Distinct people with at least one active connection."><span class="card-label">People</span><span class="card-value" id="conn-people">-</span></div>
+          <div class="card" title="Calls made with these connections, all time."><span class="card-label">Calls</span><span class="card-value" id="conn-calls">-</span></div>
+        </div>
+        <div class="panel">
+          <h3>Connections</h3>
+          <table class="data-table stack-table" id="table-conn"><thead><tr><th>Who</th><th>Kind</th><th>Profile</th><th>Created</th><th>Last used</th><th>Expires</th><th class="num">Calls</th><th></th></tr></thead><tbody></tbody></table>
+        </div>
+        <div class="grid-2">
+          <div class="panel">
+            <h3>MCP server</h3>
+            <div id="conn-mcp"></div>
+          </div>
+          <div class="panel">
+            <h3>Key profiles</h3>
+            <table class="data-table compact stack-table" id="table-conn-profiles"><thead><tr><th>Profile</th><th>Functions</th><th class="num">Max days</th></tr></thead><tbody></tbody></table>
+          </div>
         </div>
       </div>
     </section>

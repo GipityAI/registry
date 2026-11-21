@@ -438,7 +438,7 @@ a.primary-btn { display: inline-block; text-decoration: none; }
   transition: transform 0.12s ease;
 }
 .chat-row.expanded td:first-child::before { transform: rotate(90deg); color: var(--primary); }
-.chat-thread-row td { padding: 0.75rem 1rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
+.chat-thread-row td, .expand-detail-row td { padding: 0.75rem 1rem 1rem; background: var(--bg); border-bottom: 1px solid var(--border); }
 .chat-thread { display: flex; flex-direction: column; gap: 0.4rem; }
 .chat-msg { background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--border-strong); border-radius: 4px; padding: 0.5rem 0.7rem; }
 .chat-msg-user      { border-left-color: var(--primary); }
@@ -683,3 +683,26 @@ tr.row-link, .attn-row.row-link { cursor: pointer; }
 /* Projects tab: one line per app environment. */
 .env-row { display: flex; gap: var(--sp-2); align-items: baseline; flex-wrap: wrap; }
 .env-row + .env-row { margin-top: var(--sp-2); }
+
+/* AI connections tab. A wrapper that keeps the tab's own column gap, and a
+   row that expands to its per-function counts (caret like the Chats rows). */
+.expand-row { cursor: pointer; }
+.expand-who { display: flex; gap: var(--sp-1); }
+.expand-row .caret { color: var(--text-muted); transition: transform 0.12s ease; display: inline-block; width: 1em; flex-shrink: 0; text-align: center; }
+.expand-row.expanded .caret { transform: rotate(90deg); color: var(--primary); }
+.tab-stack:not([hidden]) { display: flex; flex-direction: column; gap: 1rem; }
+.copy-chip.conn-url { max-width: 100%; }
+.copy-chip.conn-url code { word-break: break-all; text-align: left; }
+
+/* Tables that turn into label/value cards on phones instead of scrolling
+   sideways: each td carries its column name in data-label. */
+@media (max-width: 600px) {
+  .stack-table thead { display: none; }
+  .stack-table, .stack-table tbody, .stack-table tr, .stack-table td { display: block; width: 100%; }
+  .stack-table tr { border-bottom: 1px solid var(--border); padding: var(--sp-2) 0; }
+  .stack-table td { border-bottom: none; padding: var(--sp-1) 0; }
+  .stack-table td[data-label] { display: flex; justify-content: space-between; gap: var(--sp-3); text-align: right; }
+  .stack-table td[data-label]::before { content: attr(data-label); color: var(--text-muted); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; text-align: left; flex-shrink: 0; }
+  .stack-table td.row-actions { text-align: right; }
+  .stack-table .expand-who { justify-content: flex-end; }
+}

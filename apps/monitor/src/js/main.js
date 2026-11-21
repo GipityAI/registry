@@ -4,7 +4,7 @@
  * - Projects (default landing: every project, its URLs and deploy state) and
  *   Overview (health verdict) sit above three groups:
  *   - Observe: Traffic / Activity / Errors / Chats / Audit            (event streams)
- *   - Project: Compute / Data / Services / Hosting                    (resources)
+ *   - Project: Compute / Data / Services / Hosting / AI connections   (resources)
  *   - Account: Plan / Usage / Alerts / Secrets / Account              (account state)
  * - URL hash preserves the active tab + sub-tab across reloads.
  * - Range + Project filters re-render the active tab on change.
@@ -24,6 +24,7 @@ import { renderSecretsTab } from './tabs/secrets.js';
 import { renderComputeTab } from './tabs/compute.js';
 import { renderDataTab } from './tabs/data.js';
 import { renderHostingTab } from './tabs/hosting.js';
+import { renderConnectionsTab } from './tabs/connections.js';
 import { renderSpendTab } from './tabs/spend.js';
 import { renderPlanTab } from './tabs/plan.js';
 import { renderAccountTab } from './tabs/account.js';
@@ -164,6 +165,7 @@ const TAB_RENDERERS = {
   compute: renderComputeTab,
   data: renderDataTab,
   hosting: renderHostingTab,
+  connections: renderConnectionsTab,
   spend: renderSpendTab,
   plan: renderPlanTab,
   chats: renderChatsTab,

@@ -9,7 +9,7 @@ Everything Monitor shows or changes goes through a documented REST route that th
 - **Projects** (landing): every project, its prod URL, each of its environments, custom domains, deploy phases, and the last deploy's result.
 - **Overview**: health verdict, what needs attention, recent deploys.
 - **Observe**: Traffic, Activity, Errors, Chats (recorded coding-agent sessions), Audit.
-- **Project**: Compute (Functions, Jobs, Sandbox, Workflows, Tests; job, workflow and test runs open a detail view with output, logs and per-step or per-test results), Data (storage, a file browser with version restore, databases), Services, Hosting.
+- **Project**: Compute (Functions, Jobs, Sandbox, Workflows, Tests; job, workflow and test runs open a detail view with output, logs and per-step or per-test results), Data (storage, a file browser with version restore, databases), Services, Hosting, AI connections (for the picked project and one of its environments: the keys people made for their own AI and the chat apps they connected through its MCP server, with per-function call counts and revoke; plus its MCP server and key profiles).
 - **Account**: Plan (balance, limits, billing through Stripe), Usage, Alerts, Secrets, Account (profile, API tokens, delete account).
 
 ## Auth

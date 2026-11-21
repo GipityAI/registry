@@ -168,6 +168,17 @@ export const api = {
   purchase: (priceId, returnUrl) => send('POST', '/credits/purchase', { priceId, returnUrl }),
   billingPortal: (returnUrl) => send('POST', '/credits/portal', { returnUrl }),
 
+  // AI connections: the user keys and chat app (MCP) connections people made in
+  // an app environment, its MCP server, and its key profiles. projectGuid is
+  // the root project (prod) or an environment's guid. The same routes as
+  // `gipity key list --user-keys`, `gipity mcp`, `gipity key profiles` and
+  // `gipity key revoke`.
+  userKeys: (projectGuid) => getJson(`/projects/${encodeURIComponent(projectGuid)}/api-keys?user_keys=1`),
+  mcpStatus: (projectGuid) => getJson(`/projects/${encodeURIComponent(projectGuid)}/mcp`),
+  keyProfiles: (projectGuid) => getJson(`/projects/${encodeURIComponent(projectGuid)}/key-profiles`),
+  revokeKey: (projectGuid, keyGuid) =>
+    send('DELETE', `/projects/${encodeURIComponent(projectGuid)}/api-keys/${encodeURIComponent(keyGuid)}`),
+
   // Account: API tokens (gip_at_*) and deleting the account.
   agentTokens: () => getJson('/auth/agent-tokens'),
   createAgentToken: (name, expiresInDays) => send('POST', '/auth/agent-tokens', { name, expiresInDays }),
