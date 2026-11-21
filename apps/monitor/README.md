@@ -16,6 +16,8 @@ Everything Monitor shows or changes goes through a documented REST route that th
 
 Monitor signs in with the Gipity popup and asks for the owner-only Account scope. Every API call sends the app's token (`X-App-Token`) with the session cookie, and the platform acts as the account only when the signed-in viewer owns this copy and granted it that scope. Sign out (top right) ends the browser's Gipity session.
 
+**Paused (2026-11-21):** the platform turned the Account scope off for every app, because all hosted apps share one origin and a page can't prove it is the owner's own Monitor. Until Monitor moves to its own origin (platform `docs-team/product/specs/app-origins.md`), `ACCOUNT_VIEWS_PAUSED` in `src/js/main.js` shows a notice pointing to the gipity CLI instead of the sign-in gate. Set it to `false` when the scope returns.
+
 ## Files
 
 ```

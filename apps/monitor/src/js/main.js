@@ -367,7 +367,25 @@ function initSidebarSplitter() {
   });
 }
 
+// Account views are paused: the platform no longer lets any app act as your
+// Gipity account, Monitor included, while Monitor moves to its own address
+// (every app shares the hosting origin today). Show the notice and wire nothing
+// else; the dashboard below comes back with the move.
+const ACCOUNT_VIEWS_PAUSED = true;
+
+function showPaused() {
+  showAuthGate();
+  $('signin').hidden = true;
+  document.querySelector('.gate-card > .gate-lede').hidden = true;
+  $('gate-paused').hidden = false;
+  document.querySelector('.controls').style.display = 'none';
+}
+
 async function init() {
+  if (ACCOUNT_VIEWS_PAUSED) {
+    showPaused();
+    return;
+  }
   setRenderer(renderActiveTab);
   initSidebarSplitter();
 

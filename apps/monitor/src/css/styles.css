@@ -328,6 +328,8 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .gate-logo { display: block; margin: 0 auto 0.75rem; }
 .gate-card h2 { font-size: var(--text-xl); margin-bottom: 0.4rem; }
 .gate-lede { color: var(--text-muted); font-size: var(--text-sm); margin-bottom: 1.4rem; }
+.gate-cli { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; margin: 0; }
+.gate-cli code { font-size: var(--text-sm); }
 #auth-gate button { background: var(--primary); border: none; color: var(--text-on-primary); padding: 0.55rem 1.6rem; font-size: var(--text-base); font-weight: 600; cursor: pointer; border-radius: var(--radius-sm); }
 #auth-gate button:hover { background: var(--primary-hover); }
 
