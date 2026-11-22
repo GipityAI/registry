@@ -15,11 +15,16 @@ import { RealtimeJoinError } from './errors.js';
 // bumping both this line and the server release in lockstep.
 const COLYSEUS_ESM = 'https://esm.sh/colyseus.js@0.16.22?bundle-deps';
 
-// The API base for THIS app's server. The deploy pipeline stamps it onto the injected
-// SDK tag (data-api-base) - a page deployed by a local dev server must call THAT
-// server, not prod, or every token/API call 404s against an app that doesn't exist
-// there. Fall back to prod for pages older than the stamp.
+// The API base for THIS app's server. The Gipity SDK's Gipity.app.apiBase comes
+// first: on the app's own custom domain it is the same-origin /__gipity base, where
+// the signed-in session is a first-party cookie (a.gipity.ai would get no session
+// there). Then the deploy-stamped SDK tag (data-api-base) - a page deployed by a
+// local dev server must call THAT server, not prod, or every token/API call 404s
+// against an app that doesn't exist there. Fall back to prod for pages older than
+// the stamp. Read at call time, so the SDK loading after this module is fine.
 function resolveApiBase() {
+  const sdkBase = typeof window !== 'undefined' ? window.Gipity?.app?.apiBase : null;
+  if (typeof sdkBase === 'string' && sdkBase) return sdkBase.replace(/\/+$/, '');
   if (typeof document !== 'undefined') {
     const tag = document.querySelector('script[data-api-base]');
     const base = tag?.getAttribute('data-api-base');
@@ -45,7 +50,7 @@ function resolveWsUrl() {
 export function createClient() {
   let colyseus = null;
   let appGuid = null;
-  let apiBase = resolveApiBase();
+  let apiBase = null; // configure({ apiBase }) override; else resolveApiBase() per call
   let wsUrl = resolveWsUrl();
   let appToken = null;
   let tokenFetchedAt = 0;
@@ -109,7 +114,7 @@ export function createClient() {
       tokenPromise = (async () => {
         const guid = getAppGuid();
         if (!guid) throw new Error('no app GUID - cannot fetch token');
-        const res = await fetch(`${apiBase}/api/token`, {
+        const res = await fetch(`${apiBase ?? resolveApiBase()}/api/token`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ app: guid }),
@@ -138,7 +143,7 @@ export function createClient() {
     else headers['X-App-Token'] = await acquireToken();
     let res;
     try {
-      res = await fetch(`${apiBase}/api/${encodeURIComponent(guid)}/realtime/ticket`, {
+      res = await fetch(`${apiBase ?? resolveApiBase()}/api/${encodeURIComponent(guid)}/realtime/ticket`, {
         method: 'POST', headers, body: '{}', credentials: 'include',
       });
     } catch (err) {
@@ -173,6 +178,6 @@ export function createClient() {
 
   return {
     configure, getAppGuid, getDefaultRoom, colyseusClient, acquireToken, acquireUserTicket, listRooms,
-    getApiBase: () => apiBase, getWsUrl: () => wsUrl,
+    getApiBase: () => apiBase ?? resolveApiBase(), getWsUrl: () => wsUrl,
   };
 }
