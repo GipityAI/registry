@@ -155,7 +155,7 @@ function renderMcp(m) {
 function renderProfiles(profiles) {
   const body = $('table-conn-profiles').querySelector('tbody');
   if (!profiles.length) {
-    body.innerHTML = emptyState(3, { icon: '◌', message: 'No key profiles, so people can\'t make keys or connect chat apps. Declare <code>key_profiles:</code> in gipity.yaml; the app-agents skill shows how.', tryit: SKILL_CMD });
+    body.innerHTML = emptyState(3, { icon: '◌', messageHtml: 'No key profiles, so people can\'t make keys or connect chat apps. Declare <code>key_profiles:</code> in gipity.yaml; the app-agents skill shows how.', tryit: SKILL_CMD });
     return;
   }
   body.innerHTML = profiles.map((p) => `

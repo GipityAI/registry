@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <!-- Apply the saved theme before stylesheets load, so there's no theme flash
-       (mirrors js/theme.js; key 'gipity-theme'). -->
-  <script>(function(){try{var t=localStorage.getItem('gipity-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='blue')?t:'dark');}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();</script>
+  <!-- Monitor acts as your whole Gipity account, so no script runs here that
+       isn't this app's own, the pinned Chart.js build (checked by its SRI hash)
+       or the Gipity SDK; API calls go only to this origin. frame-ancestors
+       can't be set from a meta tag: the host's response headers set it. -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js https://media.gipity.ai/client/v1/gipity.js; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; worker-src 'none'">
+  <script src="./js/theme-boot.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">{{HEAD_BLOCK}}
   <link rel="stylesheet" href="./css/styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script type="importmap">
-  { "imports": {} }
-  </script>
-  {{ANALYTICS_SCRIPT}}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" integrity="sha384-e6nUZLBkQ86NJ6TVVKAeSaK8jWa3NhkYWZFomE39AvDbQWeie9PlQqM3pmYW5d1g" crossorigin="anonymous"></script>
+  <!-- The Gipity SDK signs Monitor in on its own origin (first-party hand-off).
+       Its traffic and error beacons are off: they go to the public API host,
+       which this page's connect-src does not allow. -->
+  <script defer crossorigin="anonymous" src="https://media.gipity.ai/client/v1/gipity.js" data-app="{{PROJECT_GUID}}" data-api-base="{{API_BASE}}" data-traffic="off" data-errors="off"></script>
 </head>
 <body>
   <header class="monitor-header">
@@ -67,8 +70,13 @@
       <h2>{{TITLE}}</h2>
       <p class="gate-lede">Your projects, deploys, logs, spend and account on Gipity, in one place.</p>
       <button id="signin">Sign in with Gipity</button>
+      <div id="gate-moved" class="gate-paused" hidden>
+        <p class="gate-lede">Monitor now lives at its own secure address.</p>
+        <p><a id="gate-moved-link" class="primary-btn" href="#">Open Monitor</a></p>
+        <p class="gate-cli mono small" id="gate-moved-url"></p>
+      </div>
       <div id="gate-paused" class="gate-paused" hidden>
-        <p class="gate-lede">Monitor's account views are paused while we move Monitor to its own secure address. Use the gipity CLI meanwhile.</p>
+        <p class="gate-lede">Monitor is moving to its own secure address. Use the gipity CLI meanwhile.</p>
         <p class="gate-cli"><code>gipity project</code> <code>gipity logs</code> <code>gipity credits</code> <code>gipity secrets</code></p>
       </div>
     </div>
@@ -958,18 +966,8 @@
         </div>
         <div class="panel">
           <h3>New API token</h3>
-          <p class="muted small">A token acts as your whole account. Give headless agents and CI their own, and revoke it when done.</p>
-          <form id="acct-token-form" class="inline-form">
-            <label>Name <input type="text" id="acct-token-name" maxlength="100" placeholder="ci-deploy" /></label>
-            <label>Expires in days <input type="number" id="acct-token-days" min="1" max="3650" step="1" placeholder="never" /></label>
-            <button type="submit" class="primary-btn">Create token</button>
-            <span id="acct-token-status" class="small detail-error"></span>
-          </form>
-          <div id="acct-token-new" class="token-reveal" hidden>
-            <p class="small">Copy it now. It is not shown again.</p>
-            <code id="acct-token-value" class="mono"></code>
-            <button type="button" id="acct-token-copy" class="link-btn">Copy</button>
-          </div>
+          <p class="muted small">A token acts as your whole account. Give headless agents and CI their own, and revoke it when done. Create one with the gipity CLI: Monitor can list and revoke tokens, but only the CLI makes them.</p>
+          <p class="gate-cli"><code>gipity token create --name ci-deploy</code></p>
         </div>
       </div>
       <div class="panel">
@@ -996,11 +994,8 @@
       <div class="panel danger-panel">
         <h3>Delete account</h3>
         <p class="small">Deletes every project, file, database, function, workflow and secret on this account. This cannot be undone.</p>
-        <form id="acct-delete-form" class="inline-form">
-          <label>Type your account name to confirm <input type="text" id="acct-delete-confirm" autocomplete="off" /></label>
-          <button type="submit" id="acct-delete-btn" class="danger-btn">Delete my account</button>
-          <span id="acct-delete-status" class="small detail-error"></span>
-        </form>
+        <p class="small">Delete the account with the gipity CLI. Monitor can't, so a page can never close your account.</p>
+        <p class="gate-cli"><code>gipity account delete</code></p>
       </div>
     </section>
 

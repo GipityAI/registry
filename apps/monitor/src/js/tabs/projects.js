@@ -3,7 +3,7 @@
  * and how its last deploys went, for prod and each environment, per deploy phase. The same
  * data as `gipity status` / `gipity deploy`, from GET /account/logs/projects.
  */
-import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyState } from '../format.js';
+import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyState, safeHref } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -11,7 +11,7 @@ const PHASE_CLASS = { ok: 'ok', skipped: 'muted', warning: 'warn', failed: 'erro
 
 /** One deploy's state: when, and each phase's status as a small pill. */
 function targetCell(url, state) {
-  const link = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="url-link mono small" title="${escapeHtml(url)}">${escapeHtml(url.replace(/^https:\/\//, ''))}</a>`;
+  const link = `<a href="${escapeHtml(safeHref(url))}" target="_blank" rel="noopener" class="url-link mono small" title="${escapeHtml(url)}">${escapeHtml(url.replace(/^https:\/\//, ''))}</a>`;
   if (!state) return `${link}<div class="muted small">Never deployed</div>`;
   const phases = Object.entries(state.phases || {})
     .map(([name, status]) => `<span class="pill ${PHASE_CLASS[status] || 'info'}" title="${escapeHtml(name)}: ${escapeHtml(status)}">${escapeHtml(name)}</span>`)
@@ -61,7 +61,7 @@ export async function renderProjectsTab(api) {
         <div>${escapeHtml(p.name)}</div>
         <div class="muted small mono">${escapeHtml(p.slug)}</div>
         ${p.deploy_state !== 'ready' ? `<span class="pill ${p.deploy_state === 'failed' ? 'error' : 'info'}">${escapeHtml(p.deploy_state)}</span>` : ''}
-        ${p.urls.custom.map((u) => `<div><a href="${escapeHtml(u)}" target="_blank" rel="noopener" class="url-link small">${escapeHtml(u.replace(/^https:\/\//, ''))}</a></div>`).join('')}
+        ${p.urls.custom.map((u) => `<div><a href="${escapeHtml(safeHref(u))}" target="_blank" rel="noopener" class="url-link small">${escapeHtml(u.replace(/^https:\/\//, ''))}</a></div>`).join('')}
       </td>
       <td>${targetCell(p.urls.prod, p.deploys)}</td>
       <td>${envsCell(p)}</td>

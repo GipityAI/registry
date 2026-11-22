@@ -14,12 +14,16 @@
 const DEFAULT_SUBMIT_FN = 'audio-align-submit';
 const DEFAULT_STATUS_FN = 'audio-align-status';
 
-/** Resolve the API base: explicit opts.apiBase wins, then the deploy-stamped
- *  SDK tag (data-api-base) - a page deployed by a local dev server must call
- *  THAT server, not prod, where the app doesn't exist. Falls back to prod for
- *  pages older than the stamp. Matches the realtime kit's resolution. */
+/** Resolve the API base: explicit opts.apiBase wins, then the Gipity SDK's
+ *  Gipity.app.apiBase (the same-origin /__gipity base on an app's own origin or
+ *  custom domain, where the sign-in cookie lives), then the deploy-stamped SDK
+ *  tag (data-api-base) - a page deployed by a local dev server must call THAT
+ *  server, not prod, where the app doesn't exist. Falls back to prod for pages
+ *  older than the stamp. Matches the realtime kit's resolution. */
 function apiBase(opts) {
   if (opts && opts.apiBase) return opts.apiBase.replace(/\/+$/, '');
+  const sdkBase = typeof window !== 'undefined' ? window.Gipity?.app?.apiBase : null;
+  if (typeof sdkBase === 'string' && sdkBase) return sdkBase.replace(/\/+$/, '');
   if (typeof document !== 'undefined') {
     const base = document.querySelector('script[data-api-base]')?.getAttribute('data-api-base');
     if (base) return base.replace(/\/+$/, '');

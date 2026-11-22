@@ -52,7 +52,7 @@ function renderError(d) {
   }
   out.push(renderBreadcrumbs(d.breadcrumbs));
   if (d.occurrence_count && d.occurrence_count > 1) {
-    out.push(`<div class="activity-extra muted small">Seen ${d.occurrence_count}× in this hour</div>`);
+    out.push(`<div class="activity-extra muted small">Seen ${escapeHtml(String(d.occurrence_count))}× in this hour</div>`);
   }
   return out.join('');
 }
@@ -100,7 +100,7 @@ function renderTimeline(ol, entries) {
     // Kind tag color comes from CSS (.activity-<kind> .activity-kind) so the
     // status palette follows the active theme's tokens.
     return `
-      <li class="activity-entry activity-${e.kind} severity-${e.severity || 'info'}">
+      <li class="activity-entry activity-${escapeHtml(e.kind)} severity-${escapeHtml(e.severity || 'info')}">
         <div class="activity-line">
           <span class="activity-time muted mono">${escapeHtml(fmtTime(e.at))}</span>
           <span class="activity-kind">${escapeHtml(e.kind)}</span>

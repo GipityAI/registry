@@ -1,17 +1,17 @@
 /**
  * Account tab: who you are, your sign-in passkeys (read here, managed on the
  * hosted page they link to; same route as `gipity account passkeys`), the API
- * tokens that act as you (gip_at_*, for headless agents and CI), and deleting
- * the account. The same routes as `gipity token create / list / revoke`.
+ * tokens that act as you (gip_at_*, for headless agents and CI: listed and
+ * revoked here, created only with `gipity token create`), and the NSFW opt-in.
+ * Creating a token and deleting the account are CLI-only: Monitor's own-origin
+ * access to the account (platform middleware/owner-app-host.ts) leaves them out.
  */
-import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyRow } from '../format.js';
+import { fmtExact, fmtTime, fmtFullTime, escapeHtml, emptyRow, safeHref } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
-let accountSlug = '';
 
 function renderProfile(me) {
-  accountSlug = me.accountSlug;
   $('acct-profile').innerHTML = `
     <tr><td class="muted">Email</td><td>${escapeHtml(me.email)}</td></tr>
     <tr><td class="muted">Account</td><td class="mono">${escapeHtml(me.accountSlug)}</td></tr>
@@ -23,7 +23,7 @@ function renderProfile(me) {
 
 function renderTokens(tokens) {
   const body = $('table-acct-tokens').querySelector('tbody');
-  if (!tokens.length) { body.innerHTML = emptyRow(5, 'No API tokens. Create one for a headless agent or CI job.'); return; }
+  if (!tokens.length) { body.innerHTML = emptyRow(5, 'No API tokens. Create one with gipity token create.'); return; }
   body.innerHTML = tokens.map((t) => `
     <tr>
       <td>${escapeHtml(t.name || '(unnamed)')} <span class="muted small mono">${escapeHtml(t.short_guid)}</span></td>
@@ -36,22 +36,6 @@ function renderTokens(tokens) {
 
 async function refreshTokens(api) {
   renderTokens((await api.agentTokens()).data);
-}
-
-async function createToken(api, ev) {
-  ev.preventDefault();
-  const name = $('acct-token-name').value.trim() || undefined;
-  const days = Number($('acct-token-days').value) || undefined;
-  $('acct-token-status').textContent = '';
-  try {
-    const { token } = (await api.createAgentToken(name, days)).data;
-    $('acct-token-value').textContent = token;
-    $('acct-token-new').hidden = false;
-    $('acct-token-form').reset();
-    await refreshTokens(api);
-  } catch (err) {
-    $('acct-token-status').textContent = err.message;
-  }
 }
 
 async function revoke(api, btn) {
@@ -72,7 +56,7 @@ function renderPasskeys(state) {
     : state.passkeys.length
       ? 'Require passkey: off. A passkey or an email code signs in.'
       : 'No sign-in passkeys yet. You sign in with an email code.';
-  $('acct-passkeys-manage').href = state.manageUrl;
+  $('acct-passkeys-manage').href = safeHref(state.manageUrl);
   const body = $('table-acct-passkeys').querySelector('tbody');
   if (!state.passkeys.length) { body.innerHTML = emptyRow(4, 'No sign-in passkeys.'); return; }
   body.innerHTML = state.passkeys.map((p) => `
@@ -116,38 +100,13 @@ async function toggleNsfw(api, ev) {
   }
 }
 
-async function deleteAccount(api, ev) {
-  ev.preventDefault();
-  if ($('acct-delete-confirm').value.trim() !== accountSlug) {
-    $('acct-delete-status').textContent = `Type ${accountSlug} to confirm.`;
-    return;
-  }
-  $('acct-delete-btn').disabled = true;
-  try {
-    await api.deleteAccount();
-    // Reuse the sign-in gate as the goodbye screen.
-    const gate = $('auth-gate');
-    gate.querySelector('h2').textContent = 'Account deleted';
-    gate.querySelector('.gate-lede').textContent = 'Your projects, files, databases and data have been removed. You can close this page.';
-    $('signin').hidden = true;
-    $('dashboard').hidden = true;
-    gate.hidden = false;
-  } catch (err) {
-    $('acct-delete-btn').disabled = false;
-    $('acct-delete-status').textContent = err.message;
-  }
-}
-
 export async function renderAccountTab(api) {
   if (!bound) {
     bound = true;
-    $('acct-token-form').addEventListener('submit', (ev) => createToken(api, ev));
-    $('acct-token-copy').addEventListener('click', () => navigator.clipboard?.writeText($('acct-token-value').textContent));
     $('table-acct-tokens').addEventListener('click', (ev) => {
       const btn = ev.target.closest('button[data-revoke]');
       if (btn) revoke(api, btn);
     });
-    $('acct-delete-form').addEventListener('submit', (ev) => deleteAccount(api, ev));
     $('acct-nsfw-form').addEventListener('submit', (ev) => toggleNsfw(api, ev));
   }
   const [me, tokens, nsfw, passkeys] = await Promise.all([api.me(), api.agentTokens(), api.nsfw(), api.signinPasskeys()]);

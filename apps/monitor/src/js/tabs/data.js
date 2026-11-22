@@ -8,7 +8,7 @@
  * CDN + Domains used to live here too but moved to the Hosting tab - they're
  * about delivery, not persistence.
  */
-import { fmtNum, fmtExact, fmtCredits, fmtBytes, toCredits, escapeHtml, emptyRow } from '../format.js';
+import { fmtNum, fmtExact, fmtCredits, fmtBytes, toCredits, escapeHtml, emptyRow, emptyRowHtml } from '../format.js';
 import { barChart } from '../chart-helpers.js';
 import { requestRender, subTabs, hashPath } from '../ui.js';
 import { renderBrowseSubtab } from './browse.js';
@@ -185,7 +185,7 @@ async function renderDbSubtab(api, { range, projectId }) {
 
   const schemasBody = $('table-db-schemas').querySelector('tbody');
   if (!schemas.data.schemas.length) {
-    schemasBody.innerHTML = emptyRow(4, 'No databases yet. Create one with <code>gipity db query "CREATE TABLE ..."</code>.');
+    schemasBody.innerHTML = emptyRowHtml(4, 'No databases yet. Create one with <code>gipity db query "CREATE TABLE ..."</code>.');
   } else {
     schemasBody.innerHTML = schemas.data.schemas.map((s) => `
       <tr>

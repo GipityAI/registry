@@ -1,6 +1,7 @@
 /**
  * Monitor: sidebar-nav dashboard orchestrator, and the web app you sign in to.
- * - Auth gate via Sign in with Gipity (cookie).
+ * - Runs only on its own origin; anywhere else it shows where Monitor lives.
+ * - Auth gate via Sign in with Gipity (first-party hand-off, host cookie).
  * - Projects (default landing: every project, its URLs and deploy state) and
  *   Overview (health verdict) sit above three groups:
  *   - Observe: Traffic / Activity / Errors / Chats / Audit            (event streams)
@@ -10,7 +11,7 @@
  * - Range + Project filters re-render the active tab on change.
  */
 import { api } from './api.js';
-import { signIn, signOut, isSignedIn } from './auth.js';
+import { signIn, signOut, isSignedIn, hostingMode } from './auth.js';
 import { renderProjectsTab } from './tabs/projects.js';
 import { renderOverviewTab } from './tabs/overview.js';
 import { renderTrafficTab } from './tabs/traffic.js';
@@ -367,23 +368,27 @@ function initSidebarSplitter() {
   });
 }
 
-// Account views are paused: the platform no longer lets any app act as your
-// Gipity account, Monitor included, while Monitor moves to its own address
-// (every app shares the hosting origin today). Show the notice and wire nothing
-// else; the dashboard below comes back with the move.
-const ACCOUNT_VIEWS_PAUSED = true;
-
-function showPaused() {
+// Monitor acts as your account, so the dashboard runs only on its own origin
+// (auth.js hostingMode). On any other address the gate says where Monitor
+// lives, or, before Monitor has moved, points to the CLI. Nothing else is wired.
+function showElsewhere(mode) {
   showAuthGate();
   $('signin').hidden = true;
   document.querySelector('.gate-card > .gate-lede').hidden = true;
-  $('gate-paused').hidden = false;
   document.querySelector('.controls').style.display = 'none';
+  if (mode.kind === 'moved') {
+    $('gate-moved-link').setAttribute('href', mode.url);
+    $('gate-moved-url').textContent = mode.url;
+    $('gate-moved').hidden = false;
+  } else {
+    $('gate-paused').hidden = false;
+  }
 }
 
 async function init() {
-  if (ACCOUNT_VIEWS_PAUSED) {
-    showPaused();
+  const mode = hostingMode();
+  if (mode.kind !== 'own-host') {
+    showElsewhere(mode);
     return;
   }
   setRenderer(renderActiveTab);

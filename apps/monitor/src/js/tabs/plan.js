@@ -5,7 +5,7 @@
  * open the Stripe billing portal (`/credits/*`, the same routes as
  * `gipity credits`).
  */
-import { fmtExact, fmtUsd, fmtTime, escapeHtml, emptyRow, fmtBytes } from '../format.js';
+import { fmtExact, fmtUsd, fmtTime, escapeHtml, emptyRow, fmtBytes, safeHref } from '../format.js';
 
 const $ = (id) => document.getElementById(id);
 let bound = false;
@@ -14,6 +14,13 @@ let bound = false;
  *  `?purchase=success|cancelled`, which lands in the hash query. */
 function returnUrl() {
   return `${location.origin}${location.pathname}#plan`;
+}
+
+/** A server-sent redirect target: http(s) only, never javascript: or data:. */
+function httpOnly(url) {
+  const safe = safeHref(url);
+  if (safe === '#') throw new Error('Unexpected billing link.');
+  return safe;
 }
 
 function purchaseNotice() {
@@ -29,7 +36,7 @@ async function startCheckout(api, btn) {
   btn.disabled = true;
   try {
     const { checkoutUrl } = (await api.purchase(btn.dataset.price, returnUrl())).data;
-    location.href = checkoutUrl;
+    location.href = httpOnly(checkoutUrl);
   } catch (err) {
     btn.disabled = false;
     $('billing-error').textContent = err.message;
@@ -40,7 +47,7 @@ async function openPortal(api) {
   $('billing-portal').disabled = true;
   try {
     const { portalUrl } = (await api.billingPortal(returnUrl())).data;
-    location.href = portalUrl;
+    location.href = httpOnly(portalUrl);
   } catch (err) {
     $('billing-portal').disabled = false;
     $('billing-error').textContent = err.message;

@@ -21,7 +21,7 @@ function renderIssuesTable(tbody, rows) {
     </tr>
   `, { cap: 15, emptyHtml: emptyState(4, {
     icon: '✓',
-    message: 'No errors in this window - captured automatically from <code>window.onerror</code> in your deployed apps.',
+    messageHtml: 'No errors in this window - captured automatically from <code>window.onerror</code> in your deployed apps.',
     tryit: `gipity page eval <url> "throw new Error('test')"`,
   }) });
 }

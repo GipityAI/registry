@@ -1,6 +1,6 @@
 {
   "name": "@gipity/audio-align",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "main": "index.js",
   "description": "Forced alignment kit for Gipity apps: audio + lyrics -> word-level timing JSON. Demucs vocal isolation + MMS_FA alignment, runs as a Gipity Jobs GPU job (NVIDIA L4). Useful for karaoke, subtitling, language learning, dubbing, lyric videos.",

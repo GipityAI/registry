@@ -1,20 +1,20 @@
 /**
- * Thin client for the platform API. Every call sends this app's token
- * (X-App-Token) with the session cookie (`credentials: 'include'`); the
- * platform acts as the viewer's account only when the viewer owns this app and
- * granted it the Account scope (see auth.js). Every route here is one the CLI
- * calls too: if Monitor can do it, `gipity` can.
+ * Thin client for the platform API, called same-origin on Monitor's own host
+ * (`https://<host>/__gipity/...`, see auth.js). The session is the host-only
+ * cookie the sign-in hand-off set; the platform acts as the account only for
+ * the owner's own Monitor (platform middleware/owner-app-host.ts, whose route
+ * table must list every path here). X-App-Token is the custom header that
+ * proves a same-origin call to browsers without Fetch Metadata. Every route
+ * here is one the CLI calls too: if Monitor can do it, `gipity` can.
  */
-import { appToken } from './auth.js';
-
-const API_BASE = '{{API_BASE}}';
+import { apiBase, appToken } from './auth.js';
 
 async function authHeaders(extra = {}) {
   return { 'X-App-Token': await appToken(), ...extra };
 }
 
 async function getJson(path) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: await authHeaders() });
+  const res = await fetch(`${apiBase()}${path}`, { credentials: 'include', headers: await authHeaders() });
   if (res.status === 401) throw new Error('UNAUTHENTICATED');
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   return res.json();
@@ -22,7 +22,7 @@ async function getJson(path) {
 
 /** GET a file-shaped response (CSV) and hand it to the browser as a download. */
 async function download(path, filename) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: 'include', headers: await authHeaders() });
+  const res = await fetch(`${apiBase()}${path}`, { credentials: 'include', headers: await authHeaders() });
   if (res.status === 401) throw new Error('UNAUTHENTICATED');
   if (!res.ok) throw new Error(`API ${res.status}: ${path}`);
   const url = URL.createObjectURL(await res.blob());
@@ -34,7 +34,7 @@ async function download(path, filename) {
 }
 
 async function send(method, path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(`${apiBase()}${path}`, {
     method,
     credentials: 'include',
     headers: await authHeaders({ 'Content-Type': 'application/json' }),
@@ -179,11 +179,10 @@ export const api = {
   revokeKey: (projectGuid, keyGuid) =>
     send('DELETE', `/projects/${encodeURIComponent(projectGuid)}/api-keys/${encodeURIComponent(keyGuid)}`),
 
-  // Account: API tokens (gip_at_*) and deleting the account.
+  // Account: API tokens (gip_at_*), listed and revoked here. Creating one and
+  // deleting the account are CLI-only (`gipity token create`, `gipity account delete`).
   agentTokens: () => getJson('/auth/agent-tokens'),
-  createAgentToken: (name, expiresInDays) => send('POST', '/auth/agent-tokens', { name, expiresInDays }),
   revokeAgentToken: (guid) => send('DELETE', `/auth/agent-tokens/${encodeURIComponent(guid)}`),
-  deleteAccount: () => send('DELETE', '/users/me'),
   // Sign-in passkeys (read only: changes happen on the hosted page it links to).
   signinPasskeys: () => getJson('/auth/passkeys/state'),
   nsfw: () => getJson('/users/me/nsfw'),

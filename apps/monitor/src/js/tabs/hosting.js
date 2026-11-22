@@ -8,7 +8,7 @@
  * Migrated here from Audit (Deploys) and Data (Domains, CDN) so that
  * "publishing your app" is one umbrella instead of three.
  */
-import { fmtNum, fmtExact, fmtBytes, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, padSeries } from '../format.js';
+import { fmtNum, fmtExact, fmtBytes, fmtTime, fmtFullTime, escapeHtml, truncate, emptyRow, emptyRowHtml, padSeries } from '../format.js';
 import { groupFor, barChart } from '../chart-helpers.js';
 import { requestRender, subTabs, hashPath } from '../ui.js';
 
@@ -51,7 +51,7 @@ async function renderDeploysSubtab(api, { range, projectId }) {
     return;
   }
   tbody.innerHTML = res.data.map((e) => {
-    const detail = e.detail ? Object.entries(e.detail).slice(0, 3).map(([k, v]) => `${k}=${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v))}`).join(' · ') : '';
+    const detail = e.detail ? Object.entries(e.detail).slice(0, 3).map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ') : '';
     return `
       <tr>
         <td class="muted" title="${fmtFullTime(e.created_at)}">${fmtTime(e.created_at)}</td>
@@ -73,7 +73,7 @@ async function renderDomainsSubtab(api) {
 
   const body = $('table-domains').querySelector('tbody');
   if (!res.data.domains.length) {
-    body.innerHTML = emptyRow(5, 'No custom domains yet - run <code>gipity domain add &lt;domain&gt;</code>.');
+    body.innerHTML = emptyRowHtml(5, 'No custom domains yet - run <code>gipity domain add &lt;domain&gt;</code>.');
     return;
   }
   body.innerHTML = res.data.domains.map((d) => {
@@ -110,7 +110,7 @@ async function renderCdnSubtab(api, { projectId } = {}) {
 
   const body = $('table-cdn-projects').querySelector('tbody');
   if (!projects.length) {
-    body.innerHTML = emptyRow(5, 'No apps deployed yet - run <code>gipity deploy</code>.');
+    body.innerHTML = emptyRowHtml(5, 'No apps deployed yet - run <code>gipity deploy</code>.');
     return;
   }
   body.innerHTML = projects.map((p) => `

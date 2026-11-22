@@ -86,7 +86,7 @@ export async function renderRealtimePanel(api, { range, projectId }) {
       <tr>
         <td class="muted">${fmtTime(c.created_at)}</td>
         <td>${escapeHtml(truncate(c.project_name || c.app_guid || '-', 28))}</td>
-        <td class="muted mono">${c.caller_user_id ? `user ${c.caller_user_id}` : 'anon'}</td>
+        <td class="muted mono">${c.caller_user_id ? `user ${escapeHtml(c.caller_user_id)}` : 'anon'}</td>
         <td class="num">${fmtMs(c.latency_ms)}</td>
       </tr>
     `).join('');

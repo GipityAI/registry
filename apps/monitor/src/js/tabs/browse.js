@@ -3,7 +3,7 @@
  * history and restore an older version. The same routes as `gipity file` /
  * `gipity file rollback`. Scoped to the project picked in the global filter.
  */
-import { fmtBytes, fmtTime, fmtFullTime, escapeHtml, emptyRow } from '../format.js';
+import { fmtBytes, fmtTime, fmtFullTime, escapeHtml, emptyRow, safeHref } from '../format.js';
 import { openDetail, openDetailAsync } from '../detail.js';
 
 const $ = (id) => document.getElementById(id);
@@ -29,11 +29,11 @@ function versionsHtml(versions) {
   if (!versions.length) return '<p class="muted">No version history.</p>';
   return `<table class="data-table compact"><thead><tr><th>Version</th><th>Saved</th><th>Source</th><th class="num">Size</th><th></th></tr></thead><tbody>
     ${versions.map((v) => `<tr>
-      <td>v${v.version}${v.current ? ' <span class="pill ok">current</span>' : ''}</td>
+      <td>v${escapeHtml(v.version)}${v.current ? ' <span class="pill ok">current</span>' : ''}</td>
       <td class="muted" title="${escapeHtml(fmtFullTime(v.created_at))}">${fmtTime(v.created_at)}</td>
       <td class="muted">${escapeHtml(v.source || '-')}</td>
       <td class="num">${fmtBytes(v.size)}</td>
-      <td>${v.current ? '' : `<button type="button" class="link-btn" data-restore="${v.version}">Restore</button>`}</td>
+      <td>${v.current ? '' : `<button type="button" class="link-btn" data-restore="${escapeHtml(v.version)}">Restore</button>`}</td>
     </tr>`).join('')}
   </tbody></table>`;
 }
@@ -68,7 +68,7 @@ function wireFile(api, el, path) {
     btn.disabled = true;
     try {
       const { url } = (await api.fileUrl(project, path)).data;
-      btn.outerHTML = `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">Open file</a>`;
+      btn.outerHTML = `<a href="${escapeHtml(safeHref(url))}" target="_blank" rel="noopener">Open file</a>`;
     } catch (err) {
       btn.textContent = err.message;
     }

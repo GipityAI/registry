@@ -137,6 +137,19 @@ export function escapeHtml(s) {
   return String(s ?? '').replace(/[<>&"']/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&#39;' })[c]);
 }
 
+// A URL from data, made safe for an href: only http(s) URLs (absolute or
+// relative to this page) pass; anything else (javascript:, data:, ...) becomes
+// '#'. Escape the result with escapeHtml when building it into an HTML string.
+export function safeHref(url) {
+  if (url == null || url === '') return '#';
+  try {
+    const u = new URL(String(url), location.href);
+    return u.protocol === 'http:' || u.protocol === 'https:' ? u.href : '#';
+  } catch {
+    return '#';
+  }
+}
+
 export function statusPill(status) {
   const s = (status || '').toLowerCase();
   const cls = s === 'ok' || s === 'success' || s === 'completed' || s === 'passed' ? 'ok'
@@ -146,8 +159,15 @@ export function statusPill(status) {
   return `<span class="pill ${cls}">${escapeHtml(status || '-')}</span>`;
 }
 
+// `msg` is plain text and is escaped here, so callers can pass server strings.
+// For a fixed message that needs markup (a <code> command), use emptyRowHtml
+// with a literal string only, never interpolated data.
 export function emptyRow(cols, msg = 'No data in this window.') {
-  return `<tr><td colspan="${cols}" class="empty">${msg}</td></tr>`;
+  return emptyRowHtml(cols, escapeHtml(msg));
+}
+
+export function emptyRowHtml(cols, trustedHtml) {
+  return `<tr><td colspan="${Number(cols) || 1}" class="empty">${trustedHtml}</td></tr>`;
 }
 
 /**
@@ -156,13 +176,16 @@ export function emptyRow(cols, msg = 'No data in this window.') {
  * chip - shown exactly when the user needs it instead of living permanently
  * in the tab header. Drop-in replacement for emptyRow.
  */
-export function emptyState(cols, { icon = '◌', message, tryit } = {}) {
+// `message` is plain text (escaped here); `messageHtml` is a trusted literal
+// with markup and takes precedence when given. Never put data in messageHtml.
+export function emptyState(cols, { icon = '◌', message, messageHtml, tryit } = {}) {
   const chip = tryit
     ? `<button type="button" class="copy-chip" data-copy="${escapeHtml(tryit)}" title="Copy command"><code>$ ${escapeHtml(tryit)}</code></button>`
     : '';
-  return `<tr><td colspan="${cols}"><div class="empty-state">
+  const msg = messageHtml != null ? messageHtml : escapeHtml(message);
+  return `<tr><td colspan="${Number(cols) || 1}"><div class="empty-state">
     <span class="empty-ico" aria-hidden="true">${escapeHtml(icon)}</span>
-    <span class="empty-msg">${message}</span>
+    <span class="empty-msg">${msg}</span>
     ${chip}
   </div></td></tr>`;
 }

@@ -1,23 +1,66 @@
 /**
- * Sign-in-with-Gipity flow for the Monitor app.
+ * Sign-in for the Monitor app, on its own origin.
  *
- * Monitor is a normal app in your account. It reads and manages your account
- * through the platform API by proving two things on every call: which app is
- * asking (its app token, X-App-Token) and who is looking (the session cookie).
- * The platform honors that only when the viewer owns this app and granted it
- * the Account scope, so your Monitor reaches your account and nobody else's
- * app ever can.
+ * Monitor acts as your whole Gipity account, so it works only on its own
+ * address (https://monitor--<account>.gipity.app/), never on the shared
+ * app.gipity.ai host where every app's pages share one origin. There the
+ * Gipity SDK (loaded by index.html) signs in with a one-time hand-off that
+ * ends in a host-only session cookie, and every API call goes same-origin to
+ * /__gipity/. The platform acts as the account only for the account owner's
+ * own Monitor on its own host, with the Account scope granted on that host
+ * (platform middleware/owner-app-host.ts).
  */
-const APP_GUID = '{{PROJECT_GUID}}';
-const API_BASE = '{{API_BASE}}';
 
-// Identity (1) + Account (128). Account is only ever granted to an app you own.
+// Identity (1) + Account (128). Account is only ever granted to your own
+// Monitor, on its own host.
 const PERMISSIONS = 1 | 128;
 
 // Refresh the app token a minute before it expires.
 const TOKEN_REFRESH_BUFFER_MS = 60_000;
 let tokenCache = null;
 let tokenInflight = null;
+let configured = false;
+
+function sdk() {
+  const g = window.Gipity;
+  if (!g || !g.auth || !g.app) throw new Error('The Gipity SDK did not load');
+  if (!configured) {
+    g.auth.configure({ permissions: PERMISSIONS });
+    configured = true;
+  }
+  return g;
+}
+
+/** The SDK's script tag, which deploy stamps with this app's hosting. */
+function sdkTag() {
+  return document.querySelector('script[src*="/client/v1/gipity.js"]');
+}
+
+/**
+ * Where this page is, as far as Monitor cares:
+ *   { kind: 'own-host' }            this Monitor's own origin: the dashboard runs
+ *   { kind: 'moved', url }          Monitor runs on its own origin, but this is
+ *                                   another address (app.gipity.ai): link there
+ *   { kind: 'shared' }              Monitor hasn't moved yet: no account views
+ */
+export function hostingMode() {
+  let g;
+  try { g = sdk(); } catch { return { kind: 'shared' }; }
+  const own = sdkTag()?.getAttribute('data-hosting') === 'own';
+  if (!own) return { kind: 'shared' };
+  // The SDK uses the same-origin /__gipity base only on a host deploy listed
+  // for this app (its own gipity.app host comes first).
+  if (g.app.apiBase === `${location.origin}/__gipity` && location.hostname.endsWith('.gipity.app')) {
+    return { kind: 'own-host' };
+  }
+  const url = g.app.siteUrl;
+  return url && /^https:\/\/[a-z0-9.-]+\.gipity\.app\//.test(url) ? { kind: 'moved', url } : { kind: 'shared' };
+}
+
+/** The same-origin API base on Monitor's own host (`https://<host>/__gipity`). */
+export function apiBase() {
+  return sdk().app.apiBase;
+}
 
 /** This app's token (public; it names the app, not the viewer). Cached, single-flight. */
 export async function appToken() {
@@ -26,10 +69,10 @@ export async function appToken() {
   tokenInflight = (async () => {
     try {
       const started = Date.now();
-      const res = await fetch(`${API_BASE}/api/token`, {
+      const res = await fetch(`${apiBase()}/api/token`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ app: APP_GUID }),
+        body: JSON.stringify({ app: sdk().app.guid }),
       });
       if (!res.ok) throw new Error(`App token request failed (${res.status})`);
       const { data } = await res.json();
@@ -43,72 +86,28 @@ export async function appToken() {
 }
 
 /**
- * Open the consent/login popup, wait for the postMessage handshake from
- * api-auth-renderers.ts:renderPopupResult, then close. The `mode=popup`
- * query param is what tells the server to use the postMessage flow instead
- * of the "you can close this" static page.
+ * Sign in through the Gipity popup. It ends on this host's hand-off page,
+ * which sets the session cookie here; the SDK then sees the session.
+ * Must run inside the click handler (the popup opens synchronously).
  */
-export function signIn() {
-  return new Promise((resolve, reject) => {
-    const url = `${API_BASE}/api/auth/login?app=${encodeURIComponent(APP_GUID)}&permissions=${PERMISSIONS}&mode=popup`;
-    const popup = window.open(url, 'gipity_signin', 'width=480,height=640');
-    if (!popup) {
-      reject(new Error('Popup blocked'));
-      return;
-    }
-    let settled = false;
-    const onMessage = (ev) => {
-      if (ev.origin !== API_BASE) return;
-      if (ev.data?.type !== 'gipity_auth') return;
-      settled = true;
-      window.removeEventListener('message', onMessage);
-      try { popup.close(); } catch { /* already closed */ }
-      if (ev.data.status === 'success') resolve();
-      else reject(new Error('Permission denied'));
-    };
-    window.addEventListener('message', onMessage);
-
-    // Detect manual close. Only reject if we never got the handshake - otherwise
-    // the popup may close naturally after posting (and `popup.closed === true`
-    // races with our message listener).
-    const checkClosed = setInterval(() => {
-      if (popup.closed) {
-        clearInterval(checkClosed);
-        if (!settled) {
-          window.removeEventListener('message', onMessage);
-          reject(new Error('Sign-in cancelled'));
-        }
-      }
-    }, 500);
-  });
+export async function signIn() {
+  const user = await sdk().auth.signIn();
+  if (!user) throw new Error('Sign-in was cancelled or not allowed');
+  return user;
 }
 
-/**
- * End this browser's Gipity session (the same call gipity.ai uses). The
- * X-Gipity-Logout header is the platform's CSRF guard for the cookie logout.
- */
+/** End Monitor's session on this host. Your Gipity sign-in elsewhere is left alone. */
 export async function signOut() {
-  const res = await fetch(`${API_BASE}/api/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-    headers: { 'X-Gipity-Logout': '1' },
-  });
-  if (!res.ok) throw new Error(`Sign-out failed (${res.status})`);
+  await sdk().auth.signOut();
 }
 
 /**
- * Whether this viewer can use Monitor (signed in and granted the Account
- * scope). Asks the auth status endpoint, which answers 200 either way, so a
- * signed-out visit doesn't log a failed request as an app error.
+ * Whether this viewer can use Monitor: signed in on this host and granted the
+ * Account scope (which the platform reports only to the account owner here).
  */
 export async function isSignedIn() {
   try {
-    const res = await fetch(`${API_BASE}/api/${encodeURIComponent(APP_GUID)}/auth/status?permissions=${PERMISSIONS}`, {
-      credentials: 'include',
-      headers: { 'X-App-Token': await appToken() },
-    });
-    if (!res.ok) return false;
-    const s = await res.json();
+    const s = await sdk().auth.status();
     return s.authenticated === true && s.consented === true;
   } catch {
     return false;

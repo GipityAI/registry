@@ -30,7 +30,7 @@ export async function renderAuditTab(api, { range, projectId, type }) {
     return;
   }
   tbody.innerHTML = res.data.map((e) => {
-    const detail = e.detail ? Object.entries(e.detail).slice(0, 3).map(([k, v]) => `${k}=${escapeHtml(typeof v === 'string' ? v : JSON.stringify(v))}`).join(' · ') : '';
+    const detail = e.detail ? Object.entries(e.detail).slice(0, 3).map(([k, v]) => `${k}=${typeof v === 'string' ? v : JSON.stringify(v)}`).join(' · ') : '';
     return `
       <tr>
         <td class="muted" title="${fmtFullTime(e.created_at)}">${fmtTime(e.created_at)}</td>
